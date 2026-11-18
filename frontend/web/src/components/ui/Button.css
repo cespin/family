@@ -1,21 +1,72 @@
 .fa-button {
+  position: relative;
   display: inline-flex;
+  flex: none;
   align-items: center;
   justify-content: center;
   gap: var(--fa-space-2);
-  min-height: var(--fa-control-height);
-  padding: 0 var(--fa-space-5);
-  border: var(--fa-border-width) solid transparent;
+  max-width: 100%;
+  border: var(--fa-border-control) solid transparent;
   border-radius: var(--fa-radius-pill);
-  font: inherit;
-  font-weight: var(--fa-weight-semibold);
+  font-family: var(--fa-font-body);
+  font-size: var(--fa-text-label);
+  line-height: var(--fa-leading-label);
+  font-weight: var(--fa-weight-bold);
+  white-space: nowrap;
   cursor: pointer;
-  transition: background-color var(--fa-duration-fast) ease, border-color var(--fa-duration-fast) ease;
+  transition:
+    background-color var(--fa-duration-fast) ease,
+    border-color var(--fa-duration-fast) ease,
+    transform var(--fa-duration-fast) ease;
 }
 
 .fa-button:focus-visible {
-  outline: var(--fa-focus-width) solid var(--fa-color-focus);
-  outline-offset: var(--fa-focus-offset);
+  outline: var(--fa-focus-width) solid transparent;
+  box-shadow: var(--fa-focus-ring);
+}
+
+.fa-button:active:not(:disabled) {
+  transform: translateY(var(--fa-press-offset));
+}
+
+.fa-button:disabled {
+  opacity: var(--fa-opacity-disabled);
+  cursor: not-allowed;
+}
+
+.fa-button--small {
+  min-height: var(--fa-control-small);
+  padding: 0 var(--fa-space-4);
+}
+
+/* Keeps the touch target at the control height while the button stays visually compact. */
+.fa-button--small::after {
+  content: '';
+  position: absolute;
+  inset: var(--fa-touch-overhang) 0;
+}
+
+.fa-button--medium {
+  min-height: var(--fa-control-height);
+  padding: 0 var(--fa-space-5);
+}
+
+.fa-button--large {
+  min-height: var(--fa-control-large);
+  padding: 0 var(--fa-space-6);
+}
+
+.fa-button--block {
+  display: flex;
+  width: 100%;
+  white-space: normal;
+  text-align: center;
+}
+
+.fa-button--icon-only {
+  width: var(--fa-control-height);
+  min-height: var(--fa-control-height);
+  padding: 0;
 }
 
 .fa-button--primary {
@@ -23,16 +74,34 @@
   color: var(--fa-color-on-accent);
 }
 
-.fa-button--primary:hover {
+.fa-button--primary:hover:not(:disabled) {
   background: var(--fa-color-accent-strong);
+}
+
+.fa-button--secondary {
+  background: var(--fa-color-surface);
+  border-color: var(--fa-color-border-strong);
+  color: var(--fa-color-text);
+}
+
+.fa-button--secondary:hover:not(:disabled) {
+  background: var(--fa-color-surface-sunken);
 }
 
 .fa-button--quiet {
   background: transparent;
-  border-color: var(--fa-color-border);
+  color: var(--fa-color-accent);
+}
+
+.fa-button--quiet:hover:not(:disabled) {
+  background: var(--fa-color-accent-soft);
+}
+
+.fa-button--plain {
+  background: transparent;
   color: var(--fa-color-text);
 }
 
-.fa-button--quiet:hover {
+.fa-button--plain:hover:not(:disabled) {
   background: var(--fa-color-surface-sunken);
 }

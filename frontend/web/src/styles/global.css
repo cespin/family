@@ -13,6 +13,74 @@ body {
   font-family: var(--fa-font-body);
   font-size: var(--fa-text-body);
   line-height: var(--fa-leading-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+.fa-text-display,
+.fa-text-title,
+.fa-text-heading,
+.fa-text-brand {
+  margin: 0;
+  font-family: var(--fa-font-display);
+  font-weight: var(--fa-weight-semibold);
+  font-variation-settings: var(--fa-display-variation);
+}
+
+.fa-text-display {
+  font-size: var(--fa-text-display);
+  line-height: var(--fa-leading-display);
+  letter-spacing: var(--fa-tracking-display);
+}
+
+.fa-text-title {
+  font-size: var(--fa-text-title);
+  line-height: var(--fa-leading-title);
+  letter-spacing: var(--fa-tracking-title);
+}
+
+.fa-text-brand {
+  font-size: var(--fa-text-brand);
+  line-height: var(--fa-leading-brand);
+}
+
+.fa-text-heading {
+  font-size: var(--fa-text-heading);
+  line-height: var(--fa-leading-heading);
+}
+
+.fa-text-body,
+.fa-text-body-strong {
+  margin: 0;
+  font-size: var(--fa-text-body);
+  line-height: var(--fa-leading-body);
+}
+
+.fa-text-body-strong {
+  font-weight: var(--fa-weight-bold);
+}
+
+.fa-text-label {
+  margin: 0;
+  font-size: var(--fa-text-label);
+  line-height: var(--fa-leading-label);
+  font-weight: var(--fa-weight-bold);
+}
+
+.fa-text-caption {
+  margin: 0;
+  font-size: var(--fa-text-caption);
+  line-height: var(--fa-leading-caption);
+  font-weight: var(--fa-weight-semibold);
+  letter-spacing: var(--fa-tracking-caption);
+}
+
+.fa-text-muted {
+  color: var(--fa-color-text-muted);
+}
+
+/* Weekdays and months come lowercase from the formatter. */
+.fa-text-capitalized::first-letter {
+  text-transform: uppercase;
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -1,0 +1,108 @@
+.fa-home {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fa-space-6);
+  padding: var(--fa-space-6) var(--fa-space-5) var(--fa-space-8);
+}
+
+.fa-home__top {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fa-space-6);
+}
+
+.fa-home__intro {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fa-space-1);
+}
+
+.fa-home__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--fa-space-2);
+}
+
+/* On a phone the group chips run off the edge of the screen and scroll sideways. */
+.fa-home__chips--scroll {
+  flex-wrap: nowrap;
+  margin: calc(var(--fa-space-1) * -1) calc(var(--fa-space-5) * -1);
+  padding: var(--fa-space-1) var(--fa-space-5);
+  overflow-x: auto;
+}
+
+.fa-home__columns {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fa-space-6);
+}
+
+.fa-home__rail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fa-space-6);
+  min-width: 0;
+}
+
+.fa-home__expenses {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fa-space-3);
+  min-width: 0;
+}
+
+.fa-home__section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--fa-space-3);
+}
+
+.fa-home__month {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fa-space-2);
+}
+
+.fa-home__failed {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--fa-space-3);
+}
+
+.fa-home--wide {
+  gap: var(--fa-space-8);
+  padding: var(--fa-space-8) var(--fa-space-6) var(--fa-space-12);
+}
+
+.fa-home--wide .fa-home__top {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--fa-space-4) var(--fa-space-6);
+}
+
+.fa-home--wide .fa-home__chips--scroll {
+  flex-wrap: wrap;
+  margin: 0;
+  padding: 0;
+  overflow-x: visible;
+}
+
+.fa-home--wide .fa-home__columns {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.fa-home--wide .fa-home__rail {
+  flex: 1 1 var(--fa-rail-basis);
+}
+
+.fa-home--wide .fa-home__expenses {
+  flex: 999 1 var(--fa-main-basis);
+  gap: var(--fa-space-4);
+}

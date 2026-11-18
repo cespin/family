@@ -1,0 +1,26 @@
+.fa-balance {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fa-space-4);
+}
+
+.fa-balance__currency {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--fa-space-3);
+}
+
+.fa-balance__total {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fa-space-half);
+}
+
+.fa-balance__headline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--fa-space-1) var(--fa-space-2-5);
+}

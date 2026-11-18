@@ -1,0 +1,64 @@
+.fa-expense-row {
+  display: flex;
+  align-items: center;
+  gap: var(--fa-space-3);
+  width: 100%;
+  min-height: var(--fa-row-expense);
+  padding: var(--fa-space-3) var(--fa-space-4);
+  background: var(--fa-color-surface);
+  border: 0;
+  color: var(--fa-color-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.fa-expense-row + .fa-expense-row {
+  border-top: var(--fa-border-width) solid var(--fa-color-border);
+}
+
+.fa-expense-row:hover {
+  background: var(--fa-color-surface-sunken);
+}
+
+.fa-expense-row:focus-visible {
+  outline: var(--fa-focus-width) solid var(--fa-color-accent);
+  outline-offset: calc(var(--fa-focus-width) * -1);
+}
+
+.fa-expense-row__main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--fa-space-half);
+  min-width: 0;
+}
+
+.fa-expense-row__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fa-expense-row__extra {
+  margin-top: var(--fa-space-1);
+}
+
+.fa-expense-row__share {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.fa-expense-row__label--positive {
+  color: var(--fa-color-lagoon);
+}
+
+.fa-expense-row__label--negative {
+  color: var(--fa-color-amber);
+}
+
+.fa-expense-row__label--neutral {
+  color: var(--fa-color-text-muted);
+}

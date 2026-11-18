@@ -1,0 +1,15 @@
+.fa-subheader {
+  display: flex;
+  align-items: center;
+  gap: var(--fa-space-1);
+  padding: var(--fa-space-2) var(--fa-space-3) 0;
+}
+
+.fa-subheader__title {
+  flex: 1;
+  min-width: 0;
+}
+
+.fa-subheader__action {
+  margin-left: auto;
+}

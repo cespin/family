@@ -1,0 +1,70 @@
+.fa-avatar {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--fa-avatar-medium);
+  height: var(--fa-avatar-medium);
+  border-radius: var(--fa-radius-pill);
+  overflow: hidden;
+  font-size: var(--fa-text-label);
+  font-weight: var(--fa-weight-heavy);
+  letter-spacing: var(--fa-tracking-avatar);
+  line-height: 1;
+  user-select: none;
+}
+
+.fa-avatar--small {
+  width: var(--fa-avatar-small);
+  height: var(--fa-avatar-small);
+  font-size: var(--fa-text-avatar-small);
+}
+
+.fa-avatar--large {
+  width: var(--fa-avatar-large);
+  height: var(--fa-avatar-large);
+  font-size: var(--fa-text-amount);
+}
+
+.fa-avatar--clay {
+  background: var(--fa-color-accent-soft);
+  color: var(--fa-color-accent);
+}
+
+.fa-avatar--honey {
+  background: var(--fa-color-honey);
+  color: var(--fa-color-on-honey);
+}
+
+.fa-avatar--sage {
+  background: var(--fa-color-sage-soft);
+  color: var(--fa-color-sage);
+}
+
+.fa-avatar--lagoon {
+  background: var(--fa-color-lagoon-soft);
+  color: var(--fa-color-lagoon);
+}
+
+.fa-avatar--cocoa {
+  background: var(--fa-color-text);
+  color: var(--fa-color-page);
+}
+
+.fa-avatar--more {
+  background: var(--fa-color-surface-sunken);
+  color: var(--fa-color-text-muted);
+}
+
+.fa-avatar-stack {
+  display: inline-flex;
+  align-items: center;
+}
+
+.fa-avatar-stack > .fa-avatar {
+  box-shadow: 0 0 0 var(--fa-avatar-ring) var(--fa-color-surface);
+}
+
+.fa-avatar-stack > .fa-avatar + .fa-avatar {
+  margin-left: var(--fa-avatar-overlap);
+}

@@ -11,10 +11,11 @@
   align-items: center;
   gap: var(--fa-space-4);
   width: min(100%, var(--fa-panel-width));
-  padding: var(--fa-space-7) var(--fa-space-6);
+  padding: var(--fa-space-12) var(--fa-space-8);
   background: var(--fa-color-surface);
   border: var(--fa-border-width) solid var(--fa-color-border);
   border-radius: var(--fa-radius-large);
+  box-shadow: var(--fa-shadow-small);
   text-align: center;
 }
 
@@ -32,8 +33,9 @@
   margin: 0;
   font-family: var(--fa-font-display);
   font-size: var(--fa-text-title);
-  line-height: var(--fa-leading-tight);
-  font-weight: var(--fa-weight-regular);
+  line-height: var(--fa-leading-title);
+  font-weight: var(--fa-weight-semibold);
+  font-variation-settings: var(--fa-display-variation);
 }
 
 .fa-panel__body {

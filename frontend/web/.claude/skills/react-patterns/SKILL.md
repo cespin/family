@@ -98,7 +98,7 @@ No screen uses `lazy()` or `Suspense` today, and i18next runs with `useSuspense:
 
 ## Forms
 
-No form exists yet. `Button` in `src/components/ui/Button.jsx` defaults to `type="button"`, so a submit button must pass `type="submit"`.
+`src/screens/AddExpenseScreen.jsx` is the reference form. `Button` in `src/components/ui/Button.jsx` defaults to `type="button"`, so a submit button must pass `type="submit"`.
 
 ### Controlled inputs (the default)
 

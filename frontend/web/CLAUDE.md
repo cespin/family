@@ -6,8 +6,9 @@ React 19 single-page app in plain JSX, built with Vite. TypeScript and a root ro
 
 - `src/screens/`: one component per screen.
 - `src/components/ui/`: the in-house design system.
+- `src/components/expenses/`, `src/components/auth/`: pieces shared by that module's screens.
 - `src/hooks/`: `SessionProvider` and `useSession`.
-- `src/lib/`: API client and sign-in flow.
+- `src/lib/`: API client, sign-in flow, and the expenses data seam (`expenses.js`) and money logic.
 - `src/i18n/`: translations and formatting.
 - `src/styles/tokens/`: design tokens.
 

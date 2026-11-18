@@ -1,60 +1,157 @@
 :root {
   color-scheme: light dark;
 
-  --fa-color-page: #f7f1e6;
-  --fa-color-surface: #fffcf6;
-  --fa-color-surface-sunken: #f1e8d9;
-  --fa-color-border: #e2d6c3;
-  --fa-color-text: #2c2520;
-  --fa-color-text-muted: #6a5d51;
-  --fa-color-accent: #a8482a;
-  --fa-color-accent-strong: #8c3a20;
-  --fa-color-accent-soft: #f6e2d6;
-  --fa-color-on-accent: #fffaf3;
-  --fa-color-focus: #2f6f62;
+  --fa-color-page: #fbf6ef;
+  --fa-color-surface: #fffdf9;
+  --fa-color-surface-sunken: #f3eadf;
+  --fa-color-border: #e8ddcf;
+  --fa-color-border-strong: #8f7c6a;
+  --fa-color-text: #33261d;
+  --fa-color-text-muted: #6b5a4c;
+  --fa-color-accent: #a94a28;
+  --fa-color-accent-strong: #8e3c1e;
+  --fa-color-accent-soft: #f7e2d7;
+  --fa-color-on-accent: #ffffff;
+  --fa-color-honey: #e9b44c;
+  --fa-color-honey-soft: #fcefd2;
+  --fa-color-on-honey: #33261d;
+  --fa-color-sage: #4f6f53;
+  --fa-color-sage-soft: #e4ecdf;
+  --fa-color-lagoon: #2b6a70;
+  --fa-color-lagoon-soft: #dcecec;
+  --fa-color-amber: #8a570b;
+  --fa-color-berry-soft: #f8dfe5;
 
-  --fa-font-body: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  --fa-font-display: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
-  --fa-text-body: 1rem;
-  --fa-text-title: 1.75rem;
-  --fa-text-display: 2.25rem;
-  --fa-leading-body: 1.55;
-  --fa-leading-tight: 1.2;
+  --fa-shadow-small: 0 1px 2px #33261d0f, 0 2px 8px #33261d12;
+  --fa-shadow-medium: 0 4px 12px #33261d14, 0 16px 36px -10px #33261d2e;
+  --fa-focus-ring: 0 0 0 2px var(--fa-color-page), 0 0 0 4px var(--fa-color-accent);
+
+  --fa-font-body: 'Nunito Variable', 'Avenir Next', 'Segoe UI', system-ui, sans-serif;
+  --fa-font-display: 'Fraunces Variable', 'Iowan Old Style', Georgia, serif;
+  --fa-font-emoji: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
+  --fa-display-variation: 'SOFT' 100, 'WONK' 0;
+
+  --fa-text-display: 2.75rem;
+  --fa-leading-display: 3rem;
+  --fa-text-title: 1.875rem;
+  --fa-leading-title: 2.25rem;
+  --fa-text-brand: 1.625rem;
+  --fa-leading-brand: 2rem;
+  --fa-text-heading: 1.3125rem;
+  --fa-leading-heading: 1.75rem;
+  --fa-text-body: 1.0625rem;
+  --fa-leading-body: 1.625rem;
+  --fa-text-label: 0.9375rem;
+  --fa-leading-label: 1.25rem;
+  --fa-text-caption: 0.8125rem;
+  --fa-leading-caption: 1.125rem;
+  --fa-text-amount: 1.5rem;
+  --fa-leading-amount: 1.875rem;
+  --fa-text-amount-small: 1.0625rem;
+  --fa-leading-amount-small: 1.5rem;
+  --fa-text-avatar-small: 0.6875rem;
+  --fa-text-emoji: 1rem;
+  --fa-text-emoji-large: 2.5rem;
+
   --fa-weight-regular: 400;
   --fa-weight-semibold: 600;
+  --fa-weight-bold: 700;
+  --fa-weight-heavy: 800;
+  --fa-tracking-display: -0.01em;
+  --fa-tracking-title: -0.005em;
+  --fa-tracking-caption: 0.01em;
+  --fa-tracking-avatar: 0.02em;
+  --fa-tracking-emoji: 0.375rem;
 
+  --fa-space-half: 0.125rem;
   --fa-space-1: 0.25rem;
+  --fa-space-1-5: 0.375rem;
   --fa-space-2: 0.5rem;
+  --fa-space-2-5: 0.625rem;
   --fa-space-3: 0.75rem;
   --fa-space-4: 1rem;
-  --fa-space-5: 1.5rem;
-  --fa-space-6: 2rem;
-  --fa-space-7: 3rem;
+  --fa-space-5: 1.25rem;
+  --fa-space-6: 1.5rem;
+  --fa-space-8: 2rem;
+  --fa-space-10: 2.5rem;
+  --fa-space-12: 3rem;
+  --fa-space-16: 4rem;
 
-  --fa-radius-large: 1.25rem;
-  --fa-radius-pill: 999px;
+  --fa-radius-medium: 0.875rem;
+  --fa-radius-large: 1.5rem;
+  --fa-radius-pill: 9999px;
   --fa-border-width: 1px;
+  --fa-border-control: 1.5px;
   --fa-focus-width: 2px;
-  --fa-focus-offset: 2px;
+  --fa-press-offset: 1px;
+  --fa-opacity-disabled: 0.45;
+
+  --fa-control-small: 2.25rem;
   --fa-control-height: 2.75rem;
-  --fa-icon-badge: 3.25rem;
+  --fa-control-large: 3.25rem;
+  --fa-touch-overhang: -0.25rem;
+  --fa-avatar-small: 1.75rem;
+  --fa-avatar-medium: 2.5rem;
+  --fa-avatar-large: 4rem;
+  --fa-avatar-overlap: -0.375rem;
+  --fa-avatar-ring: 2px;
+  --fa-icon-badge: 2.75rem;
+  --fa-badge-height: 1.75rem;
+  --fa-check-size: 1.375rem;
+  --fa-split-height: 0.75rem;
+  --fa-split-gap: 0.1875rem;
+  --fa-stepper-value: 3.125rem;
+  --fa-percent-width: 3rem;
+  --fa-segmented-compact: 13.125rem;
+  --fa-nav-item-height: 3.5rem;
+  --fa-nav-pill-width: 3.5rem;
+  --fa-nav-pill-height: 1.875rem;
+
+  --fa-row-compact: 3rem;
+  --fa-row-medium: 3.75rem;
+  --fa-row-regular: 4rem;
+  --fa-row-expense: 4.25rem;
+  --fa-row-link: 4.5rem;
+
   --fa-panel-width: 26rem;
-  --fa-content-width: 60rem;
-  --fa-duration-fast: 120ms;
+  --fa-column-width: 30rem;
+  --fa-content-width: 75rem;
+  --fa-rail-basis: 20rem;
+  --fa-main-basis: 35rem;
+  --fa-auth-width: 65rem;
+  --fa-auth-hero-basis: 22.5rem;
+  --fa-auth-card-basis: 21.25rem;
+  --fa-auth-card-width: 27.5rem;
+  --fa-measure: 44ch;
+  --fa-measure-narrow: 34ch;
+
+  --fa-duration-fast: 150ms;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --fa-color-page: #1e1a16;
-    --fa-color-surface: #28231e;
-    --fa-color-surface-sunken: #332c26;
-    --fa-color-border: #443b33;
-    --fa-color-text: #f3ebdf;
-    --fa-color-text-muted: #bcae9e;
-    --fa-color-accent: #e08a63;
-    --fa-color-accent-strong: #eba07d;
-    --fa-color-accent-soft: #46291c;
-    --fa-color-on-accent: #24140c;
-    --fa-color-focus: #7fc8b8;
+    --fa-color-page: #1c1714;
+    --fa-color-surface: #262019;
+    --fa-color-surface-sunken: #151110;
+    --fa-color-border: #3a3029;
+    --fa-color-border-strong: #85735f;
+    --fa-color-text: #f4ebe1;
+    --fa-color-text-muted: #c4b4a4;
+    --fa-color-accent: #e8916c;
+    --fa-color-accent-strong: #f0a988;
+    --fa-color-accent-soft: #45271c;
+    --fa-color-on-accent: #1c1714;
+    --fa-color-honey: #f0c062;
+    --fa-color-honey-soft: #3d2f14;
+    --fa-color-on-honey: #1c1714;
+    --fa-color-sage: #a3c1a1;
+    --fa-color-sage-soft: #263326;
+    --fa-color-lagoon: #7fc6c8;
+    --fa-color-lagoon-soft: #173537;
+    --fa-color-amber: #f2b65c;
+    --fa-color-berry-soft: #45202b;
+
+    --fa-shadow-small: 0 1px 2px #00000066, 0 2px 8px #0000004d;
+    --fa-shadow-medium: 0 4px 12px #00000080, 0 16px 36px -10px #000000b3;
   }
 }

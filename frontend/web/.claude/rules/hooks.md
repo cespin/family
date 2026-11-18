@@ -27,7 +27,7 @@ oxlint warns about a missing dependency through `react-hooks/exhaustive-deps`. F
 
 ## `useSession`
 
-`useSession` in `src/hooks/useSession.js` is the app's one project hook. It reads the context that `SessionProvider` in `src/hooks/SessionProvider.jsx` supplies, and throws if used outside that provider.
+`useSession` in `src/hooks/useSession.js` reads the context that `SessionProvider` in `src/hooks/SessionProvider.jsx` supplies, and throws if used outside that provider.
 
 | Field | Meaning |
 |---|---|

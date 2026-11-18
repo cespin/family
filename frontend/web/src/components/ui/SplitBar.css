@@ -1,0 +1,31 @@
+.fa-split-bar {
+  display: flex;
+  gap: var(--fa-split-gap);
+  height: var(--fa-split-height);
+  border-radius: var(--fa-radius-pill);
+  overflow: hidden;
+}
+
+.fa-split-bar__part {
+  flex-basis: 0;
+}
+
+.fa-split-bar__part--honey {
+  background: var(--fa-color-honey);
+}
+
+.fa-split-bar__part--clay {
+  background: var(--fa-color-accent);
+}
+
+.fa-split-bar__part--lagoon {
+  background: var(--fa-color-lagoon);
+}
+
+.fa-split-bar__part--sage {
+  background: var(--fa-color-sage);
+}
+
+.fa-split-bar__part--cocoa {
+  background: var(--fa-color-text);
+}

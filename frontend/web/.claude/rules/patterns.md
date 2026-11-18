@@ -57,7 +57,7 @@ All API calls go through `apiFetch` in `src/lib/api.js`. It prefixes `/api`, tak
 
 ## Forms
 
-No form exists yet. Default to controlled inputs with a handler that calls the API on submit. `Button` defaults to `type="button"`, so a submit button must pass `type="submit"`.
+Default to controlled inputs, as `src/screens/AddExpenseScreen.jsx` does, with a handler that calls the API on submit. `Button` defaults to `type="button"`, so a submit button must pass `type="submit"`.
 
 ## Lists and keys
 

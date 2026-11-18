@@ -1,50 +1,53 @@
-.fa-dashboard {
-  width: min(100%, var(--fa-content-width));
-  margin: 0 auto;
-  padding: var(--fa-space-4) var(--fa-space-5) var(--fa-space-7);
-}
-
-.fa-dashboard__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--fa-space-4);
-}
-
-.fa-dashboard__brand {
-  font-family: var(--fa-font-display);
-  font-size: var(--fa-text-title);
-  color: var(--fa-color-accent);
-}
-
-.fa-dashboard__greeting {
-  margin: var(--fa-space-7) 0 var(--fa-space-5);
-  font-family: var(--fa-font-display);
-  font-size: var(--fa-text-display);
-  line-height: var(--fa-leading-tight);
-  font-weight: var(--fa-weight-regular);
-}
-
-.fa-dashboard__empty {
+.fa-shell {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: var(--fa-space-2);
-  padding: var(--fa-space-6);
+  min-height: 100dvh;
+}
+
+.fa-shell__content {
+  flex: 1;
+  width: min(100%, var(--fa-column-width));
+  margin: 0 auto;
+  outline: 0;
+}
+
+.fa-shell__content--wide {
+  width: min(100%, var(--fa-content-width));
+}
+
+.fa-shell__dock {
+  position: sticky;
+  bottom: 0;
   background: var(--fa-color-surface);
-  border: var(--fa-border-width) dashed var(--fa-color-border);
-  border-radius: var(--fa-radius-large);
-  color: var(--fa-color-accent);
+  border-top: var(--fa-border-width) solid var(--fa-color-border);
+  box-shadow: var(--fa-shadow-medium);
 }
 
-.fa-dashboard__empty-title {
-  margin: 0;
-  color: var(--fa-color-text);
-  font-size: var(--fa-text-body);
-  font-weight: var(--fa-weight-semibold);
+.fa-shell__dock-inner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fa-space-2);
+  width: min(100%, var(--fa-column-width));
+  margin: 0 auto;
+  padding: var(--fa-space-3) var(--fa-space-5) 0;
 }
 
-.fa-dashboard__empty-body {
-  margin: 0;
-  color: var(--fa-color-text-muted);
+/* The column every screen shares. */
+.fa-screen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fa-space-6);
+  padding: var(--fa-space-2) var(--fa-space-5) var(--fa-space-8);
+}
+
+.fa-screen__intro {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fa-space-2);
+}
+
+.fa-screen__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fa-space-3);
 }

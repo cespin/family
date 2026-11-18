@@ -1,0 +1,32 @@
+.fa-monkey {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--fa-space-1);
+  max-width: 100%;
+  min-height: var(--fa-badge-height);
+  padding: 0 var(--fa-space-3) 0 var(--fa-space-2);
+  border-radius: var(--fa-radius-pill);
+  color: var(--fa-color-text);
+}
+
+.fa-monkey--hidden {
+  background: var(--fa-color-honey-soft);
+}
+
+.fa-monkey--oops {
+  background: var(--fa-color-berry-soft);
+}
+
+.fa-monkey__emoji {
+  font-family: var(--fa-font-emoji);
+  font-size: var(--fa-text-emoji);
+  font-weight: var(--fa-weight-regular);
+  line-height: 1;
+}
+
+.fa-monkey__text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

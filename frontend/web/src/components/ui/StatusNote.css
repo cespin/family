@@ -1,0 +1,26 @@
+.fa-status {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--fa-space-2-5);
+  padding: var(--fa-space-3) var(--fa-space-4);
+  border-radius: var(--fa-radius-medium);
+  color: var(--fa-color-text);
+}
+
+.fa-status--success {
+  background: var(--fa-color-lagoon-soft);
+}
+
+.fa-status--warning {
+  background: var(--fa-color-honey-soft);
+}
+
+.fa-status__text--strong {
+  color: var(--fa-color-amber);
+}
+
+.fa-status__icon {
+  display: inline-flex;
+  padding-top: var(--fa-space-1);
+  color: var(--fa-color-lagoon);
+}

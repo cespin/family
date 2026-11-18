@@ -1,0 +1,27 @@
+.fa-app-header__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--fa-space-3);
+  width: min(100%, var(--fa-column-width));
+  margin: 0 auto;
+  padding: var(--fa-space-3) var(--fa-space-5) 0;
+}
+
+.fa-app-header__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--fa-space-2);
+}
+
+.fa-app-header--wide {
+  background: var(--fa-color-surface);
+  border-bottom: var(--fa-border-width) solid var(--fa-color-border);
+}
+
+.fa-app-header--wide .fa-app-header__inner {
+  flex-wrap: wrap;
+  gap: var(--fa-space-3) var(--fa-space-8);
+  width: min(100%, var(--fa-content-width));
+  padding: var(--fa-space-3) var(--fa-space-6);
+}

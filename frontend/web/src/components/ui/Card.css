@@ -1,0 +1,20 @@
+.fa-card {
+  min-width: 0;
+  padding: var(--fa-space-5);
+  background: var(--fa-color-surface);
+  border: var(--fa-border-width) solid var(--fa-color-border);
+  border-radius: var(--fa-radius-large);
+  box-shadow: var(--fa-shadow-small);
+}
+
+.fa-card--flush {
+  padding: 0;
+  overflow: hidden;
+}
+
+.fa-card__head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fa-space-half);
+  margin-bottom: var(--fa-space-4);
+}

@@ -1,0 +1,31 @@
+.fa-amount {
+  font-weight: var(--fa-weight-heavy);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.fa-amount--large {
+  font-size: var(--fa-text-amount);
+  line-height: var(--fa-leading-amount);
+}
+
+.fa-amount--small {
+  font-size: var(--fa-text-amount-small);
+  line-height: var(--fa-leading-amount-small);
+}
+
+.fa-amount--positive {
+  color: var(--fa-color-lagoon);
+}
+
+.fa-amount--negative {
+  color: var(--fa-color-amber);
+}
+
+.fa-amount--neutral {
+  color: var(--fa-color-text);
+}
+
+.fa-amount--muted {
+  color: var(--fa-color-text-muted);
+}

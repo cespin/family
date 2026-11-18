@@ -1,11 +1,21 @@
 {
-  "appName": "Familia",
+  "appName": "Tres Monos",
   "actions": {
     "signOut": "Cerrar sesión",
     "retry": "Intentar de nuevo"
   },
   "status": {
-    "loading": "Cargando…"
+    "loading": "Cargando…",
+    "noData": "Sin dato"
+  },
+  "avatar": {
+    "initials": "{{initials}}",
+    "more": "+{{extra}}"
+  },
+  "monkeys": {
+    "all": "🙈🙉🙊",
+    "hidden": "🙈",
+    "oops": "🙊"
   },
   "errors": {
     "generic": "Algo salió mal. Inténtalo de nuevo en un momento.",
@@ -16,6 +26,7 @@
     "conflict": "Alguien más cambió esto. Actualiza e inténtalo de nuevo.",
     "request_error": "No pudimos procesar tu solicitud.",
     "too_many_requests": "Demasiados intentos. Espera un momento.",
-    "internal_error": "Algo salió mal de nuestro lado. Inténtalo más tarde."
+    "internal_error": "Algo salió mal de nuestro lado. Inténtalo más tarde.",
+    "expenses_unavailable": "Las cuentas de la familia todavía no están disponibles."
   }
 }

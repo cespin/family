@@ -1,0 +1,81 @@
+.fa-detail__intro {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fa-space-1-5);
+}
+
+.fa-detail__total {
+  margin: var(--fa-space-1) 0 0;
+}
+
+.fa-detail__line {
+  margin-top: var(--fa-space-1);
+}
+
+.fa-detail__note {
+  font-style: italic;
+}
+
+.fa-detail__owed {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fa-space-4);
+}
+
+.fa-detail__owed-row {
+  display: flex;
+  align-items: center;
+  gap: var(--fa-space-3);
+}
+
+.fa-detail__owed-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.fa-detail__split {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fa-space-3);
+}
+
+.fa-detail__share {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
+}
+
+.fa-detail__status--positive {
+  color: var(--fa-color-lagoon);
+}
+
+.fa-detail__status--negative {
+  color: var(--fa-color-amber);
+}
+
+.fa-detail__status--muted {
+  color: var(--fa-color-text-muted);
+}
+
+.fa-detail__activity {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fa-space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.fa-detail__activity-item {
+  display: flex;
+  align-items: center;
+  gap: var(--fa-space-3);
+}
+
+.fa-detail__activity-text {
+  flex: 1;
+  min-width: 0;
+}

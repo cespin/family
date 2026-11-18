@@ -1,0 +1,81 @@
+.fa-nav {
+  display: flex;
+}
+
+.fa-nav__item {
+  display: flex;
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: var(--fa-color-text-muted);
+  font-family: var(--fa-font-body);
+  cursor: pointer;
+}
+
+.fa-nav__item:focus-visible {
+  outline: var(--fa-focus-width) solid transparent;
+  box-shadow: var(--fa-focus-ring);
+}
+
+.fa-nav__item[aria-current='page'] {
+  color: var(--fa-color-accent);
+}
+
+.fa-nav__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Phone: three tabs along the bottom of the screen. */
+.fa-nav--tabs {
+  justify-content: space-around;
+  padding-bottom: var(--fa-space-2-5);
+}
+
+.fa-nav--tabs .fa-nav__item {
+  flex: 1;
+  flex-direction: column;
+  gap: var(--fa-space-half);
+  min-height: var(--fa-nav-item-height);
+  padding: var(--fa-space-1) 0 0;
+  border-radius: var(--fa-radius-medium);
+}
+
+.fa-nav--tabs .fa-nav__icon {
+  width: var(--fa-nav-pill-width);
+  height: var(--fa-nav-pill-height);
+  border-radius: var(--fa-radius-pill);
+}
+
+.fa-nav--tabs .fa-nav__item[aria-current='page'] .fa-nav__icon {
+  background: var(--fa-color-accent-soft);
+}
+
+.fa-nav--tabs .fa-nav__label {
+  font-size: var(--fa-text-caption);
+  line-height: var(--fa-leading-caption);
+  font-weight: var(--fa-weight-semibold);
+  letter-spacing: var(--fa-tracking-caption);
+}
+
+/* Computer: pills in the header. */
+.fa-nav--wide {
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  gap: var(--fa-space-1);
+}
+
+.fa-nav--wide .fa-nav__item {
+  gap: var(--fa-space-2);
+  min-height: var(--fa-control-height);
+  padding: 0 var(--fa-space-4);
+  border-radius: var(--fa-radius-pill);
+  font-size: var(--fa-text-label);
+  line-height: var(--fa-leading-label);
+  font-weight: var(--fa-weight-bold);
+}
+
+.fa-nav--wide .fa-nav__item[aria-current='page'] {
+  background: var(--fa-color-accent-soft);
+}

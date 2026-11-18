@@ -1,8 +1,5 @@
 {
   "greeting": "Hola, {{name}}",
   "greetingFallback": "Hola",
-  "empty": {
-    "title": "Todavía no hay nada por aquí",
-    "body": "Este espacio irá creciendo a medida que la familia lo necesite."
-  }
+  "today": "{{weekday}} {{date}}"
 }

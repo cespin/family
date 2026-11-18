@@ -1,0 +1,40 @@
+.fa-chip {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  min-height: var(--fa-control-small);
+  padding: 0 var(--fa-space-4);
+  background: var(--fa-color-surface);
+  border: var(--fa-border-control) solid var(--fa-color-border-strong);
+  border-radius: var(--fa-radius-pill);
+  color: var(--fa-color-text);
+  font-family: var(--fa-font-body);
+  font-size: var(--fa-text-label);
+  line-height: var(--fa-leading-label);
+  font-weight: var(--fa-weight-bold);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+/* Keeps the touch target at the control height while the chip stays visually compact. */
+.fa-chip::after {
+  content: '';
+  position: absolute;
+  inset: var(--fa-touch-overhang) 0;
+}
+
+.fa-chip:hover {
+  background: var(--fa-color-surface-sunken);
+}
+
+.fa-chip[aria-pressed='true'] {
+  background: var(--fa-color-accent-soft);
+  border-color: var(--fa-color-accent);
+  color: var(--fa-color-accent);
+}
+
+.fa-chip:focus-visible {
+  outline: var(--fa-focus-width) solid transparent;
+  box-shadow: var(--fa-focus-ring);
+}

@@ -1,0 +1,165 @@
+.fa-add {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+
+.fa-add__saved {
+  padding: var(--fa-space-3) var(--fa-space-5) 0;
+}
+
+.fa-add__form {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.fa-add__fields {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--fa-space-5);
+  padding: var(--fa-space-5) var(--fa-space-5) var(--fa-space-6);
+}
+
+.fa-add__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fa-space-3);
+}
+
+.fa-add__question {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fa-space-2);
+}
+
+.fa-add__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--fa-space-2);
+}
+
+.fa-add__select {
+  min-height: var(--fa-control-height);
+  padding: 0 var(--fa-space-3);
+  background: var(--fa-color-surface);
+  border: var(--fa-border-control) solid var(--fa-color-border-strong);
+  border-radius: var(--fa-radius-medium);
+  color: var(--fa-color-text);
+  font-family: var(--fa-font-body);
+  font-size: var(--fa-text-body);
+  cursor: pointer;
+}
+
+.fa-add__select:focus-visible {
+  outline: var(--fa-focus-width) solid transparent;
+  box-shadow: var(--fa-focus-ring);
+}
+
+.fa-add__participants-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--fa-space-3);
+  min-height: var(--fa-control-small);
+}
+
+.fa-add__participants {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.fa-add__participant {
+  display: flex;
+  align-items: center;
+  gap: var(--fa-space-3);
+  min-height: var(--fa-row-regular);
+  padding: var(--fa-space-1-5) var(--fa-space-3) var(--fa-space-1-5) var(--fa-space-4);
+}
+
+.fa-add__participant + .fa-add__participant {
+  border-top: var(--fa-border-width) solid var(--fa-color-border);
+}
+
+.fa-add__check {
+  flex: none;
+  width: var(--fa-check-size);
+  height: var(--fa-check-size);
+  margin: 0;
+  accent-color: var(--fa-color-accent);
+  cursor: pointer;
+}
+
+.fa-add__check:focus-visible {
+  outline: var(--fa-focus-width) solid var(--fa-color-accent);
+  outline-offset: var(--fa-focus-width);
+}
+
+.fa-add__person {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--fa-space-3);
+  min-width: 0;
+  min-height: var(--fa-control-height);
+  cursor: pointer;
+}
+
+.fa-add__person-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.fa-add__person-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fa-add__share {
+  flex: none;
+  font-size: var(--fa-text-amount-small);
+  line-height: var(--fa-leading-amount-small);
+  font-weight: var(--fa-weight-heavy);
+  font-variant-numeric: tabular-nums;
+}
+
+.fa-add__stepper {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--fa-space-half);
+}
+
+.fa-add__percent {
+  min-width: var(--fa-stepper-value);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.fa-add__usual {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--fa-space-3);
+}
+
+.fa-add__usual .fa-add__check {
+  margin-top: var(--fa-space-half);
+}
+
+.fa-add__usual label {
+  flex: 1;
+  cursor: pointer;
+}
+
+.fa-add__submit {
+  position: sticky;
+  bottom: 0;
+  padding: var(--fa-space-4) var(--fa-space-5) var(--fa-space-6);
+  background: var(--fa-color-surface);
+  border-top: var(--fa-border-width) solid var(--fa-color-border);
+  box-shadow: var(--fa-shadow-medium);
+}
