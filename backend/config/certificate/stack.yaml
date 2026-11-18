@@ -1,0 +1,7 @@
+template:
+  path: certificate/stack.yaml
+  type: file
+stack_name: {{ var.stack_name }}-{{ var.app_name }}-certificate
+parameters:
+  DomainName: {{ var.domain_name }}
+  HostedZoneId: {{ var.hosted_zone_id }}

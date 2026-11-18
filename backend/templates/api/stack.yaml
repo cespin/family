@@ -1,0 +1,329 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'REST API and Lambda functions for the family dashboard'
+Parameters:
+  AppName:
+    Type: String
+  ExportKey:
+    Type: String
+  StackName:
+    Type: String
+  Salt:
+    Type: String
+  DomainName:
+    Type: String
+  HealthGetCodeS3Key:
+    Type: String
+  MeGetCodeS3Key:
+    Type: String
+  AuthSessionCodeS3Key:
+    Type: String
+Resources:
+
+#  --START -- HEALTH
+
+  HealthGetRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${StackName}-${Salt}-health-get'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+  HealthGetLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${StackName}-${Salt}-health-get'
+      RetentionInDays: 30
+  HealthGetFunction:
+    Type: AWS::Lambda::Function
+    DependsOn: HealthGetLogGroup
+    Properties:
+      FunctionName: !Sub '${StackName}-${Salt}-health-get'
+      Description: !Sub 'GET /api/health - ${AppName} - stack ${StackName}'
+      Runtime: provided.al2023
+      Architectures:
+        - arm64
+      Handler: bootstrap
+      Role: !GetAtt HealthGetRole.Arn
+      Timeout: 5
+      MemorySize: 128
+      Environment:
+        Variables:
+          RUST_LOG: info
+      Code:
+        S3Bucket: !ImportValue
+          'Fn::Sub': '${ExportKey}-${StackName}-ArtifactsBucketName'
+        S3Key: !Ref HealthGetCodeS3Key
+
+#  --END -- HEALTH
+
+#  --START -- ME
+
+  MeGetRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${StackName}-${Salt}-me-get'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+      Policies:
+        - PolicyName: read-allowlist
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: 'dynamodb:GetItem'
+                Resource: !ImportValue
+                  'Fn::Sub': '${ExportKey}-${StackName}-FamilyTableArn'
+  MeGetLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${StackName}-${Salt}-me-get'
+      RetentionInDays: 30
+  MeGetFunction:
+    Type: AWS::Lambda::Function
+    DependsOn: MeGetLogGroup
+    Properties:
+      FunctionName: !Sub '${StackName}-${Salt}-me-get'
+      Description: !Sub 'GET /api/me - ${AppName} - stack ${StackName}'
+      Runtime: provided.al2023
+      Architectures:
+        - arm64
+      Handler: bootstrap
+      Role: !GetAtt MeGetRole.Arn
+      Timeout: 10
+      MemorySize: 256
+      Environment:
+        Variables:
+          TABLE_NAME: !ImportValue
+            'Fn::Sub': '${ExportKey}-${StackName}-FamilyTableName'
+          RUST_LOG: info
+      Code:
+        S3Bucket: !ImportValue
+          'Fn::Sub': '${ExportKey}-${StackName}-ArtifactsBucketName'
+        S3Key: !Ref MeGetCodeS3Key
+
+#  --END -- ME
+
+#  --START -- AUTH SESSION
+
+  # No AWS permissions beyond logging: this function only talks to Cognito's public OAuth
+  # endpoints. Its routes have no authorizer because they establish or end the session.
+  AuthSessionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${StackName}-${Salt}-auth-session'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+  AuthSessionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${StackName}-${Salt}-auth-session'
+      RetentionInDays: 30
+  AuthSessionFunction:
+    Type: AWS::Lambda::Function
+    DependsOn: AuthSessionLogGroup
+    Properties:
+      FunctionName: !Sub '${StackName}-${Salt}-auth-session'
+      Description: !Sub 'POST and DELETE /api/auth/session - ${AppName} - stack ${StackName}'
+      Runtime: provided.al2023
+      Architectures:
+        - arm64
+      Handler: bootstrap
+      Role: !GetAtt AuthSessionRole.Arn
+      Timeout: 10
+      MemorySize: 256
+      Environment:
+        Variables:
+          COGNITO_DOMAIN: !ImportValue
+            'Fn::Sub': '${ExportKey}-${StackName}-CognitoDomain'
+          USER_POOL_CLIENT_ID: !ImportValue
+            'Fn::Sub': '${ExportKey}-${StackName}-UserPoolClientId'
+          SITE_ORIGIN: !Sub 'https://${DomainName}'
+          RUST_LOG: info
+      Code:
+        S3Bucket: !ImportValue
+          'Fn::Sub': '${ExportKey}-${StackName}-ArtifactsBucketName'
+        S3Key: !Ref AuthSessionCodeS3Key
+
+#  --END -- AUTH SESSION
+
+#  --START -- REST API
+
+  # Publishing is done by scripts/deploy-vertical.sh with `aws apigateway create-deployment`.
+  # CloudFormation does not create a new deployment when Body changes, so there is intentionally
+  # no AWS::ApiGateway::Deployment or Stage here.
+  #
+  # Every error body uses {"error": {"code", "message"}}. `code` is the contract the frontend
+  # translates, and `message` is English diagnostic text that is never shown to users. A new code
+  # needs a translation under errors.* in frontend/web/src/i18n/locales, and a test enforces it.
+  RestApi:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: !Sub '${StackName}-${Salt}-api'
+      Description: !Sub '${AppName} API - stack ${StackName}'
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+      Body:
+        openapi: 3.0.1
+        info:
+          title: !Sub '${AppName} API'
+          version: '1.0.0'
+        x-amazon-apigateway-request-validators:
+          body-only:
+            validateRequestBody: true
+            validateRequestParameters: false
+        x-amazon-apigateway-gateway-responses:
+          BAD_REQUEST_BODY:
+            statusCode: 400
+            responseTemplates:
+              application/json: '{"error": {"code": "validation_error", "message": "The request body is not valid."}}'
+          UNAUTHORIZED:
+            statusCode: 401
+            responseTemplates:
+              application/json: '{"error": {"code": "unauthorized", "message": "Authentication is required."}}'
+          ACCESS_DENIED:
+            statusCode: 403
+            responseTemplates:
+              application/json: '{"error": {"code": "forbidden", "message": "This action is not allowed."}}'
+          THROTTLED:
+            statusCode: 429
+            responseTemplates:
+              application/json: '{"error": {"code": "too_many_requests", "message": "Too many requests."}}'
+          DEFAULT_4XX:
+            responseTemplates:
+              application/json: '{"error": {"code": "request_error", "message": "The request could not be processed."}}'
+          DEFAULT_5XX:
+            responseTemplates:
+              application/json: '{"error": {"code": "internal_error", "message": "An unexpected error occurred."}}'
+        components:
+          securitySchemes:
+            CognitoUserPool:
+              type: apiKey
+              name: Authorization
+              in: header
+              x-amazon-apigateway-authtype: cognito_user_pools
+              x-amazon-apigateway-authorizer:
+                type: cognito_user_pools
+                providerARNs:
+                  - !ImportValue
+                    'Fn::Sub': '${ExportKey}-${StackName}-UserPoolArn'
+          schemas:
+            SessionMintRequest:
+              type: object
+              additionalProperties: false
+              required:
+                - code
+                - codeVerifier
+              properties:
+                code:
+                  type: string
+                  minLength: 1
+                  maxLength: 2048
+                codeVerifier:
+                  type: string
+                  minLength: 43
+                  maxLength: 128
+        paths:
+          /api/health:
+            get:
+              responses:
+                '200':
+                  description: The API is reachable
+              x-amazon-apigateway-integration:
+                type: aws_proxy
+                httpMethod: POST
+                uri: !Sub 'arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${HealthGetFunction.Arn}/invocations'
+          /api/me:
+            get:
+              security:
+                - CognitoUserPool: []
+              responses:
+                '200':
+                  description: The signed-in family member
+              x-amazon-apigateway-integration:
+                type: aws_proxy
+                httpMethod: POST
+                uri: !Sub 'arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${MeGetFunction.Arn}/invocations'
+          /api/auth/session:
+            post:
+              x-amazon-apigateway-request-validator: body-only
+              requestBody:
+                required: true
+                content:
+                  application/json:
+                    schema:
+                      $ref: '#/components/schemas/SessionMintRequest'
+              responses:
+                '200':
+                  description: Session started
+              x-amazon-apigateway-integration:
+                type: aws_proxy
+                httpMethod: POST
+                uri: !Sub 'arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${AuthSessionFunction.Arn}/invocations'
+            delete:
+              responses:
+                '204':
+                  description: Session ended
+              x-amazon-apigateway-integration:
+                type: aws_proxy
+                httpMethod: POST
+                uri: !Sub 'arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${AuthSessionFunction.Arn}/invocations'
+          /api/auth/session/refresh:
+            post:
+              responses:
+                '200':
+                  description: Session renewed
+              x-amazon-apigateway-integration:
+                type: aws_proxy
+                httpMethod: POST
+                uri: !Sub 'arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${AuthSessionFunction.Arn}/invocations'
+
+  HealthGetInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !Ref HealthGetFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${RestApi}/*/GET/api/health'
+  MeGetInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !Ref MeGetFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${RestApi}/*/GET/api/me'
+  AuthSessionInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !Ref AuthSessionFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${RestApi}/*/*/api/auth/session*'
+
+#  --END -- REST API
+
+Outputs:
+  RestApiId:
+    Value: !Ref RestApi
+    Export:
+      Name: !Sub '${ExportKey}-${StackName}-RestApiId'

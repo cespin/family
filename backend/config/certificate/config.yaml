@@ -1,0 +1,3 @@
+# CloudFront only reads certificates from one fixed AWS region, which is why this stack group
+# has its own mandatory region argument.
+region: {{ var.certificate_region }}

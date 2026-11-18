@@ -1,0 +1,16 @@
+# Environment values for the `main` stack. AWS profile, regions and account are never set here:
+# scripts/deploy-vertical.sh requires them as arguments and passes them to Sceptre with --var.
+app_name: family
+export_key: fam
+stack_name: main
+salt: fa01
+
+apex_domain_name: espin.xyz
+domain_name: familia.espin.xyz
+
+# Global across all AWS accounts in a region, and part of the Google OAuth redirect URI.
+cognito_domain_prefix: familia-espin-fa01
+
+# Quoted on purpose: an unquoted YAML boolean reaches CloudFormation as `True`, which the
+# templates' AllowedValues reject. 'false' lets the table and user pool be deleted.
+deletion_protected: 'true'

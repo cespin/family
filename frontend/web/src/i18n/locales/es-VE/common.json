@@ -1,0 +1,21 @@
+{
+  "appName": "Familia",
+  "actions": {
+    "signOut": "Cerrar sesión",
+    "retry": "Intentar de nuevo"
+  },
+  "status": {
+    "loading": "Cargando…"
+  },
+  "errors": {
+    "generic": "Algo salió mal. Inténtalo de nuevo en un momento.",
+    "validation_error": "Revisa los datos e inténtalo de nuevo.",
+    "unauthorized": "Tu sesión terminó. Vuelve a entrar.",
+    "forbidden": "No tienes permiso para hacer esto.",
+    "not_found": "No encontramos lo que buscas.",
+    "conflict": "Alguien más cambió esto. Actualiza e inténtalo de nuevo.",
+    "request_error": "No pudimos procesar tu solicitud.",
+    "too_many_requests": "Demasiados intentos. Espera un momento.",
+    "internal_error": "Algo salió mal de nuestro lado. Inténtalo más tarde."
+  }
+}

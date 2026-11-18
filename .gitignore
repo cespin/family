@@ -1,2 +1,30 @@
 # macOS Finder metadata
 .DS_Store
+.mcp.json
+
+# IDE
+.idea/
+
+# Python (Sceptre tooling)
+.venv/
+__pycache__/
+
+# Rust
+target/
+
+# Node
+node_modules/
+dist/
+coverage/
+
+# Local configuration
+.env
+.env.local
+.env.*.local
+.claude/settings.local.json
+
+# Written by backend/scripts/build-functions.sh
+backend/stacks/*.build.yaml
+
+# DynamoDB Local download
+backend/.devtools/

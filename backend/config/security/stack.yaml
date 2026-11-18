@@ -1,0 +1,18 @@
+template:
+  path: security/stack.yaml
+  type: file
+stack_name: {{ var.stack_name }}-{{ var.app_name }}-security
+capabilities:
+  - CAPABILITY_NAMED_IAM
+parameters:
+  AppName: {{ var.app_name }}
+  ExportKey: {{ var.export_key }}
+  StackName: {{ var.stack_name }}
+  Salt: {{ var.salt }}
+  DeletionProtected: {{ var.deletion_protected }}
+  DomainName: {{ var.domain_name }}
+  CognitoDomainPrefix: {{ var.cognito_domain_prefix }}
+  AuthPresignupCodeS3Key: lambda/auth-presignup/{{ var.code_auth_presignup }}/bootstrap.zip
+  # Resolved by scripts/deploy-vertical.sh. Changing it is what makes a rotated Google secret
+  # reach Cognito, because CloudFormation does not re-read an unchanged dynamic reference.
+  GoogleSecretVersionId: {{ var.google_secret_version_id }}

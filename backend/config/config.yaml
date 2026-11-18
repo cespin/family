@@ -1,0 +1,7 @@
+project_code: {{ var.app_name }}
+region: {{ var.region }}
+profile: {{ var.profile }}
+stack_tags:
+  stack:environment: {{ var.stack_name }}
+  project:name: {{ var.app_name }}
+  resource:createdBy: cloudformation

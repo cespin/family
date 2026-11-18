@@ -1,0 +1,13 @@
+[package]
+name = "health-get"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+description = "GET /api/health"
+
+[dependencies]
+family-core.workspace = true
+lambda_http.workspace = true
+serde_json.workspace = true
+tokio.workspace = true

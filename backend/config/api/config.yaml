@@ -1,0 +1,3 @@
+# The inline OpenAPI document can outgrow CloudFormation's limit for templates sent inline.
+template_bucket_name: {{ var.template_bucket_name }}
+template_key_prefix: templates

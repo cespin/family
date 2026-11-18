@@ -1,0 +1,13 @@
+template:
+  path: hosting/stack.yaml
+  type: file
+stack_name: {{ var.stack_name }}-{{ var.app_name }}-hosting
+parameters:
+  AppName: {{ var.app_name }}
+  ExportKey: {{ var.export_key }}
+  StackName: {{ var.stack_name }}
+  Salt: {{ var.salt }}
+  DomainName: {{ var.domain_name }}
+  HostedZoneId: {{ var.hosted_zone_id }}
+  # !stack_output_external fails loudly when the output is missing, unlike a shell lookup.
+  CertificateArn: !stack_output_external {{ var.stack_name }}-{{ var.app_name }}-certificate::CertificateArn {{ var.profile }}::{{ var.certificate_region }}

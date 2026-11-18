@@ -1,0 +1,9 @@
+template:
+  path: data/stack.yaml
+  type: file
+stack_name: {{ var.stack_name }}-{{ var.app_name }}-data
+parameters:
+  ExportKey: {{ var.export_key }}
+  StackName: {{ var.stack_name }}
+  Salt: {{ var.salt }}
+  DeletionProtected: {{ var.deletion_protected }}

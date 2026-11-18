@@ -1,0 +1,54 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Build artifacts bucket and the Google OAuth secret, created before everything else'
+Parameters:
+  ExportKey:
+    Type: String
+  StackName:
+    Type: String
+  Salt:
+    Type: String
+Resources:
+  ArtifactsBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketNamePrefix: !Sub '${StackName}-${Salt}-artifacts'
+      BucketNamespace: account-regional
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+          # Sceptre uploads a copy of the template on every deploy. Lambda packages under
+          # lambda/ are kept, because a stack rollback needs the previous package.
+          - Id: ExpireUploadedTemplates
+            Status: Enabled
+            Prefix: 'templates/'
+            ExpirationInDays: 30
+          - Id: AbortIncompleteUploads
+            Status: Enabled
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 7
+
+  # Created empty on purpose. scripts/set-google-oauth.sh fills it from stdin, so the value never
+  # appears in a template, a parameter or a shell history. The security vertical refuses to deploy
+  # until it has a value.
+  GoogleOAuthSecret:
+    Type: AWS::SecretsManager::Secret
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      Name: !Sub '${StackName}-${Salt}-google-oauth'
+      Description: 'Google OAuth web client, as JSON with client_id and client_secret'
+Outputs:
+  ArtifactsBucketName:
+    Value: !Ref ArtifactsBucket
+    Export:
+      Name: !Sub '${ExportKey}-${StackName}-ArtifactsBucketName'
+  GoogleOAuthSecretArn:
+    Value: !Ref GoogleOAuthSecret
+    Export:
+      Name: !Sub '${ExportKey}-${StackName}-GoogleOAuthSecretArn'

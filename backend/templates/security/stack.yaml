@@ -1,0 +1,204 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Cognito user pool federated with Google, restricted to an invite-only allowlist'
+# Required for Fn::If on DeletionPolicy and UpdateReplacePolicy below.
+Transform: 'AWS::LanguageExtensions'
+Parameters:
+  AppName:
+    Type: String
+  ExportKey:
+    Type: String
+  StackName:
+    Type: String
+  Salt:
+    Type: String
+  DeletionProtected:
+    Type: String
+    AllowedValues: ['true', 'false']
+  DomainName:
+    Type: String
+  CognitoDomainPrefix:
+    Type: String
+  AuthPresignupCodeS3Key:
+    Type: String
+  GoogleSecretVersionId:
+    Type: String
+Conditions:
+  IsDeletionProtected: !Equals [!Ref DeletionProtected, 'true']
+Resources:
+  AuthPresignupRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${StackName}-${Salt}-auth-presignup'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+      Policies:
+        - PolicyName: read-allowlist
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: 'dynamodb:GetItem'
+                Resource: !ImportValue
+                  'Fn::Sub': '${ExportKey}-${StackName}-FamilyTableArn'
+
+  AuthPresignupLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${StackName}-${Salt}-auth-presignup'
+      RetentionInDays: 30
+
+  # Runs on first sign-in (pre sign-up) and on every token issue (pre token generation), which is
+  # what makes removing someone from the allowlist take effect at their next refresh.
+  #
+  # Do not add USER_POOL_ID to this environment: the pool references this function, so the
+  # reference back would be a circular dependency.
+  AuthPresignupFunction:
+    Type: AWS::Lambda::Function
+    DependsOn: AuthPresignupLogGroup
+    Properties:
+      FunctionName: !Sub '${StackName}-${Salt}-auth-presignup'
+      Description: !Sub 'Invite-only allowlist check - ${AppName} - stack ${StackName}'
+      Runtime: provided.al2023
+      Architectures:
+        - arm64
+      Handler: bootstrap
+      Role: !GetAtt AuthPresignupRole.Arn
+      # Cognito gives triggers about 5 seconds regardless of this value.
+      Timeout: 10
+      MemorySize: 256
+      Environment:
+        Variables:
+          TABLE_NAME: !ImportValue
+            'Fn::Sub': '${ExportKey}-${StackName}-FamilyTableName'
+          RUST_LOG: info
+      Code:
+        S3Bucket: !ImportValue
+          'Fn::Sub': '${ExportKey}-${StackName}-ArtifactsBucketName'
+        S3Key: !Ref AuthPresignupCodeS3Key
+
+  # To delete this pool, deploy with deletion_protected: 'false' first. Schema changes can force a
+  # replacement, which would strand every existing user in the retained old pool.
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    DeletionPolicy: !If [IsDeletionProtected, Retain, Delete]
+    UpdateReplacePolicy: !If [IsDeletionProtected, Retain, Delete]
+    Properties:
+      UserPoolName: !Sub '${StackName}-${Salt}-users'
+      UserPoolTier: ESSENTIALS
+      DeletionProtection: !If [IsDeletionProtected, ACTIVE, INACTIVE]
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: true
+      UsernameConfiguration:
+        CaseSensitive: false
+      MfaConfiguration: 'OFF'
+      AccountRecoverySetting:
+        RecoveryMechanisms:
+          - Name: admin_only
+            Priority: 1
+      Schema:
+        # Must stay mutable: Cognito rewrites mapped attributes on every federated sign-in.
+        - Name: email
+          AttributeDataType: String
+          Required: true
+          Mutable: true
+      LambdaConfig:
+        PreSignUp: !GetAtt AuthPresignupFunction.Arn
+        PreTokenGeneration: !GetAtt AuthPresignupFunction.Arn
+
+  AuthPresignupInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !Ref AuthPresignupFunction
+      Principal: cognito-idp.amazonaws.com
+      SourceArn: !GetAtt UserPool.Arn
+
+  GoogleIdentityProvider:
+    Type: AWS::Cognito::UserPoolIdentityProvider
+    Properties:
+      UserPoolId: !Ref UserPool
+      ProviderName: Google
+      ProviderType: Google
+      ProviderDetails:
+        client_id: !Sub
+          - '{{resolve:secretsmanager:${SecretArn}:SecretString:client_id::${GoogleSecretVersionId}}}'
+          - SecretArn: !ImportValue
+              'Fn::Sub': '${ExportKey}-${StackName}-GoogleOAuthSecretArn'
+        client_secret: !Sub
+          - '{{resolve:secretsmanager:${SecretArn}:SecretString:client_secret::${GoogleSecretVersionId}}}'
+          - SecretArn: !ImportValue
+              'Fn::Sub': '${ExportKey}-${StackName}-GoogleOAuthSecretArn'
+        authorize_scopes: openid email profile
+      AttributeMapping:
+        username: sub
+        email: email
+        email_verified: email_verified
+        name: name
+
+  UserPoolDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties:
+      UserPoolId: !Ref UserPool
+      Domain: !Ref CognitoDomainPrefix
+
+  # WriteAttributes is left out on purpose: mapped attributes must stay writable or federated
+  # sign-in fails. The aws.cognito.signin.user.admin scope is excluded instead, so browser tokens
+  # cannot call Cognito's self-service APIs.
+  #
+  # RefreshTokenValidity must equal MAX_AGE_SECONDS in functions/auth-session/src/cookie.rs.
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    DependsOn: GoogleIdentityProvider
+    Properties:
+      ClientName: !Sub '${StackName}-${Salt}-web'
+      UserPoolId: !Ref UserPool
+      GenerateSecret: false
+      SupportedIdentityProviders:
+        - Google
+      AllowedOAuthFlowsUserPoolClient: true
+      AllowedOAuthFlows:
+        - code
+      AllowedOAuthScopes:
+        - openid
+        - email
+        - profile
+      CallbackURLs:
+        - !Sub 'https://${DomainName}/auth/callback'
+      LogoutURLs:
+        - !Sub 'https://${DomainName}/'
+      ExplicitAuthFlows:
+        - ALLOW_REFRESH_TOKEN_AUTH
+      PreventUserExistenceErrors: ENABLED
+      EnableTokenRevocation: true
+      ReadAttributes:
+        - email
+        - email_verified
+        - name
+      AccessTokenValidity: 60
+      IdTokenValidity: 60
+      RefreshTokenValidity: 7
+      TokenValidityUnits:
+        AccessToken: minutes
+        IdToken: minutes
+        RefreshToken: days
+Outputs:
+  UserPoolArn:
+    Value: !GetAtt UserPool.Arn
+    Export:
+      Name: !Sub '${ExportKey}-${StackName}-UserPoolArn'
+  UserPoolClientId:
+    Value: !Ref UserPoolClient
+    Export:
+      Name: !Sub '${ExportKey}-${StackName}-UserPoolClientId'
+  CognitoDomain:
+    Description: 'Host name of the Cognito OAuth endpoints'
+    Value: !Sub '${CognitoDomainPrefix}.auth.${AWS::Region}.amazoncognito.com'
+    Export:
+      Name: !Sub '${ExportKey}-${StackName}-CognitoDomain'

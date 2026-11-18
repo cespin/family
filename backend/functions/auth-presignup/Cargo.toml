@@ -1,0 +1,19 @@
+[package]
+name = "auth-presignup"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+description = "Cognito pre sign-up and pre token generation triggers: the invite-only allowlist"
+
+[dependencies]
+aws-config.workspace = true
+aws-sdk-dynamodb.workspace = true
+family-core.workspace = true
+lambda_runtime.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+rstest.workspace = true

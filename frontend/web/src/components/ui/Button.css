@@ -1,0 +1,38 @@
+.fa-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--fa-space-2);
+  min-height: var(--fa-control-height);
+  padding: 0 var(--fa-space-5);
+  border: var(--fa-border-width) solid transparent;
+  border-radius: var(--fa-radius-pill);
+  font: inherit;
+  font-weight: var(--fa-weight-semibold);
+  cursor: pointer;
+  transition: background-color var(--fa-duration-fast) ease, border-color var(--fa-duration-fast) ease;
+}
+
+.fa-button:focus-visible {
+  outline: var(--fa-focus-width) solid var(--fa-color-focus);
+  outline-offset: var(--fa-focus-offset);
+}
+
+.fa-button--primary {
+  background: var(--fa-color-accent);
+  color: var(--fa-color-on-accent);
+}
+
+.fa-button--primary:hover {
+  background: var(--fa-color-accent-strong);
+}
+
+.fa-button--quiet {
+  background: transparent;
+  border-color: var(--fa-color-border);
+  color: var(--fa-color-text);
+}
+
+.fa-button--quiet:hover {
+  background: var(--fa-color-surface-sunken);
+}

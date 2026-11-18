@@ -1,0 +1,15 @@
+template:
+  path: api/stack.yaml
+  type: file
+stack_name: {{ var.stack_name }}-{{ var.app_name }}-api
+capabilities:
+  - CAPABILITY_NAMED_IAM
+parameters:
+  AppName: {{ var.app_name }}
+  ExportKey: {{ var.export_key }}
+  StackName: {{ var.stack_name }}
+  Salt: {{ var.salt }}
+  DomainName: {{ var.domain_name }}
+  HealthGetCodeS3Key: lambda/health-get/{{ var.code_health_get }}/bootstrap.zip
+  MeGetCodeS3Key: lambda/me-get/{{ var.code_me_get }}/bootstrap.zip
+  AuthSessionCodeS3Key: lambda/auth-session/{{ var.code_auth_session }}/bootstrap.zip

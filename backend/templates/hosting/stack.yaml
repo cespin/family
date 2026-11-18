@@ -1,0 +1,283 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'S3 and CloudFront hosting for the family dashboard'
+Parameters:
+  AppName:
+    Type: String
+  ExportKey:
+    Type: String
+  StackName:
+    Type: String
+  Salt:
+    Type: String
+  DomainName:
+    Type: String
+  HostedZoneId:
+    Type: String
+  CertificateArn:
+    Type: String
+Resources:
+
+  # Holds every frontend build: the live site under default/ and staged builds under
+  # stages/<commit hash>/. The lifecycle prefix is load-bearing: moving default/ under stages/
+  # would delete the live site 90 days later.
+  WebappBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketNamePrefix: !Sub '${StackName}-${Salt}-webapp'
+      BucketNamespace: account-regional
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: ExpireStagedFrontends
+            Status: Enabled
+            Prefix: 'stages/'
+            ExpirationInDays: 90
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 7
+
+  # Three jobs in the default behavior's single viewer-request slot:
+  #   1. ?setStage=<hash> sets the stage cookie, and ?setStage= clears it.
+  #   2. SPA fallback: anything that is not a hashed asset or a listed root file is index.html.
+  #   3. Prefixing the chosen file with the live or staged build.
+  #
+  # A file added to frontend/web/public/ must be added to STATIC_ROOT_FILES, or it serves
+  # index.html with a 200. The cookie stays SameSite=Lax because Strict would drop it on the
+  # redirect back from Cognito.
+  ViewerRequestFunction:
+    Type: AWS::CloudFront::Function
+    Properties:
+      Name: !Sub '${StackName}-${Salt}-viewer-request'
+      AutoPublish: true
+      FunctionConfig:
+        Comment: !Sub 'Stage cookie and SPA fallback for ${StackName}'
+        Runtime: cloudfront-js-2.0
+      FunctionCode: |
+        var DEFAULT_PREFIX = '/default';
+        var STAGE_PREFIX = '/stages/';
+        var STAGE_COOKIE = 'stage';
+        var STAGE_RE = /^[0-9a-f]{7,40}$/;
+        var STAGE_MAX_AGE = 604800;
+        var STATIC_ROOT_FILES = {
+          '/index.html': true,
+          '/robots.txt': true,
+          '/favicon.svg': true
+        };
+
+        function handler(event) {
+          var request = event.request;
+          var uri = request.uri;
+
+          if (Object.prototype.hasOwnProperty.call(request.querystring, 'setStage')) {
+            var wanted = request.querystring.setStage.value;
+            var accepted = STAGE_RE.test(wanted);
+            var cookies = {};
+            cookies[STAGE_COOKIE] = {
+              value: accepted ? wanted : '',
+              attributes: 'Path=/; Secure; SameSite=Lax; Max-Age=' + (accepted ? STAGE_MAX_AGE : 0)
+            };
+            return {
+              statusCode: 302,
+              statusDescription: 'Found',
+              headers: {
+                location: { value: uri },
+                'cache-control': { value: 'no-store' }
+              },
+              cookies: cookies
+            };
+          }
+
+          var prefix = DEFAULT_PREFIX;
+          var stageCookie = request.cookies[STAGE_COOKIE];
+          if (stageCookie && STAGE_RE.test(stageCookie.value)) {
+            prefix = STAGE_PREFIX + stageCookie.value;
+          }
+
+          // A missing hashed asset must fail loudly instead of answering with index.html.
+          if (uri.indexOf('/assets/') === 0 || STATIC_ROOT_FILES[uri] === true) {
+            request.uri = prefix + uri;
+            return request;
+          }
+
+          request.uri = prefix + '/index.html';
+          return request;
+        }
+
+  WebsiteCachePolicy:
+    Type: AWS::CloudFront::CachePolicy
+    Properties:
+      CachePolicyConfig:
+        Name: !Sub '${StackName}-${Salt}-website'
+        Comment: !Sub '${AppName} - stack ${StackName}'
+        DefaultTTL: 45
+        MaxTTL: 86400
+        MinTTL: 10
+        ParametersInCacheKeyAndForwardedToOrigin:
+          CookiesConfig:
+            CookieBehavior: none
+          HeadersConfig:
+            HeaderBehavior: none
+          QueryStringsConfig:
+            QueryStringBehavior: none
+          EnableAcceptEncodingBrotli: true
+          EnableAcceptEncodingGzip: true
+
+  # A private family site: nothing here should be indexed or framed. Signing in is a full-page
+  # redirect to Cognito, so no third-party origin is needed in this policy.
+  SecurityHeadersPolicy:
+    Type: AWS::CloudFront::ResponseHeadersPolicy
+    Properties:
+      ResponseHeadersPolicyConfig:
+        Name: !Sub '${StackName}-${Salt}-security-headers'
+        Comment: !Sub 'Security response headers for ${AppName}-${StackName}'
+        SecurityHeadersConfig:
+          StrictTransportSecurity:
+            Override: true
+            AccessControlMaxAgeSec: 63072000
+            IncludeSubdomains: false
+            Preload: false
+          ContentTypeOptions:
+            Override: true
+          FrameOptions:
+            Override: true
+            FrameOption: DENY
+          ReferrerPolicy:
+            Override: true
+            ReferrerPolicy: strict-origin-when-cross-origin
+          ContentSecurityPolicy:
+            Override: true
+            ContentSecurityPolicy: >-
+              default-src 'self';
+              script-src 'self';
+              style-src 'self';
+              font-src 'self';
+              img-src 'self' data:;
+              connect-src 'self';
+              manifest-src 'self';
+              object-src 'none';
+              base-uri 'self';
+              form-action 'self';
+              frame-ancestors 'none';
+              upgrade-insecure-requests
+        CustomHeadersConfig:
+          Items:
+            - Header: Cross-Origin-Resource-Policy
+              Value: same-origin
+              Override: true
+            - Header: X-Robots-Tag
+              Value: 'noindex, nofollow, noarchive, nosnippet'
+              Override: true
+
+  OriginAccessControl:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Ref WebappBucket
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  # No CustomErrorResponses, on purpose. They apply to every behavior, so an API 403 would reach
+  # the browser as a 200 with index.html. The SPA fallback lives in ViewerRequestFunction instead.
+  CloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Aliases:
+          - !Ref DomainName
+        Comment: !Ref DomainName
+        DefaultRootObject: index.html
+        Enabled: true
+        HttpVersion: http2and3
+        IPV6Enabled: true
+        PriceClass: PriceClass_All
+        ViewerCertificate:
+          AcmCertificateArn: !Ref CertificateArn
+          MinimumProtocolVersion: TLSv1.2_2021
+          SslSupportMethod: sni-only
+        DefaultCacheBehavior:
+          TargetOriginId: WebsiteS3Origin
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods: [GET, HEAD, OPTIONS]
+          CachedMethods: [GET, HEAD, OPTIONS]
+          CachePolicyId: !GetAtt WebsiteCachePolicy.Id
+          ResponseHeadersPolicyId: !Ref SecurityHeadersPolicy
+          Compress: true
+          FunctionAssociations:
+            - EventType: viewer-request
+              FunctionARN: !GetAtt ViewerRequestFunction.FunctionMetadata.FunctionARN
+        CacheBehaviors:
+          - PathPattern: '/api/*'
+            TargetOriginId: ApiOrigin
+            ViewerProtocolPolicy: https-only
+            AllowedMethods: [GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE]
+            CachedMethods: [GET, HEAD]
+            # AWS managed CachingDisabled.
+            CachePolicyId: '4135ea2d-6df8-44a3-9df3-4b5a84be39ad'
+            # AWS managed AllViewerExceptHostHeader. API Gateway needs its own Host header.
+            OriginRequestPolicyId: 'b689b0a8-53d0-40ab-baf2-68738e2966ac'
+            ResponseHeadersPolicyId: !Ref SecurityHeadersPolicy
+        Origins:
+          - Id: WebsiteS3Origin
+            DomainName: !GetAtt WebappBucket.RegionalDomainName
+            OriginAccessControlId: !GetAtt OriginAccessControl.Id
+            S3OriginConfig: {}
+          - Id: ApiOrigin
+            DomainName: !Sub
+              - '${RestApiId}.execute-api.${AWS::Region}.amazonaws.com'
+              - RestApiId: !ImportValue
+                  'Fn::Sub': '${ExportKey}-${StackName}-RestApiId'
+            # The API Gateway stage created by scripts/deploy-vertical.sh.
+            OriginPath: !Sub '/${StackName}'
+            CustomOriginConfig:
+              OriginProtocolPolicy: https-only
+              OriginSSLProtocols:
+                - TLSv1.2
+
+  WebappBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref WebappBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudFrontServicePrincipalReadOnly
+            Effect: Allow
+            Action: 's3:GetObject'
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Resource: !Sub '${WebappBucket.Arn}/*'
+            Condition:
+              StringEquals:
+                'AWS:SourceArn': !Sub 'arn:${AWS::Partition}:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution}'
+
+  DnsRecords:
+    Type: AWS::Route53::RecordSetGroup
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      RecordSets:
+        - Name: !Ref DomainName
+          Type: A
+          AliasTarget:
+            DNSName: !GetAtt CloudFrontDistribution.DomainName
+            EvaluateTargetHealth: false
+            # The fixed hosted zone ID AWS uses for every CloudFront alias.
+            HostedZoneId: Z2FDTNDATAQYW2
+        - Name: !Ref DomainName
+          Type: AAAA
+          AliasTarget:
+            DNSName: !GetAtt CloudFrontDistribution.DomainName
+            EvaluateTargetHealth: false
+            HostedZoneId: Z2FDTNDATAQYW2
+Outputs:
+  DistributionId:
+    Value: !Ref CloudFrontDistribution
+    Export:
+      Name: !Sub '${ExportKey}-${StackName}-DistributionId'
+  WebappS3BucketName:
+    Value: !Ref WebappBucket
+    Export:
+      Name: !Sub '${ExportKey}-${StackName}-WebappS3BucketName'

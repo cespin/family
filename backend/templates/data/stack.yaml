@@ -1,0 +1,50 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Single-table DynamoDB store for the family dashboard'
+# Required for Fn::If on DeletionPolicy and UpdateReplacePolicy below.
+Transform: 'AWS::LanguageExtensions'
+Parameters:
+  ExportKey:
+    Type: String
+  StackName:
+    Type: String
+  Salt:
+    Type: String
+  DeletionProtected:
+    Type: String
+    AllowedValues: ['true', 'false']
+Conditions:
+  IsDeletionProtected: !Equals [!Ref DeletionProtected, 'true']
+Resources:
+  # Item layout is documented in backend/docs/dynamodb-schema.md. Keep this shape in step with
+  # scripts/ddb-local.sh, which creates the same table for the integration tests.
+  #
+  # To delete this table, deploy with deletion_protected: 'false' first. DynamoDB refuses the
+  # delete otherwise and the stack ends in DELETE_FAILED.
+  FamilyTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: !If [IsDeletionProtected, Retain, Delete]
+    UpdateReplacePolicy: !If [IsDeletionProtected, Retain, Delete]
+    Properties:
+      TableName: !Sub '${StackName}-${Salt}-family'
+      DeletionProtectionEnabled: !If [IsDeletionProtected, true, false]
+      BillingMode: PAY_PER_REQUEST
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      TimeToLiveSpecification:
+        AttributeName: expiresAt
+        Enabled: true
+      AttributeDefinitions:
+        - { AttributeName: PK, AttributeType: S }
+        - { AttributeName: SK, AttributeType: S }
+      KeySchema:
+        - { AttributeName: PK, KeyType: HASH }
+        - { AttributeName: SK, KeyType: RANGE }
+Outputs:
+  FamilyTableName:
+    Value: !Ref FamilyTable
+    Export:
+      Name: !Sub '${ExportKey}-${StackName}-FamilyTableName'
+  FamilyTableArn:
+    Value: !GetAtt FamilyTable.Arn
+    Export:
+      Name: !Sub '${ExportKey}-${StackName}-FamilyTableArn'
