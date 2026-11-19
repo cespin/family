@@ -17,6 +17,10 @@ Family members sign in with Google. Cognito federates the identity and issues th
 - **Removal takes effect quickly.** `GET /api/me` re-reads the allowlist on every call, and a removed member's next token refresh fails. If they sign in again, Cognito refuses during the code exchange and `POST /api/auth/session` answers 403, which the app shows as the not-invited screen.
 - **Client-side checks are not security.** Every protected route uses the Cognito authorizer and re-reads the caller's claims.
 
+## From account to member
+
+The expenses design, not deployed yet, links a signed-in account to a member. An `ACCOUNT#<email>` item maps the verified email address to a generated member identifier when the person finishes the first sign-in step. The link is separate from the allowlist and survives removal, so a removed person stays in the family's history and returns as the same member if invited again. The link never grants access: the `MEMBER#<email>` item alone decides who gets in. The item layout is in `backend/docs/dynamodb-schema.md`.
+
 ## Google OAuth client
 
 Create a **Web application** client in Google Auth Platform:

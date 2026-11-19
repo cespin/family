@@ -1,0 +1,1892 @@
+[
+  {
+    "name": "a valid expense is saved",
+    "caller": "carlos",
+    "method": "POST",
+    "path": "/api/expenses",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000001",
+      "title": "Caso de prueba",
+      "kind": "other",
+      "groupId": "b0000000-0000-4000-8000-000000000003",
+      "payerId": "a0000000-0000-4000-8000-000000000001",
+      "amountMinor": 1000,
+      "currency": "CAD",
+      "date": "2026-11-18",
+      "splitMode": "equal",
+      "participantIds": [
+        "a0000000-0000-4000-8000-000000000001",
+        "a0000000-0000-4000-8000-000000000002"
+      ]
+    },
+    "expect": {
+      "status": 201
+    }
+  },
+  {
+    "name": "a valid payment is saved",
+    "caller": "carlos",
+    "method": "POST",
+    "path": "/api/payments",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000002",
+      "fromId": "a0000000-0000-4000-8000-000000000001",
+      "toId": "a0000000-0000-4000-8000-000000000002",
+      "paid": {
+        "amountMinor": 1000,
+        "currency": "CLP"
+      },
+      "method": "transfer",
+      "date": "2026-11-18"
+    },
+    "expect": {
+      "status": 201
+    }
+  },
+  {
+    "name": "a valid group is saved",
+    "caller": "carlos",
+    "method": "POST",
+    "path": "/api/groups",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000003",
+      "name": "Grupo de prueba",
+      "memberIds": [
+        "a0000000-0000-4000-8000-000000000001",
+        "a0000000-0000-4000-8000-000000000002"
+      ]
+    },
+    "expect": {
+      "status": 201
+    }
+  },
+  {
+    "name": "valid rates are saved",
+    "caller": "lucia",
+    "method": "POST",
+    "path": "/api/exchange-rates",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000004",
+      "usdCad": "1.41",
+      "cadClp": "672",
+      "date": "2026-11-19"
+    },
+    "expect": {
+      "status": 201
+    }
+  },
+  {
+    "name": "a blank title",
+    "caller": "carlos",
+    "method": "POST",
+    "path": "/api/expenses",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000005",
+      "title": "   ",
+      "kind": "other",
+      "groupId": "b0000000-0000-4000-8000-000000000003",
+      "payerId": "a0000000-0000-4000-8000-000000000001",
+      "amountMinor": 1000,
+      "currency": "CAD",
+      "date": "2026-11-18",
+      "splitMode": "equal",
+      "participantIds": [
+        "a0000000-0000-4000-8000-000000000001",
+        "a0000000-0000-4000-8000-000000000002"
+      ]
+    },
+    "expect": {
+      "status": 400,
+      "code": "validation_error"
+    }
+  },
+  {
+    "name": "a title of 41 characters",
+    "caller": "carlos",
+    "method": "POST",
+    "path": "/api/expenses",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000006",
+      "title": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "kind": "other",
+      "groupId": "b0000000-0000-4000-8000-000000000003",
+      "payerId": "a0000000-0000-4000-8000-000000000001",
+      "amountMinor": 1000,
+      "currency": "CAD",
+      "date": "2026-11-18",
+      "splitMode": "equal",
+      "participantIds": [
+        "a0000000-0000-4000-8000-000000000001",
+        "a0000000-0000-4000-8000-000000000002"
+      ]
+    },
+    "expect": {
+      "status": 400,
+      "code": "validation_error"
+    }
+  },
+  {
+    "name": "a title of 40 characters",
+    "caller": "carlos",
+    "method": "POST",
+    "path": "/api/expenses",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000007",
+      "title": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "kind": "other",
+      "groupId": "b0000000-0000-4000-8000-000000000003",
+      "payerId": "a0000000-0000-4000-8000-000000000001",
+      "amountMinor": 1000,
+      "currency": "CAD",
+      "date": "2026-11-18",
+      "splitMode": "equal",
+      "participantIds": [
+        "a0000000-0000-4000-8000-000000000001",
+        "a0000000-0000-4000-8000-000000000002"
+      ]
+    },
+    "expect": {
+      "status": 201
+    }
+  },
+  {
+    "name": "a note of 201 characters",
+    "caller": "carlos",
+    "method": "POST",
+    "path": "/api/expenses",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000008",
+      "title": "Caso de prueba",
+      "kind": "other",
+      "groupId": "b0000000-0000-4000-8000-000000000003",
+      "payerId": "a0000000-0000-4000-8000-000000000001",
+      "amountMinor": 1000,
+      "currency": "CAD",
+      "date": "2026-11-18",
+      "splitMode": "equal",
+      "participantIds": [
+        "a0000000-0000-4000-8000-000000000001",
+        "a0000000-0000-4000-8000-000000000002"
+      ],
+      "note": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    },
+    "expect": {
+      "status": 400,
+      "code": "validation_error"
+    }
+  },
+  {
+    "name": "a note of 200 characters",
+    "caller": "carlos",
+    "method": "POST",
+    "path": "/api/expenses",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000009",
+      "title": "Caso de prueba",
+      "kind": "other",
+      "groupId": "b0000000-0000-4000-8000-000000000003",
+      "payerId": "a0000000-0000-4000-8000-000000000001",
+      "amountMinor": 1000,
+      "currency": "CAD",
+      "date": "2026-11-18",
+      "splitMode": "equal",
+      "participantIds": [
+        "a0000000-0000-4000-8000-000000000001",
+        "a0000000-0000-4000-8000-000000000002"
+      ],
+      "note": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    },
+    "expect": {
+      "status": 201
+    }
+  },
+  {
+    "name": "an amount of zero",
+    "caller": "carlos",
+    "method": "POST",
+    "path": "/api/expenses",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000010",
+      "title": "Caso de prueba",
+      "kind": "other",
+      "groupId": "b0000000-0000-4000-8000-000000000003",
+      "payerId": "a0000000-0000-4000-8000-000000000001",
+      "amountMinor": 0,
+      "currency": "CAD",
+      "date": "2026-11-18",
+      "splitMode": "equal",
+      "participantIds": [
+        "a0000000-0000-4000-8000-000000000001",
+        "a0000000-0000-4000-8000-000000000002"
+      ]
+    },
+    "expect": {
+      "status": 400,
+      "code": "validation_error"
+    }
+  },
+  {
+    "name": "a fractional amount",
+    "caller": "carlos",
+    "method": "POST",
+    "path": "/api/expenses",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000011",
+      "title": "Caso de prueba",
+      "kind": "other",
+      "groupId": "b0000000-0000-4000-8000-000000000003",
+      "payerId": "a0000000-0000-4000-8000-000000000001",
+      "amountMinor": 10.5,
+      "currency": "CAD",
+      "date": "2026-11-18",
+      "splitMode": "equal",
+      "participantIds": [
+        "a0000000-0000-4000-8000-000000000001",
+        "a0000000-0000-4000-8000-000000000002"
+      ]
+    },
+    "expect": {
+      "status": 400,
+      "code": "validation_error"
+    }
+  },
+  {
+    "name": "CAD over the maximum",
+    "caller": "carlos",
+    "method": "POST",
+    "path": "/api/expenses",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000012",
+      "title": "Caso de prueba",
+      "kind": "other",
+      "groupId": "b0000000-0000-4000-8000-000000000003",
+      "payerId": "a0000000-0000-4000-8000-000000000001",
+      "amountMinor": 1000001,
+      "currency": "CAD",
+      "date": "2026-11-18",
+      "splitMode": "equal",
+      "participantIds": [
+        "a0000000-0000-4000-8000-000000000001",
+        "a0000000-0000-4000-8000-000000000002"
+      ]
+    },
+    "expect": {
+      "status": 400,
+      "code": "validation_error"
+    }
+  },
+  {
+    "name": "CAD at the maximum",
+    "caller": "carlos",
+    "method": "POST",
+    "path": "/api/expenses",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000013",
+      "title": "Caso de prueba",
+      "kind": "other",
+      "groupId": "b0000000-0000-4000-8000-000000000003",
+      "payerId": "a0000000-0000-4000-8000-000000000001",
+      "amountMinor": 1000000,
+      "currency": "CAD",
+      "date": "2026-11-18",
+      "splitMode": "equal",
+      "participantIds": [
+        "a0000000-0000-4000-8000-000000000001",
+        "a0000000-0000-4000-8000-000000000002"
+      ]
+    },
+    "expect": {
+      "status": 201
+    }
+  },
+  {
+    "name": "CLP over the maximum",
+    "caller": "carlos",
+    "method": "POST",
+    "path": "/api/expenses",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000014",
+      "title": "Caso de prueba",
+      "kind": "other",
+      "groupId": "b0000000-0000-4000-8000-000000000003",
+      "payerId": "a0000000-0000-4000-8000-000000000001",
+      "amountMinor": 10000001,
+      "currency": "CLP",
+      "date": "2026-11-18",
+      "splitMode": "equal",
+      "participantIds": [
+        "a0000000-0000-4000-8000-000000000001",
+        "a0000000-0000-4000-8000-000000000002"
+      ]
+    },
+    "expect": {
+      "status": 400,
+      "code": "validation_error"
+    }
+  },
+  {
+    "name": "CLP at the maximum",
+    "caller": "carlos",
+    "method": "POST",
+    "path": "/api/expenses",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000015",
+      "title": "Caso de prueba",
+      "kind": "other",
+      "groupId": "b0000000-0000-4000-8000-000000000003",
+      "payerId": "a0000000-0000-4000-8000-000000000001",
+      "amountMinor": 10000000,
+      "currency": "CLP",
+      "date": "2026-11-18",
+      "splitMode": "equal",
+      "participantIds": [
+        "a0000000-0000-4000-8000-000000000001",
+        "a0000000-0000-4000-8000-000000000002"
+      ]
+    },
+    "expect": {
+      "status": 201
+    }
+  },
+  {
+    "name": "an unsupported currency",
+    "caller": "carlos",
+    "method": "POST",
+    "path": "/api/expenses",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000016",
+      "title": "Caso de prueba",
+      "kind": "other",
+      "groupId": "b0000000-0000-4000-8000-000000000003",
+      "payerId": "a0000000-0000-4000-8000-000000000001",
+      "amountMinor": 1000,
+      "currency": "EUR",
+      "date": "2026-11-18",
+      "splitMode": "equal",
+      "participantIds": [
+        "a0000000-0000-4000-8000-000000000001",
+        "a0000000-0000-4000-8000-000000000002"
+      ]
+    },
+    "expect": {
+      "status": 400,
+      "code": "validation_error"
+    }
+  },
+  {
+    "name": "a second amount in the same currency",
+    "caller": "carlos",
+    "method": "POST",
+    "path": "/api/expenses",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000017",
+      "title": "Caso de prueba",
+      "kind": "other",
+      "groupId": "b0000000-0000-4000-8000-000000000003",
+      "payerId": "a0000000-0000-4000-8000-000000000001",
+      "amountMinor": 1000,
+      "currency": "CAD",
+      "date": "2026-11-18",
+      "splitMode": "equal",
+      "participantIds": [
+        "a0000000-0000-4000-8000-000000000001",
+        "a0000000-0000-4000-8000-000000000002"
+      ],
+      "otherAmount": {
+        "amountMinor": 500,
+        "currency": "CAD"
+      },
+      "chargedCurrency": "CAD"
+    },
+    "expect": {
+      "status": 400,
+      "code": "validation_error"
+    }
+  },
+  {
+    "name": "a second amount over the maximum",
+    "caller": "carlos",
+    "method": "POST",
+    "path": "/api/expenses",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000018",
+      "title": "Caso de prueba",
+      "kind": "other",
+      "groupId": "b0000000-0000-4000-8000-000000000003",
+      "payerId": "a0000000-0000-4000-8000-000000000001",
+      "amountMinor": 1000,
+      "currency": "CAD",
+      "date": "2026-11-18",
+      "splitMode": "equal",
+      "participantIds": [
+        "a0000000-0000-4000-8000-000000000001",
+        "a0000000-0000-4000-8000-000000000002"
+      ],
+      "otherAmount": {
+        "amountMinor": 10000001,
+        "currency": "CLP"
+      },
+      "chargedCurrency": "CAD"
+    },
+    "expect": {
+      "status": 400,
+      "code": "validation_error"
+    }
+  },
+  {
+    "name": "a charged currency that is neither amount",
+    "caller": "carlos",
+    "method": "POST",
+    "path": "/api/expenses",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000019",
+      "title": "Caso de prueba",
+      "kind": "other",
+      "groupId": "b0000000-0000-4000-8000-000000000003",
+      "payerId": "a0000000-0000-4000-8000-000000000001",
+      "amountMinor": 1000,
+      "currency": "CAD",
+      "date": "2026-11-18",
+      "splitMode": "equal",
+      "participantIds": [
+        "a0000000-0000-4000-8000-000000000001",
+        "a0000000-0000-4000-8000-000000000002"
+      ],
+      "otherAmount": {
+        "amountMinor": 500,
+        "currency": "CLP"
+      },
+      "chargedCurrency": "USD"
+    },
+    "expect": {
+      "status": 400,
+      "code": "validation_error"
+    }
+  },
+  {
+    "name": "an unknown kind",
+    "caller": "carlos",
+    "method": "POST",
+    "path": "/api/expenses",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000020",
+      "title": "Caso de prueba",
+      "kind": "travel",
+      "groupId": "b0000000-0000-4000-8000-000000000003",
+      "payerId": "a0000000-0000-4000-8000-000000000001",
+      "amountMinor": 1000,
+      "currency": "CAD",
+      "date": "2026-11-18",
+      "splitMode": "equal",
+      "participantIds": [
+        "a0000000-0000-4000-8000-000000000001",
+        "a0000000-0000-4000-8000-000000000002"
+      ]
+    },
+    "expect": {
+      "status": 400,
+      "code": "validation_error"
+    }
+  },
+  {
+    "name": "an unknown split mode",
+    "caller": "carlos",
+    "method": "POST",
+    "path": "/api/expenses",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000021",
+      "title": "Caso de prueba",
+      "kind": "other",
+      "groupId": "b0000000-0000-4000-8000-000000000003",
+      "payerId": "a0000000-0000-4000-8000-000000000001",
+      "amountMinor": 1000,
+      "currency": "CAD",
+      "date": "2026-11-18",
+      "splitMode": "shares",
+      "participantIds": [
+        "a0000000-0000-4000-8000-000000000001",
+        "a0000000-0000-4000-8000-000000000002"
+      ]
+    },
+    "expect": {
+      "status": 400,
+      "code": "validation_error"
+    }
+  },
+  {
+    "name": "a group that does not exist",
+    "caller": "carlos",
+    "method": "POST",
+    "path": "/api/expenses",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000022",
+      "title": "Caso de prueba",
+      "kind": "other",
+      "groupId": "b0000000-0000-4000-8000-000000009999",
+      "payerId": "a0000000-0000-4000-8000-000000000001",
+      "amountMinor": 1000,
+      "currency": "CAD",
+      "date": "2026-11-18",
+      "splitMode": "equal",
+      "participantIds": [
+        "a0000000-0000-4000-8000-000000000001",
+        "a0000000-0000-4000-8000-000000000002"
+      ]
+    },
+    "expect": {
+      "status": 404,
+      "code": "not_found"
+    }
+  },
+  {
+    "name": "a group the caller is not in",
+    "caller": "mama",
+    "method": "POST",
+    "path": "/api/expenses",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000023",
+      "title": "Caso de prueba",
+      "kind": "other",
+      "groupId": "b0000000-0000-4000-8000-000000000003",
+      "payerId": "a0000000-0000-4000-8000-000000000004",
+      "amountMinor": 1000,
+      "currency": "CAD",
+      "date": "2026-11-18",
+      "splitMode": "equal",
+      "participantIds": [
+        "a0000000-0000-4000-8000-000000000001"
+      ]
+    },
+    "expect": {
+      "status": 404,
+      "code": "not_found"
+    }
+  },
+  {
+    "name": "a payer outside the group",
+    "caller": "carlos",
+    "method": "POST",
+    "path": "/api/expenses",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000024",
+      "title": "Caso de prueba",
+      "kind": "other",
+      "groupId": "b0000000-0000-4000-8000-000000000003",
+      "payerId": "a0000000-0000-4000-8000-000000000004",
+      "amountMinor": 1000,
+      "currency": "CAD",
+      "date": "2026-11-18",
+      "splitMode": "equal",
+      "participantIds": [
+        "a0000000-0000-4000-8000-000000000001",
+        "a0000000-0000-4000-8000-000000000002"
+      ]
+    },
+    "expect": {
+      "status": 400,
+      "code": "validation_error"
+    }
+  },
+  {
+    "name": "a participant outside the group",
+    "caller": "carlos",
+    "method": "POST",
+    "path": "/api/expenses",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000025",
+      "title": "Caso de prueba",
+      "kind": "other",
+      "groupId": "b0000000-0000-4000-8000-000000000003",
+      "payerId": "a0000000-0000-4000-8000-000000000001",
+      "amountMinor": 1000,
+      "currency": "CAD",
+      "date": "2026-11-18",
+      "splitMode": "equal",
+      "participantIds": [
+        "a0000000-0000-4000-8000-000000000001",
+        "a0000000-0000-4000-8000-000000000004"
+      ]
+    },
+    "expect": {
+      "status": 400,
+      "code": "validation_error"
+    }
+  },
+  {
+    "name": "no participants",
+    "caller": "carlos",
+    "method": "POST",
+    "path": "/api/expenses",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000026",
+      "title": "Caso de prueba",
+      "kind": "other",
+      "groupId": "b0000000-0000-4000-8000-000000000003",
+      "payerId": "a0000000-0000-4000-8000-000000000001",
+      "amountMinor": 1000,
+      "currency": "CAD",
+      "date": "2026-11-18",
+      "splitMode": "equal",
+      "participantIds": []
+    },
+    "expect": {
+      "status": 400,
+      "code": "validation_error"
+    }
+  },
+  {
+    "name": "a participant who has not finished signing up",
+    "caller": "carlos",
+    "method": "POST",
+    "path": "/api/expenses",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000027",
+      "title": "Caso de prueba",
+      "kind": "other",
+      "groupId": "b0000000-0000-4000-8000-000000000003",
+      "payerId": "a0000000-0000-4000-8000-000000000001",
+      "amountMinor": 1000,
+      "currency": "CAD",
+      "date": "2026-11-18",
+      "splitMode": "equal",
+      "participantIds": [
+        "a0000000-0000-4000-8000-000000000001",
+        "a0000000-0000-4000-8000-000000009999"
+      ]
+    },
+    "expect": {
+      "status": 400,
+      "code": "validation_error"
+    }
+  },
+  {
+    "name": "percentages missing",
+    "caller": "carlos",
+    "method": "POST",
+    "path": "/api/expenses",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000028",
+      "title": "Caso de prueba",
+      "kind": "other",
+      "groupId": "b0000000-0000-4000-8000-000000000003",
+      "payerId": "a0000000-0000-4000-8000-000000000001",
+      "amountMinor": 1000,
+      "currency": "CAD",
+      "date": "2026-11-18",
+      "splitMode": "percent",
+      "participantIds": [
+        "a0000000-0000-4000-8000-000000000001",
+        "a0000000-0000-4000-8000-000000000002"
+      ]
+    },
+    "expect": {
+      "status": 400,
+      "code": "validation_error"
+    }
+  },
+  {
+    "name": "percentages adding up to 99",
+    "caller": "carlos",
+    "method": "POST",
+    "path": "/api/expenses",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000029",
+      "title": "Caso de prueba",
+      "kind": "other",
+      "groupId": "b0000000-0000-4000-8000-000000000003",
+      "payerId": "a0000000-0000-4000-8000-000000000001",
+      "amountMinor": 1000,
+      "currency": "CAD",
+      "date": "2026-11-18",
+      "splitMode": "percent",
+      "participantIds": [
+        "a0000000-0000-4000-8000-000000000001",
+        "a0000000-0000-4000-8000-000000000002"
+      ],
+      "percents": {
+        "a0000000-0000-4000-8000-000000000001": 50,
+        "a0000000-0000-4000-8000-000000000002": 49
+      }
+    },
+    "expect": {
+      "status": 400,
+      "code": "validation_error"
+    }
+  },
+  {
+    "name": "fractional percentages",
+    "caller": "carlos",
+    "method": "POST",
+    "path": "/api/expenses",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000030",
+      "title": "Caso de prueba",
+      "kind": "other",
+      "groupId": "b0000000-0000-4000-8000-000000000003",
+      "payerId": "a0000000-0000-4000-8000-000000000001",
+      "amountMinor": 1000,
+      "currency": "CAD",
+      "date": "2026-11-18",
+      "splitMode": "percent",
+      "participantIds": [
+        "a0000000-0000-4000-8000-000000000001",
+        "a0000000-0000-4000-8000-000000000002"
+      ],
+      "percents": {
+        "a0000000-0000-4000-8000-000000000001": 50.5,
+        "a0000000-0000-4000-8000-000000000002": 49.5
+      }
+    },
+    "expect": {
+      "status": 400,
+      "code": "validation_error"
+    }
+  },
+  {
+    "name": "a date that does not exist",
+    "caller": "carlos",
+    "method": "POST",
+    "path": "/api/expenses",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000031",
+      "title": "Caso de prueba",
+      "kind": "other",
+      "groupId": "b0000000-0000-4000-8000-000000000003",
+      "payerId": "a0000000-0000-4000-8000-000000000001",
+      "amountMinor": 1000,
+      "currency": "CAD",
+      "date": "2026-02-30",
+      "splitMode": "equal",
+      "participantIds": [
+        "a0000000-0000-4000-8000-000000000001",
+        "a0000000-0000-4000-8000-000000000002"
+      ]
+    },
+    "expect": {
+      "status": 400,
+      "code": "validation_error"
+    }
+  },
+  {
+    "name": "shares sent by the browser",
+    "caller": "carlos",
+    "method": "POST",
+    "path": "/api/expenses",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000032",
+      "title": "Caso de prueba",
+      "kind": "other",
+      "groupId": "b0000000-0000-4000-8000-000000000003",
+      "payerId": "a0000000-0000-4000-8000-000000000001",
+      "amountMinor": 1000,
+      "currency": "CAD",
+      "date": "2026-11-18",
+      "splitMode": "equal",
+      "participantIds": [
+        "a0000000-0000-4000-8000-000000000001",
+        "a0000000-0000-4000-8000-000000000002"
+      ],
+      "shares": {
+        "a0000000-0000-4000-8000-000000000001": 1000
+      }
+    },
+    "expect": {
+      "status": 400,
+      "code": "validation_error"
+    }
+  },
+  {
+    "name": "a usual split missing a member",
+    "caller": "carlos",
+    "method": "POST",
+    "path": "/api/expenses",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000033",
+      "title": "Caso de prueba",
+      "kind": "other",
+      "groupId": "b0000000-0000-4000-8000-000000000003",
+      "payerId": "a0000000-0000-4000-8000-000000000001",
+      "amountMinor": 1000,
+      "currency": "CAD",
+      "date": "2026-11-18",
+      "splitMode": "percent",
+      "participantIds": [
+        "a0000000-0000-4000-8000-000000000001",
+        "a0000000-0000-4000-8000-000000000002"
+      ],
+      "percents": {
+        "a0000000-0000-4000-8000-000000000001": 50,
+        "a0000000-0000-4000-8000-000000000002": 50
+      },
+      "usualSplit": {
+        "a0000000-0000-4000-8000-000000000001": 50,
+        "a0000000-0000-4000-8000-000000000002": 50
+      }
+    },
+    "expect": {
+      "status": 400,
+      "code": "validation_error"
+    }
+  },
+  {
+    "name": "editing an expense someone else added",
+    "caller": "carlos",
+    "method": "PUT",
+    "path": "/api/expenses/c0000000-0000-4000-8000-000000000010",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000034",
+      "title": "Almuerzo familiar del domingo",
+      "kind": "meal",
+      "groupId": "b0000000-0000-4000-8000-000000000002",
+      "payerId": "a0000000-0000-4000-8000-000000000002",
+      "amountMinor": 84000,
+      "currency": "CLP",
+      "splitMode": "equal",
+      "participantIds": [
+        "a0000000-0000-4000-8000-000000000001",
+        "a0000000-0000-4000-8000-000000000002",
+        "a0000000-0000-4000-8000-000000000003",
+        "a0000000-0000-4000-8000-000000000004",
+        "a0000000-0000-4000-8000-000000000005"
+      ],
+      "version": 1
+    },
+    "expect": {
+      "status": 403,
+      "code": "forbidden"
+    }
+  },
+  {
+    "name": "editing with a stale version",
+    "caller": "carlos",
+    "method": "PUT",
+    "path": "/api/expenses/c0000000-0000-4000-8000-000000000012",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000035",
+      "title": "Tablet para las videollamadas",
+      "kind": "parents",
+      "groupId": "b0000000-0000-4000-8000-000000000003",
+      "payerId": "a0000000-0000-4000-8000-000000000001",
+      "amountMinor": 30000,
+      "currency": "CAD",
+      "splitMode": "percent",
+      "participantIds": [
+        "a0000000-0000-4000-8000-000000000001",
+        "a0000000-0000-4000-8000-000000000002",
+        "a0000000-0000-4000-8000-000000000003"
+      ],
+      "percents": {
+        "a0000000-0000-4000-8000-000000000001": 50,
+        "a0000000-0000-4000-8000-000000000002": 25,
+        "a0000000-0000-4000-8000-000000000003": 25
+      },
+      "version": 99
+    },
+    "expect": {
+      "status": 409,
+      "code": "conflict"
+    }
+  },
+  {
+    "name": "changing the date on an edit",
+    "caller": "carlos",
+    "method": "PUT",
+    "path": "/api/expenses/c0000000-0000-4000-8000-000000000012",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000036",
+      "title": "Tablet para las videollamadas",
+      "kind": "parents",
+      "groupId": "b0000000-0000-4000-8000-000000000003",
+      "payerId": "a0000000-0000-4000-8000-000000000001",
+      "amountMinor": 30000,
+      "currency": "CAD",
+      "splitMode": "percent",
+      "participantIds": [
+        "a0000000-0000-4000-8000-000000000001",
+        "a0000000-0000-4000-8000-000000000002",
+        "a0000000-0000-4000-8000-000000000003"
+      ],
+      "percents": {
+        "a0000000-0000-4000-8000-000000000001": 50,
+        "a0000000-0000-4000-8000-000000000002": 25,
+        "a0000000-0000-4000-8000-000000000003": 25
+      },
+      "version": 1,
+      "date": "2026-11-13"
+    },
+    "expect": {
+      "status": 400,
+      "code": "validation_error"
+    }
+  },
+  {
+    "name": "editing an expense in a group the caller is not in",
+    "caller": "mama",
+    "method": "PUT",
+    "path": "/api/expenses/c0000000-0000-4000-8000-000000000012",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000037",
+      "title": "Tablet para las videollamadas",
+      "kind": "parents",
+      "groupId": "b0000000-0000-4000-8000-000000000003",
+      "payerId": "a0000000-0000-4000-8000-000000000001",
+      "amountMinor": 30000,
+      "currency": "CAD",
+      "splitMode": "percent",
+      "participantIds": [
+        "a0000000-0000-4000-8000-000000000001",
+        "a0000000-0000-4000-8000-000000000002",
+        "a0000000-0000-4000-8000-000000000003"
+      ],
+      "percents": {
+        "a0000000-0000-4000-8000-000000000001": 50,
+        "a0000000-0000-4000-8000-000000000002": 25,
+        "a0000000-0000-4000-8000-000000000003": 25
+      },
+      "version": 1
+    },
+    "expect": {
+      "status": 404,
+      "code": "not_found"
+    }
+  },
+  {
+    "name": "editing after leaving the group",
+    "caller": "beto",
+    "method": "PUT",
+    "path": "/api/expenses/c0000000-0000-4000-8000-000000000005",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000038",
+      "title": "Cabaña en Pucón",
+      "kind": "other",
+      "groupId": "b0000000-0000-4000-8000-000000000005",
+      "payerId": "a0000000-0000-4000-8000-000000000006",
+      "amountMinor": 9000,
+      "currency": "USD",
+      "splitMode": "equal",
+      "participantIds": [
+        "a0000000-0000-4000-8000-000000000003",
+        "a0000000-0000-4000-8000-000000000002",
+        "a0000000-0000-4000-8000-000000000006"
+      ],
+      "version": 1
+    },
+    "expect": {
+      "status": 404,
+      "code": "not_found"
+    }
+  },
+  {
+    "name": "an edit that changes what a former member owes",
+    "caller": "diego",
+    "method": "PUT",
+    "path": "/api/expenses/c0000000-0000-4000-8000-000000000006",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000039",
+      "title": "Gasolina del viaje",
+      "kind": "other",
+      "groupId": "b0000000-0000-4000-8000-000000000005",
+      "payerId": "a0000000-0000-4000-8000-000000000003",
+      "amountMinor": 6000,
+      "currency": "USD",
+      "splitMode": "equal",
+      "participantIds": [
+        "a0000000-0000-4000-8000-000000000003",
+        "a0000000-0000-4000-8000-000000000002",
+        "a0000000-0000-4000-8000-000000000006"
+      ],
+      "version": 1
+    },
+    "expect": {
+      "status": 400,
+      "code": "validation_error"
+    }
+  },
+  {
+    "name": "an edit that leaves a former member untouched",
+    "caller": "diego",
+    "method": "PUT",
+    "path": "/api/expenses/c0000000-0000-4000-8000-000000000006",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000040",
+      "title": "Bencina del viaje",
+      "kind": "other",
+      "groupId": "b0000000-0000-4000-8000-000000000005",
+      "payerId": "a0000000-0000-4000-8000-000000000003",
+      "amountMinor": 3000,
+      "currency": "USD",
+      "splitMode": "equal",
+      "participantIds": [
+        "a0000000-0000-4000-8000-000000000003",
+        "a0000000-0000-4000-8000-000000000002",
+        "a0000000-0000-4000-8000-000000000006"
+      ],
+      "version": 1
+    },
+    "expect": {
+      "status": 200
+    }
+  },
+  {
+    "name": "paying yourself",
+    "caller": "carlos",
+    "method": "POST",
+    "path": "/api/payments",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000041",
+      "fromId": "a0000000-0000-4000-8000-000000000001",
+      "toId": "a0000000-0000-4000-8000-000000000001",
+      "paid": {
+        "amountMinor": 1000,
+        "currency": "CLP"
+      },
+      "method": "transfer",
+      "date": "2026-11-18"
+    },
+    "expect": {
+      "status": 400,
+      "code": "validation_error"
+    }
+  },
+  {
+    "name": "a payment between two other people",
+    "caller": "carlos",
+    "method": "POST",
+    "path": "/api/payments",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000042",
+      "fromId": "a0000000-0000-4000-8000-000000000002",
+      "toId": "a0000000-0000-4000-8000-000000000003",
+      "paid": {
+        "amountMinor": 1000,
+        "currency": "CLP"
+      },
+      "method": "transfer",
+      "date": "2026-11-18"
+    },
+    "expect": {
+      "status": 400,
+      "code": "validation_error"
+    }
+  },
+  {
+    "name": "recording a payment made to you",
+    "caller": "carlos",
+    "method": "POST",
+    "path": "/api/payments",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000043",
+      "fromId": "a0000000-0000-4000-8000-000000000002",
+      "toId": "a0000000-0000-4000-8000-000000000001",
+      "paid": {
+        "amountMinor": 1000,
+        "currency": "CLP"
+      },
+      "method": "transfer",
+      "date": "2026-11-18"
+    },
+    "expect": {
+      "status": 201
+    }
+  },
+  {
+    "name": "a payment of zero",
+    "caller": "carlos",
+    "method": "POST",
+    "path": "/api/payments",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000044",
+      "fromId": "a0000000-0000-4000-8000-000000000001",
+      "toId": "a0000000-0000-4000-8000-000000000002",
+      "paid": {
+        "amountMinor": 0,
+        "currency": "CLP"
+      },
+      "method": "transfer",
+      "date": "2026-11-18"
+    },
+    "expect": {
+      "status": 400,
+      "code": "validation_error"
+    }
+  },
+  {
+    "name": "a payment above the expense maximum",
+    "caller": "carlos",
+    "method": "POST",
+    "path": "/api/payments",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000045",
+      "fromId": "a0000000-0000-4000-8000-000000000001",
+      "toId": "a0000000-0000-4000-8000-000000000002",
+      "paid": {
+        "amountMinor": 20000000,
+        "currency": "CLP"
+      },
+      "method": "transfer",
+      "date": "2026-11-18"
+    },
+    "expect": {
+      "status": 201
+    }
+  },
+  {
+    "name": "an unsupported payment currency",
+    "caller": "carlos",
+    "method": "POST",
+    "path": "/api/payments",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000046",
+      "fromId": "a0000000-0000-4000-8000-000000000001",
+      "toId": "a0000000-0000-4000-8000-000000000002",
+      "paid": {
+        "amountMinor": 100,
+        "currency": "EUR"
+      },
+      "method": "transfer",
+      "date": "2026-11-18"
+    },
+    "expect": {
+      "status": 400,
+      "code": "validation_error"
+    }
+  },
+  {
+    "name": "an unknown method",
+    "caller": "carlos",
+    "method": "POST",
+    "path": "/api/payments",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000047",
+      "fromId": "a0000000-0000-4000-8000-000000000001",
+      "toId": "a0000000-0000-4000-8000-000000000002",
+      "paid": {
+        "amountMinor": 1000,
+        "currency": "CLP"
+      },
+      "method": "cheque",
+      "date": "2026-11-18"
+    },
+    "expect": {
+      "status": 400,
+      "code": "validation_error"
+    }
+  },
+  {
+    "name": "a chosen group the caller is not in",
+    "caller": "mama",
+    "method": "POST",
+    "path": "/api/payments",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000048",
+      "fromId": "a0000000-0000-4000-8000-000000000004",
+      "toId": "a0000000-0000-4000-8000-000000000002",
+      "paid": {
+        "amountMinor": 1000,
+        "currency": "CLP"
+      },
+      "method": "transfer",
+      "date": "2026-11-18",
+      "groupId": "b0000000-0000-4000-8000-000000000003"
+    },
+    "expect": {
+      "status": 404,
+      "code": "not_found"
+    }
+  },
+  {
+    "name": "a chosen group the other person is not in",
+    "caller": "carlos",
+    "method": "POST",
+    "path": "/api/payments",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000049",
+      "fromId": "a0000000-0000-4000-8000-000000000001",
+      "toId": "a0000000-0000-4000-8000-000000000006",
+      "paid": {
+        "amountMinor": 1000,
+        "currency": "CLP"
+      },
+      "method": "transfer",
+      "date": "2026-11-18",
+      "groupId": "b0000000-0000-4000-8000-000000000003"
+    },
+    "expect": {
+      "status": 400,
+      "code": "validation_error"
+    }
+  },
+  {
+    "name": "an unsupported home currency",
+    "caller": "carlos",
+    "method": "PUT",
+    "path": "/api/me/profile",
+    "body": {
+      "homeCurrency": "EUR"
+    },
+    "expect": {
+      "status": 400,
+      "code": "validation_error"
+    }
+  },
+  {
+    "name": "changing the home currency",
+    "caller": "carlos",
+    "method": "PUT",
+    "path": "/api/me/profile",
+    "body": {
+      "homeCurrency": "USD"
+    },
+    "expect": {
+      "status": 200
+    }
+  },
+  {
+    "name": "finishing sign-up without a display name",
+    "caller": "nina",
+    "method": "PUT",
+    "path": "/api/me/profile",
+    "body": {
+      "homeCurrency": "CLP"
+    },
+    "expect": {
+      "status": 400,
+      "code": "validation_error"
+    }
+  },
+  {
+    "name": "finishing sign-up",
+    "caller": "nina",
+    "method": "PUT",
+    "path": "/api/me/profile",
+    "body": {
+      "homeCurrency": "CLP",
+      "displayName": "Nina"
+    },
+    "expect": {
+      "status": 200
+    }
+  },
+  {
+    "name": "a blank group name",
+    "caller": "carlos",
+    "method": "POST",
+    "path": "/api/groups",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000050",
+      "name": "  ",
+      "memberIds": [
+        "a0000000-0000-4000-8000-000000000001",
+        "a0000000-0000-4000-8000-000000000002"
+      ]
+    },
+    "expect": {
+      "status": 400,
+      "code": "validation_error"
+    }
+  },
+  {
+    "name": "a group name of 41 characters",
+    "caller": "carlos",
+    "method": "POST",
+    "path": "/api/groups",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000051",
+      "name": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "memberIds": [
+        "a0000000-0000-4000-8000-000000000001",
+        "a0000000-0000-4000-8000-000000000002"
+      ]
+    },
+    "expect": {
+      "status": 400,
+      "code": "validation_error"
+    }
+  },
+  {
+    "name": "a group of one",
+    "caller": "carlos",
+    "method": "POST",
+    "path": "/api/groups",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000052",
+      "name": "Grupo de prueba",
+      "memberIds": [
+        "a0000000-0000-4000-8000-000000000001"
+      ]
+    },
+    "expect": {
+      "status": 400,
+      "code": "validation_error"
+    }
+  },
+  {
+    "name": "a group without the caller",
+    "caller": "carlos",
+    "method": "POST",
+    "path": "/api/groups",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000053",
+      "name": "Grupo de prueba",
+      "memberIds": [
+        "a0000000-0000-4000-8000-000000000002",
+        "a0000000-0000-4000-8000-000000000003"
+      ]
+    },
+    "expect": {
+      "status": 400,
+      "code": "validation_error"
+    }
+  },
+  {
+    "name": "a group with an unknown member",
+    "caller": "carlos",
+    "method": "POST",
+    "path": "/api/groups",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000054",
+      "name": "Grupo de prueba",
+      "memberIds": [
+        "a0000000-0000-4000-8000-000000000001",
+        "a0000000-0000-4000-8000-000000009999"
+      ]
+    },
+    "expect": {
+      "status": 400,
+      "code": "validation_error"
+    }
+  },
+  {
+    "name": "a group with a former member",
+    "caller": "carlos",
+    "method": "POST",
+    "path": "/api/groups",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000055",
+      "name": "Grupo de prueba",
+      "memberIds": [
+        "a0000000-0000-4000-8000-000000000001",
+        "a0000000-0000-4000-8000-000000000007"
+      ]
+    },
+    "expect": {
+      "status": 400,
+      "code": "validation_error"
+    }
+  },
+  {
+    "name": "renaming a group someone else created",
+    "caller": "lucia",
+    "method": "PUT",
+    "path": "/api/groups/b0000000-0000-4000-8000-000000000003",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000056",
+      "name": "Otro nombre",
+      "memberIds": [
+        "a0000000-0000-4000-8000-000000000001",
+        "a0000000-0000-4000-8000-000000000002",
+        "a0000000-0000-4000-8000-000000000003"
+      ],
+      "version": 1
+    },
+    "expect": {
+      "status": 403,
+      "code": "forbidden"
+    }
+  },
+  {
+    "name": "changing a group whose creator lost access",
+    "caller": "mama",
+    "method": "PUT",
+    "path": "/api/groups/b0000000-0000-4000-8000-000000000004",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000057",
+      "name": "Otro nombre",
+      "memberIds": [
+        "a0000000-0000-4000-8000-000000000007",
+        "a0000000-0000-4000-8000-000000000004"
+      ],
+      "version": 1
+    },
+    "expect": {
+      "status": 403,
+      "code": "forbidden"
+    }
+  },
+  {
+    "name": "removing the creator",
+    "caller": "carlos",
+    "method": "PUT",
+    "path": "/api/groups/b0000000-0000-4000-8000-000000000003",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000058",
+      "name": "Cuidado de Mamá y Papá",
+      "memberIds": [
+        "a0000000-0000-4000-8000-000000000002",
+        "a0000000-0000-4000-8000-000000000003"
+      ],
+      "version": 1
+    },
+    "expect": {
+      "status": 400,
+      "code": "validation_error"
+    }
+  },
+  {
+    "name": "removing a member with an open balance",
+    "caller": "carlos",
+    "method": "PUT",
+    "path": "/api/groups/b0000000-0000-4000-8000-000000000003",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000059",
+      "name": "Cuidado de Mamá y Papá",
+      "memberIds": [
+        "a0000000-0000-4000-8000-000000000001",
+        "a0000000-0000-4000-8000-000000000002"
+      ],
+      "version": 1
+    },
+    "expect": {
+      "status": 409,
+      "code": "member_has_open_balance"
+    }
+  },
+  {
+    "name": "changing a group with a stale version",
+    "caller": "carlos",
+    "method": "PUT",
+    "path": "/api/groups/b0000000-0000-4000-8000-000000000003",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000060",
+      "name": "Otro nombre",
+      "memberIds": [
+        "a0000000-0000-4000-8000-000000000001",
+        "a0000000-0000-4000-8000-000000000002",
+        "a0000000-0000-4000-8000-000000000003"
+      ],
+      "version": 99
+    },
+    "expect": {
+      "status": 409,
+      "code": "conflict"
+    }
+  },
+  {
+    "name": "renaming your own group",
+    "caller": "carlos",
+    "method": "PUT",
+    "path": "/api/groups/b0000000-0000-4000-8000-000000000003",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000061",
+      "name": "Cuidado de los papás",
+      "memberIds": [
+        "a0000000-0000-4000-8000-000000000001",
+        "a0000000-0000-4000-8000-000000000002",
+        "a0000000-0000-4000-8000-000000000003"
+      ],
+      "version": 1
+    },
+    "expect": {
+      "status": 200
+    }
+  },
+  {
+    "name": "a missing rate",
+    "caller": "carlos",
+    "method": "POST",
+    "path": "/api/exchange-rates",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000062",
+      "usdCad": "1.41",
+      "date": "2026-11-19"
+    },
+    "expect": {
+      "status": 400,
+      "code": "validation_error"
+    }
+  },
+  {
+    "name": "a rate of zero",
+    "caller": "carlos",
+    "method": "POST",
+    "path": "/api/exchange-rates",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000063",
+      "usdCad": "0",
+      "cadClp": "672",
+      "date": "2026-11-19"
+    },
+    "expect": {
+      "status": 400,
+      "code": "validation_error"
+    }
+  },
+  {
+    "name": "a negative rate",
+    "caller": "carlos",
+    "method": "POST",
+    "path": "/api/exchange-rates",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000064",
+      "usdCad": "-1.40",
+      "cadClp": "672",
+      "date": "2026-11-19"
+    },
+    "expect": {
+      "status": 400,
+      "code": "validation_error"
+    }
+  },
+  {
+    "name": "a rate that is not a number",
+    "caller": "carlos",
+    "method": "POST",
+    "path": "/api/exchange-rates",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000065",
+      "usdCad": "1.41",
+      "cadClp": "mucho",
+      "date": "2026-11-19"
+    },
+    "expect": {
+      "status": 400,
+      "code": "validation_error"
+    }
+  },
+  {
+    "name": "a rate date that does not exist",
+    "caller": "carlos",
+    "method": "POST",
+    "path": "/api/exchange-rates",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000066",
+      "usdCad": "1.41",
+      "cadClp": "672",
+      "date": "2026-13-01"
+    },
+    "expect": {
+      "status": 400,
+      "code": "validation_error"
+    }
+  },
+  {
+    "name": "a rate dated before the latest entry",
+    "caller": "carlos",
+    "method": "POST",
+    "path": "/api/exchange-rates",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000067",
+      "usdCad": "1.41",
+      "cadClp": "672",
+      "date": "2026-10-15"
+    },
+    "expect": {
+      "status": 201,
+      "body": {
+        "date": "2026-11-01"
+      }
+    }
+  },
+  {
+    "name": "a member removed from the allowlist",
+    "caller": "rosa",
+    "method": "GET",
+    "path": "/api/ledger",
+    "expect": {
+      "status": 403,
+      "code": "forbidden"
+    }
+  },
+  {
+    "name": "the ledger before finishing sign-up",
+    "caller": "nina",
+    "method": "GET",
+    "path": "/api/ledger",
+    "expect": {
+      "status": 403,
+      "code": "forbidden"
+    }
+  },
+  {
+    "name": "who am I before finishing sign-up",
+    "caller": "nina",
+    "method": "GET",
+    "path": "/api/me",
+    "expect": {
+      "status": 200,
+      "body": {
+        "memberId": null,
+        "displayName": null,
+        "homeCurrency": null
+      }
+    }
+  },
+  {
+    "name": "the first page of expenses",
+    "caller": "carlos",
+    "method": "GET",
+    "path": "/api/expenses?limit=2",
+    "expect": {
+      "status": 200,
+      "expenses": [
+        "c0000000-0000-4000-8000-000000000013",
+        "c0000000-0000-4000-8000-000000000012"
+      ],
+      "morePages": true
+    }
+  },
+  {
+    "name": "one group, newest first",
+    "caller": "carlos",
+    "method": "GET",
+    "path": "/api/expenses?groupId=b0000000-0000-4000-8000-000000000002",
+    "expect": {
+      "status": 200,
+      "expenses": [
+        "c0000000-0000-4000-8000-000000000011",
+        "c0000000-0000-4000-8000-000000000010",
+        "c0000000-0000-4000-8000-000000000007"
+      ],
+      "morePages": false
+    }
+  },
+  {
+    "name": "one kind across groups",
+    "caller": "carlos",
+    "method": "GET",
+    "path": "/api/expenses?kind=gift",
+    "expect": {
+      "status": 200,
+      "expenses": [
+        "c0000000-0000-4000-8000-000000000009"
+      ],
+      "morePages": false
+    }
+  },
+  {
+    "name": "one group and one kind",
+    "caller": "carlos",
+    "method": "GET",
+    "path": "/api/expenses?groupId=b0000000-0000-4000-8000-000000000001&kind=meal",
+    "expect": {
+      "status": 200,
+      "expenses": [
+        "c0000000-0000-4000-8000-000000000004",
+        "c0000000-0000-4000-8000-000000000002",
+        "c0000000-0000-4000-8000-000000000001"
+      ],
+      "morePages": false
+    }
+  },
+  {
+    "name": "a page size of zero",
+    "caller": "carlos",
+    "method": "GET",
+    "path": "/api/expenses?limit=0",
+    "expect": {
+      "status": 400,
+      "code": "validation_error"
+    }
+  },
+  {
+    "name": "a page size over the maximum",
+    "caller": "carlos",
+    "method": "GET",
+    "path": "/api/expenses?limit=101",
+    "expect": {
+      "status": 400,
+      "code": "validation_error"
+    }
+  },
+  {
+    "name": "an unknown kind filter",
+    "caller": "carlos",
+    "method": "GET",
+    "path": "/api/expenses?kind=travel",
+    "expect": {
+      "status": 400,
+      "code": "validation_error"
+    }
+  },
+  {
+    "name": "a malformed cursor",
+    "caller": "carlos",
+    "method": "GET",
+    "path": "/api/expenses?cursor=not-a-cursor",
+    "expect": {
+      "status": 400,
+      "code": "validation_error"
+    }
+  },
+  {
+    "name": "a group filter the caller is not in",
+    "caller": "carlos",
+    "method": "GET",
+    "path": "/api/expenses?groupId=b0000000-0000-4000-8000-000000000005",
+    "expect": {
+      "status": 404,
+      "code": "not_found"
+    }
+  },
+  {
+    "name": "opening an expense",
+    "caller": "carlos",
+    "method": "GET",
+    "path": "/api/expenses/c0000000-0000-4000-8000-000000000012",
+    "expect": {
+      "status": 200
+    }
+  },
+  {
+    "name": "opening an expense in another group",
+    "caller": "mama",
+    "method": "GET",
+    "path": "/api/expenses/c0000000-0000-4000-8000-000000000012",
+    "expect": {
+      "status": 404,
+      "code": "not_found"
+    }
+  },
+  {
+    "name": "my payments, newest first",
+    "caller": "carlos",
+    "method": "GET",
+    "path": "/api/payments?limit=2",
+    "expect": {
+      "status": 200,
+      "payments": [
+        "d0000000-0000-4000-8000-000000000013",
+        "d0000000-0000-4000-8000-000000000004"
+      ],
+      "morePages": true
+    }
+  },
+  {
+    "name": "my payments with one person",
+    "caller": "carlos",
+    "method": "GET",
+    "path": "/api/payments?memberId=a0000000-0000-4000-8000-000000000002",
+    "expect": {
+      "status": 200,
+      "payments": [
+        "d0000000-0000-4000-8000-000000000002"
+      ],
+      "morePages": false
+    }
+  },
+  {
+    "name": "a payment that became pure credit",
+    "caller": "papa",
+    "method": "GET",
+    "path": "/api/payments?memberId=a0000000-0000-4000-8000-000000000007",
+    "expect": {
+      "status": 200,
+      "payments": [
+        "d0000000-0000-4000-8000-000000000009"
+      ],
+      "morePages": false
+    }
+  },
+  {
+    "name": "payments with an unknown member",
+    "caller": "carlos",
+    "method": "GET",
+    "path": "/api/payments?memberId=a0000000-0000-4000-8000-000000009999",
+    "expect": {
+      "status": 404,
+      "code": "not_found"
+    }
+  },
+  {
+    "name": "a payment page size of zero",
+    "caller": "carlos",
+    "method": "GET",
+    "path": "/api/payments?limit=0",
+    "expect": {
+      "status": 400,
+      "code": "validation_error"
+    }
+  },
+  {
+    "name": "repeating a saved expense",
+    "caller": "carlos",
+    "method": "POST",
+    "path": "/api/expenses",
+    "body": {
+      "requestId": "c0000000-0000-4000-8000-000000000012",
+      "title": "Tablet para las videollamadas",
+      "kind": "parents",
+      "groupId": "b0000000-0000-4000-8000-000000000003",
+      "payerId": "a0000000-0000-4000-8000-000000000001",
+      "amountMinor": 30000,
+      "currency": "CAD",
+      "date": "2026-11-12",
+      "splitMode": "percent",
+      "participantIds": [
+        "a0000000-0000-4000-8000-000000000001",
+        "a0000000-0000-4000-8000-000000000002",
+        "a0000000-0000-4000-8000-000000000003"
+      ],
+      "percents": {
+        "a0000000-0000-4000-8000-000000000001": 50,
+        "a0000000-0000-4000-8000-000000000002": 25,
+        "a0000000-0000-4000-8000-000000000003": 25
+      }
+    },
+    "expect": {
+      "status": 201
+    }
+  },
+  {
+    "name": "reusing a request id with different content",
+    "caller": "carlos",
+    "method": "POST",
+    "path": "/api/expenses",
+    "body": {
+      "requestId": "c0000000-0000-4000-8000-000000000012",
+      "title": "Otra cosa",
+      "kind": "parents",
+      "groupId": "b0000000-0000-4000-8000-000000000003",
+      "payerId": "a0000000-0000-4000-8000-000000000001",
+      "amountMinor": 30000,
+      "currency": "CAD",
+      "date": "2026-11-12",
+      "splitMode": "percent",
+      "participantIds": [
+        "a0000000-0000-4000-8000-000000000001",
+        "a0000000-0000-4000-8000-000000000002",
+        "a0000000-0000-4000-8000-000000000003"
+      ],
+      "percents": {
+        "a0000000-0000-4000-8000-000000000001": 50,
+        "a0000000-0000-4000-8000-000000000002": 25,
+        "a0000000-0000-4000-8000-000000000003": 25
+      }
+    },
+    "expect": {
+      "status": 409,
+      "code": "conflict"
+    }
+  },
+  {
+    "name": "repeating a saved payment",
+    "caller": "lucia",
+    "method": "POST",
+    "path": "/api/payments",
+    "body": {
+      "requestId": "d0000000-0000-4000-8000-000000000002",
+      "fromId": "a0000000-0000-4000-8000-000000000002",
+      "toId": "a0000000-0000-4000-8000-000000000001",
+      "paid": {
+        "amountMinor": 52500,
+        "currency": "CLP"
+      },
+      "method": "transfer",
+      "date": "2026-10-05",
+      "groupId": "b0000000-0000-4000-8000-000000000003"
+    },
+    "expect": {
+      "status": 201
+    }
+  }
+]

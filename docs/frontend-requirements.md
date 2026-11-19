@@ -119,7 +119,7 @@ Every group the caller belongs to:
 
 ### Expenses
 
-Every expense in the caller's groups:
+Every expense in the caller's groups, available page by page:
 
 - A stable identifier and a title.
 - A kind: `meal`, `parents`, `gift` or `other`.
@@ -225,8 +225,8 @@ Allocate when the payment is recorded, in this order:
 
 1. **The chosen group first.** If the person chose a group, cover that group's debts, oldest expense first.
 2. **Then the oldest debts in any group.** If no group was chosen, or money remains, cover the remaining debts oldest first.
-3. **A group never absorbs more than its net debt.** Debts and credits inside a group offset each other when working out how much it can take.
-4. **Anything left over is credit.** It flips the balance in the payer's favour and belongs to the chosen group or, if none was chosen, to the group of the newest expense between the two members.
+3. **A group never absorbs more than its net debt.** Debts in opposite directions inside a group offset each other when working out how much it can take. Credit left over from an overpayment is not counted (section 12).
+4. **Anything left over is credit.** It flips the balance in the payer's favour and belongs to the chosen group or, if none was chosen, to the group of the newest expense between the two members. Credit then pays later debts between the two members (section 12).
 
 ### When a debt counts as paid
 
@@ -318,7 +318,7 @@ A percentage expense can also ask to become the group's usual split. That change
 | Parties | Two different members, and the caller must be one of them. Either side can record it |
 | Amount paid | A positive integer in minor units of a supported currency. The expense maximum does not apply, because one payment can cover several expenses |
 | Method | One of the values in section 4 |
-| Group | Optional. When present, the caller must belong to it |
+| Group | Optional. When present, both parties must belong to it |
 | Date | A valid calendar date supplied by the browser |
 
 **Full payments in another currency.** Conversion rounding can leave a payment slightly off the exact debt. Paying CAD 39,63 against CLP 26.550 converts to CLP 26.552. When the payment is within one minor unit of the paying currency, the frontend treats the debt as cleared and sends two values: what was actually paid, and the debt's exact amount as the value credited. The backend must accept this only within that tolerance, and otherwise credit exactly what was paid.
@@ -349,7 +349,7 @@ A member can be removed only when their balance with every other member of that 
 |---|---|
 | Who | Any member |
 | Values | Both rates are required, and each must be a positive number |
-| Date | A valid calendar date supplied by the browser |
+| Date | A valid calendar date supplied by the browser. An entry dated before the latest entry takes the latest entry's date |
 | History | A new entry never replaces an earlier one, so past dates keep their rates |
 | Effect | New rates change converted views and future payments. Payments already recorded keep their stored conversion |
 
@@ -367,8 +367,8 @@ A member can be removed only when their balance with every other member of that 
 
 - **A failure is never an empty result.** A failed read must be an error. An empty list or a zero balance is read as a true statement about the family's money.
 - **Reads reflect writes immediately.** The frontend reloads straight after every save, and the new data must be there.
-- **Everything on screen comes from one point in time.** Balances and expenses must agree with each other, whether they arrive in one response or several.
-- **A complete view loads at once.** Filtering happens in the browser, so the frontend currently expects all visible expenses. Balances must never depend on how many expenses have been loaded.
+- **Each response comes from one point in time.** Every response carries the ledger's revision. If a later page of expenses has a different revision from what is on screen, the frontend reloads from the first page.
+- **Expenses load in pages, newest first.** Filtering by group and kind happens on the server, so a filter always finds every match. Balances must never depend on how many expenses have been loaded.
 - **Retrying must not duplicate money.** If a save times out and the person tries again, the expense or payment must be recorded only once.
 - **Concurrent edits are detected.** Saving over a change someone else just made must fail rather than silently overwrite it.
 
@@ -404,6 +404,7 @@ Listed so the API work can plan around them:
 
 - Replace the three functions in `lib/expenses.js` with `apiFetch` calls, using `getToken()` from `useSession`.
 - Remove the `expenses_unavailable` state.
+- Load expenses page by page, and send the group and kind filters to the API instead of filtering in the browser.
 - Show the Edit button only to the member who added the expense.
 - Design and build the home currency step for a member's first sign-in, and a settings option to change it later.
 - Design and build creating and changing groups, including the "Nuevo grupo" button left out of the first version. Only a group's creator sees the controls for changing it.
@@ -416,3 +417,48 @@ Listed so the API work can plan around them:
 - Design and build the screen for entering exchange rates. It asks for confirmation when a new rate differs from the last one by more than 20%.
 - Offer CAD, USD and CLP even when no rates exist. The currency choices are currently read from the rates.
 - Keep `lib/expenses.sample.js` working for local development.
+- Generate one `requestId` per save and reuse it when retrying, send back the `version` of an expense or group when changing it, and stop sending shares, which the server computes.
+
+## 12. Resolved decisions
+
+These close gaps found while designing the API. Where they differ from `lib/ledger.js`, this section wins. The data set in `backend/testdata/ledger` represents these rules, so change it together with them.
+
+### Credit pays later debts
+
+When a new expense creates a debt owed by the member who holds credit with the other person, the credit is applied to it straight away:
+
+- **Order.** The oldest credit goes first, and credit held in the expense's own group goes before credit held in other groups.
+- **Limit.** A group never absorbs more than its net debt, as with a payment.
+- **Conversion.** Credit in another currency converts at the rates in force when the expense is recorded. If there are no rates, that credit stays unapplied.
+- **Display.** The expense shows the amount as a payment applied to it, naming the original payment, so it can appear partly paid as soon as it is added.
+- **Reverse payments.** A payment from the member who owes the credit reduces that credit first. Only what remains becomes credit in their favour.
+
+Continuing the last scenario in section 6, where Lucía owes Carlos CLP 3.450 held in Cuidado: a new Comidas expense in which Carlos owes Lucía CLP 5.000 leaves CLP 1.550 open and no credit.
+
+### How debts and payments are worked out
+
+- **Events are replayed in the order they were recorded.** An expense entered later cannot capture a payment recorded before it, even with an older date. An edited expense keeps its original position.
+- **Rates are read from the event.** Group nets and closed debts are worked out when an expense or payment is recorded, with the rates in force at that moment. Entering new rates never closes or reopens a debt.
+- **A debt closes on a net of zero** when the group's net rounds to zero in the currency of the event being recorded.
+- **Amounts stay whole.** Each allocation rounds what it covers to the debt's minor unit, using exact decimal arithmetic. Halves round away from zero, so both sides of a debt see the same figure.
+
+### Full payments against mixed currencies
+
+When a payment clears a balance held in several currencies, the backend works out the net debt itself at the current rates. It accepts the credited value only if that value is within one minor unit of the paying currency, and otherwise credits exactly what was paid. The credited value can be in any supported currency, and it is the amount allocated to debts.
+
+### Credit with no group
+
+If two members share no expense and no group was chosen, the credit belongs to the two of them and to no group.
+
+### Changing groups
+
+- **Adding a member** stores 0 for them in the usual split, so its percentages still add up to 100.
+- **An edit cannot change what a former group member owes or is owed on an expense**, because they can no longer see that group. Other corrections to the expense remain possible.
+
+### Display names
+
+A member's display name is set in the first sign-in step. The form starts from the name on their Google account, which may be missing.
+
+### Sample data
+
+In `lib/expenses.sample.js`, Diego's USD 32,00 payment converts to CLP 30.016, which is more than one minor unit away from the CLP 30.000 it covers. The rules above win, and the sample is corrected when the frontend connects to the API.

@@ -8,6 +8,7 @@ Rust Lambdas (`functions/`), CloudFormation templates (`templates/<vertical>/`) 
 - `functions/<route>`: one crate per Lambda, kept thin.
 - `stacks/main.yaml`: environment values. `stacks/main.build.yaml` is generated and gitignored.
 - `scripts/`: the only supported way to build and deploy.
+- `testdata/ledger/`: the data set tests load into DynamoDB Local.
 
 ## Invariants
 
@@ -27,4 +28,5 @@ From `functions/`: `cargo test --workspace`, `cargo clippy --workspace --all-tar
 - Writing stacks: the `sceptre-developer` skill.
 - API conventions: `docs/api-contract.md` and the `api-design` skill.
 - Table layout: `docs/dynamodb-schema.md`.
+- Test data for the expenses ledger: `testdata/ledger/README.md`.
 - Sign-in: `../docs/auth/architecture.md`.
