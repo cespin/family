@@ -156,6 +156,7 @@ case "$VERTICAL" in
     fi
     ;;
   api)
+    require_export FamilyTableArn data >/dev/null
     require_export UserPoolArn security >/dev/null
     add_build_vars
     add_template_bucket

@@ -293,12 +293,12 @@ cargo test --workspace --no-fail-fast  # Don't stop on the first failing crate
 ## This project
 
 - **`cargo test --workspace` is hermetic.** It passes with no AWS credentials, no AWS configuration and nothing running. Keep it that way: only each crate's `main` builds a real client.
-- **Fakes are hand-written, one per crate.** The traits are `Members` in `functions/family-core/src/ddb.rs` and `Sessions` in `functions/auth-session/src/sessions.rs`. See `FakeMembers` in `functions/me-get/src/main.rs` and `functions/auth-presignup/src/main.rs`, and `FakeSessions` in `functions/auth-session/src/http_handler.rs`. `mockall` is not a dependency.
+- **Fakes are hand-written, one per crate.** The traits are `Members` in `functions/family-core/src/ddb.rs` and `Sessions` in `functions/auth-session/src/sessions.rs`. See `FakeMembers` in `functions/auth-presignup/src/main.rs`, `FakeSessions` in `functions/auth-session/src/http_handler.rs`, and `FakeTable` in `functions/family-ledger/tests/support/fake_table.rs`. `mockall` is not a dependency.
 - **There is no numeric coverage target,** and no coverage tool is configured. Add the test that would catch a wrong behaviour, not one that moves a percentage.
 - **Tests can pin a contract across files with `include_str!`.** `functions/family-core/src/error.rs` checks its messages against `templates/api/stack.yaml`, and `functions/auth-session/src/cookie.rs` checks the cookie lifetime against `templates/security/stack.yaml`. Use this when two files must agree.
 - **Check a crate's dev-dependencies before you reach for a tool.** `rstest` is declared by `family-core`, `auth-session` and `auth-presignup` only, and `family-core` does not depend on `tokio`, so an async test there needs it added first. Shared versions go in `[workspace.dependencies]` in `functions/Cargo.toml`.
 - **New dependencies must pass `scripts/audit-deps.sh`,** which `scripts/build-functions.sh` runs before every build. `proptest` and `criterion` are not in the workspace.
-- **There are no integration test targets yet.** `scripts/ddb-local.sh` can start DynamoDB Local, but no test uses it, and `cargo test --workspace` must never need it.
+- **The ledger's integration tests live in `functions/family-ledger/tests`.** They run on an in-memory table. Only `tests/ddb_local.rs` needs DynamoDB Local, behind the `ddb-local-tests` feature, and `scripts/test-ddb-local.sh` runs it. `cargo test --workspace` must never need it.
 - **Fixtures use fake values only.** `../scripts/check-aws-literals.mjs` has no path exclusions, so a real region or account ID in a test fails the check. Use hosts under `example.test`.
 
 The lint and format commands are listed in `CLAUDE.md`.

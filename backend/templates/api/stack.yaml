@@ -17,6 +17,18 @@ Parameters:
     Type: String
   AuthSessionCodeS3Key:
     Type: String
+  LedgerReadCodeS3Key:
+    Type: String
+  MeProfilePutCodeS3Key:
+    Type: String
+  ExpensesWriteCodeS3Key:
+    Type: String
+  PaymentsPostCodeS3Key:
+    Type: String
+  GroupsWriteCodeS3Key:
+    Type: String
+  ExchangeRatesPostCodeS3Key:
+    Type: String
 Resources:
 
 #  --START -- HEALTH
@@ -166,6 +178,341 @@ Resources:
 
 #  --END -- AUTH SESSION
 
+#  --START -- LEDGER
+
+  # Each function gets only the table actions it calls. A transaction needs PutItem for its writes
+  # and ConditionCheckItem for its allowlist check. Nothing here can delete or scan.
+
+  LedgerReadRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${StackName}-${Salt}-ledger-read'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+      Policies:
+        - PolicyName: read-ledger
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'dynamodb:GetItem'
+                  - 'dynamodb:Query'
+                  - 'dynamodb:BatchGetItem'
+                Resource: !ImportValue
+                  'Fn::Sub': '${ExportKey}-${StackName}-FamilyTableArn'
+  LedgerReadLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${StackName}-${Salt}-ledger-read'
+      RetentionInDays: 30
+  LedgerReadFunction:
+    Type: AWS::Lambda::Function
+    DependsOn: LedgerReadLogGroup
+    Properties:
+      FunctionName: !Sub '${StackName}-${Salt}-ledger-read'
+      Description: !Sub 'GET /api/ledger, /api/expenses and /api/payments - ${AppName} - stack ${StackName}'
+      Runtime: provided.al2023
+      Architectures:
+        - arm64
+      Handler: bootstrap
+      Role: !GetAtt LedgerReadRole.Arn
+      Timeout: 15
+      MemorySize: 256
+      Environment:
+        Variables:
+          TABLE_NAME: !ImportValue
+            'Fn::Sub': '${ExportKey}-${StackName}-FamilyTableName'
+          RUST_LOG: info
+      Code:
+        S3Bucket: !ImportValue
+          'Fn::Sub': '${ExportKey}-${StackName}-ArtifactsBucketName'
+        S3Key: !Ref LedgerReadCodeS3Key
+
+  MeProfilePutRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${StackName}-${Salt}-me-profile-put'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+      Policies:
+        - PolicyName: write-ledger
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'dynamodb:GetItem'
+                  - 'dynamodb:Query'
+                  - 'dynamodb:BatchGetItem'
+                  - 'dynamodb:PutItem'
+                  - 'dynamodb:ConditionCheckItem'
+                Resource: !ImportValue
+                  'Fn::Sub': '${ExportKey}-${StackName}-FamilyTableArn'
+  MeProfilePutLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${StackName}-${Salt}-me-profile-put'
+      RetentionInDays: 30
+  MeProfilePutFunction:
+    Type: AWS::Lambda::Function
+    DependsOn: MeProfilePutLogGroup
+    Properties:
+      FunctionName: !Sub '${StackName}-${Salt}-me-profile-put'
+      Description: !Sub 'PUT /api/me/profile - ${AppName} - stack ${StackName}'
+      Runtime: provided.al2023
+      Architectures:
+        - arm64
+      Handler: bootstrap
+      Role: !GetAtt MeProfilePutRole.Arn
+      Timeout: 15
+      MemorySize: 256
+      Environment:
+        Variables:
+          TABLE_NAME: !ImportValue
+            'Fn::Sub': '${ExportKey}-${StackName}-FamilyTableName'
+          RUST_LOG: info
+      Code:
+        S3Bucket: !ImportValue
+          'Fn::Sub': '${ExportKey}-${StackName}-ArtifactsBucketName'
+        S3Key: !Ref MeProfilePutCodeS3Key
+
+  ExpensesWriteRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${StackName}-${Salt}-expenses-write'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+      Policies:
+        - PolicyName: write-ledger
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'dynamodb:GetItem'
+                  - 'dynamodb:Query'
+                  - 'dynamodb:BatchGetItem'
+                  - 'dynamodb:PutItem'
+                  - 'dynamodb:ConditionCheckItem'
+                Resource: !ImportValue
+                  'Fn::Sub': '${ExportKey}-${StackName}-FamilyTableArn'
+  ExpensesWriteLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${StackName}-${Salt}-expenses-write'
+      RetentionInDays: 30
+  ExpensesWriteFunction:
+    Type: AWS::Lambda::Function
+    DependsOn: ExpensesWriteLogGroup
+    Properties:
+      FunctionName: !Sub '${StackName}-${Salt}-expenses-write'
+      Description: !Sub 'POST and PUT /api/expenses - ${AppName} - stack ${StackName}'
+      Runtime: provided.al2023
+      Architectures:
+        - arm64
+      Handler: bootstrap
+      Role: !GetAtt ExpensesWriteRole.Arn
+      Timeout: 30
+      MemorySize: 512
+      Environment:
+        Variables:
+          TABLE_NAME: !ImportValue
+            'Fn::Sub': '${ExportKey}-${StackName}-FamilyTableName'
+          RUST_LOG: info
+      Code:
+        S3Bucket: !ImportValue
+          'Fn::Sub': '${ExportKey}-${StackName}-ArtifactsBucketName'
+        S3Key: !Ref ExpensesWriteCodeS3Key
+
+  PaymentsPostRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${StackName}-${Salt}-payments-post'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+      Policies:
+        - PolicyName: write-ledger
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'dynamodb:GetItem'
+                  - 'dynamodb:Query'
+                  - 'dynamodb:BatchGetItem'
+                  - 'dynamodb:PutItem'
+                  - 'dynamodb:ConditionCheckItem'
+                Resource: !ImportValue
+                  'Fn::Sub': '${ExportKey}-${StackName}-FamilyTableArn'
+  PaymentsPostLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${StackName}-${Salt}-payments-post'
+      RetentionInDays: 30
+  PaymentsPostFunction:
+    Type: AWS::Lambda::Function
+    DependsOn: PaymentsPostLogGroup
+    Properties:
+      FunctionName: !Sub '${StackName}-${Salt}-payments-post'
+      Description: !Sub 'POST /api/payments - ${AppName} - stack ${StackName}'
+      Runtime: provided.al2023
+      Architectures:
+        - arm64
+      Handler: bootstrap
+      Role: !GetAtt PaymentsPostRole.Arn
+      Timeout: 15
+      MemorySize: 256
+      Environment:
+        Variables:
+          TABLE_NAME: !ImportValue
+            'Fn::Sub': '${ExportKey}-${StackName}-FamilyTableName'
+          RUST_LOG: info
+      Code:
+        S3Bucket: !ImportValue
+          'Fn::Sub': '${ExportKey}-${StackName}-ArtifactsBucketName'
+        S3Key: !Ref PaymentsPostCodeS3Key
+
+  GroupsWriteRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${StackName}-${Salt}-groups-write'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+      Policies:
+        - PolicyName: write-ledger
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'dynamodb:GetItem'
+                  - 'dynamodb:Query'
+                  - 'dynamodb:BatchGetItem'
+                  - 'dynamodb:PutItem'
+                  - 'dynamodb:ConditionCheckItem'
+                Resource: !ImportValue
+                  'Fn::Sub': '${ExportKey}-${StackName}-FamilyTableArn'
+  GroupsWriteLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${StackName}-${Salt}-groups-write'
+      RetentionInDays: 30
+  GroupsWriteFunction:
+    Type: AWS::Lambda::Function
+    DependsOn: GroupsWriteLogGroup
+    Properties:
+      FunctionName: !Sub '${StackName}-${Salt}-groups-write'
+      Description: !Sub 'POST and PUT /api/groups - ${AppName} - stack ${StackName}'
+      Runtime: provided.al2023
+      Architectures:
+        - arm64
+      Handler: bootstrap
+      Role: !GetAtt GroupsWriteRole.Arn
+      Timeout: 15
+      MemorySize: 256
+      Environment:
+        Variables:
+          TABLE_NAME: !ImportValue
+            'Fn::Sub': '${ExportKey}-${StackName}-FamilyTableName'
+          RUST_LOG: info
+      Code:
+        S3Bucket: !ImportValue
+          'Fn::Sub': '${ExportKey}-${StackName}-ArtifactsBucketName'
+        S3Key: !Ref GroupsWriteCodeS3Key
+
+  ExchangeRatesPostRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${StackName}-${Salt}-exchange-rates-post'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+      Policies:
+        - PolicyName: write-ledger
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'dynamodb:GetItem'
+                  - 'dynamodb:Query'
+                  - 'dynamodb:BatchGetItem'
+                  - 'dynamodb:PutItem'
+                  - 'dynamodb:ConditionCheckItem'
+                Resource: !ImportValue
+                  'Fn::Sub': '${ExportKey}-${StackName}-FamilyTableArn'
+  ExchangeRatesPostLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${StackName}-${Salt}-exchange-rates-post'
+      RetentionInDays: 30
+  ExchangeRatesPostFunction:
+    Type: AWS::Lambda::Function
+    DependsOn: ExchangeRatesPostLogGroup
+    Properties:
+      FunctionName: !Sub '${StackName}-${Salt}-exchange-rates-post'
+      Description: !Sub 'POST /api/exchange-rates - ${AppName} - stack ${StackName}'
+      Runtime: provided.al2023
+      Architectures:
+        - arm64
+      Handler: bootstrap
+      Role: !GetAtt ExchangeRatesPostRole.Arn
+      Timeout: 15
+      MemorySize: 256
+      Environment:
+        Variables:
+          TABLE_NAME: !ImportValue
+            'Fn::Sub': '${ExportKey}-${StackName}-FamilyTableName'
+          RUST_LOG: info
+      Code:
+        S3Bucket: !ImportValue
+          'Fn::Sub': '${ExportKey}-${StackName}-ArtifactsBucketName'
+        S3Key: !Ref ExchangeRatesPostCodeS3Key
+
+#  --END -- LEDGER
+
 #  --START -- REST API
 
   # Publishing is done by scripts/deploy-vertical.sh with `aws apigateway create-deployment`.
@@ -243,6 +590,243 @@ Resources:
                   type: string
                   minLength: 43
                   maxLength: 128
+            ProfileRequest:
+              type: object
+              additionalProperties: false
+              required:
+                - homeCurrency
+              properties:
+                homeCurrency:
+                  type: string
+                displayName:
+                  type: string
+                tone:
+                  type: string
+            NewExpenseRequest:
+              type: object
+              additionalProperties: false
+              required:
+                - requestId
+                - title
+                - kind
+                - groupId
+                - payerId
+                - amountMinor
+                - currency
+                - date
+                - splitMode
+                - participantIds
+              properties:
+                requestId:
+                  type: string
+                title:
+                  type: string
+                kind:
+                  type: string
+                groupId:
+                  type: string
+                payerId:
+                  type: string
+                amountMinor:
+                  type: integer
+                currency:
+                  type: string
+                date:
+                  type: string
+                splitMode:
+                  type: string
+                participantIds:
+                  type: array
+                  items:
+                    type: string
+                percents:
+                  type: object
+                  additionalProperties:
+                    type: integer
+                otherAmount:
+                  type: object
+                  additionalProperties: false
+                  required:
+                    - amountMinor
+                    - currency
+                  properties:
+                    amountMinor:
+                      type: integer
+                    currency:
+                      type: string
+                chargedCurrency:
+                  type: string
+                note:
+                  type: string
+                usualSplit:
+                  type: object
+                  additionalProperties:
+                    type: integer
+            ExpenseEditRequest:
+              type: object
+              additionalProperties: false
+              required:
+                - requestId
+                - title
+                - kind
+                - groupId
+                - payerId
+                - amountMinor
+                - currency
+                - splitMode
+                - participantIds
+                - version
+              properties:
+                requestId:
+                  type: string
+                title:
+                  type: string
+                kind:
+                  type: string
+                groupId:
+                  type: string
+                payerId:
+                  type: string
+                amountMinor:
+                  type: integer
+                currency:
+                  type: string
+                splitMode:
+                  type: string
+                participantIds:
+                  type: array
+                  items:
+                    type: string
+                percents:
+                  type: object
+                  additionalProperties:
+                    type: integer
+                otherAmount:
+                  type: object
+                  additionalProperties: false
+                  required:
+                    - amountMinor
+                    - currency
+                  properties:
+                    amountMinor:
+                      type: integer
+                    currency:
+                      type: string
+                chargedCurrency:
+                  type: string
+                note:
+                  type: string
+                usualSplit:
+                  type: object
+                  additionalProperties:
+                    type: integer
+                version:
+                  type: integer
+            PaymentRequest:
+              type: object
+              additionalProperties: false
+              required:
+                - requestId
+                - fromId
+                - toId
+                - paid
+                - method
+                - date
+              properties:
+                requestId:
+                  type: string
+                fromId:
+                  type: string
+                toId:
+                  type: string
+                paid:
+                  type: object
+                  additionalProperties: false
+                  required:
+                    - amountMinor
+                    - currency
+                  properties:
+                    amountMinor:
+                      type: integer
+                    currency:
+                      type: string
+                credited:
+                  type: object
+                  additionalProperties: false
+                  required:
+                    - amountMinor
+                    - currency
+                  properties:
+                    amountMinor:
+                      type: integer
+                    currency:
+                      type: string
+                method:
+                  type: string
+                date:
+                  type: string
+                groupId:
+                  type: string
+            NewGroupRequest:
+              type: object
+              additionalProperties: false
+              required:
+                - requestId
+                - name
+                - memberIds
+              properties:
+                requestId:
+                  type: string
+                name:
+                  type: string
+                memberIds:
+                  type: array
+                  items:
+                    type: string
+                usualSplit:
+                  type: object
+                  additionalProperties:
+                    type: integer
+            GroupEditRequest:
+              type: object
+              additionalProperties: false
+              required:
+                - requestId
+                - name
+                - memberIds
+                - version
+              properties:
+                requestId:
+                  type: string
+                name:
+                  type: string
+                memberIds:
+                  type: array
+                  items:
+                    type: string
+                version:
+                  type: integer
+                usualSplit:
+                  type: object
+                  additionalProperties:
+                    type: integer
+            ExchangeRatesRequest:
+              type: object
+              additionalProperties: false
+              required:
+                - requestId
+                - usdCad
+                - cadClp
+                - date
+              properties:
+                requestId:
+                  type: string
+                usdCad:
+                  type: string
+                cadClp:
+                  type: string
+                date:
+                  type: string
         paths:
           /api/health:
             get:
@@ -297,6 +881,191 @@ Resources:
                 type: aws_proxy
                 httpMethod: POST
                 uri: !Sub 'arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${AuthSessionFunction.Arn}/invocations'
+          /api/me/profile:
+            put:
+              security:
+                - CognitoUserPool: []
+              x-amazon-apigateway-request-validator: body-only
+              requestBody:
+                required: true
+                content:
+                  application/json:
+                    schema:
+                      $ref: '#/components/schemas/ProfileRequest'
+              responses:
+                '200':
+                  description: The saved profile
+              x-amazon-apigateway-integration:
+                type: aws_proxy
+                httpMethod: POST
+                uri: !Sub 'arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${MeProfilePutFunction.Arn}/invocations'
+          /api/ledger:
+            get:
+              security:
+                - CognitoUserPool: []
+              responses:
+                '200':
+                  description: Members, groups, rates and balances
+              x-amazon-apigateway-integration:
+                type: aws_proxy
+                httpMethod: POST
+                uri: !Sub 'arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LedgerReadFunction.Arn}/invocations'
+          /api/expenses:
+            get:
+              security:
+                - CognitoUserPool: []
+              responses:
+                '200':
+                  description: One page of expenses
+              x-amazon-apigateway-integration:
+                type: aws_proxy
+                httpMethod: POST
+                uri: !Sub 'arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LedgerReadFunction.Arn}/invocations'
+            post:
+              security:
+                - CognitoUserPool: []
+              x-amazon-apigateway-request-validator: body-only
+              requestBody:
+                required: true
+                content:
+                  application/json:
+                    schema:
+                      $ref: '#/components/schemas/NewExpenseRequest'
+              responses:
+                '201':
+                  description: The saved expense
+              x-amazon-apigateway-integration:
+                type: aws_proxy
+                httpMethod: POST
+                uri: !Sub 'arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ExpensesWriteFunction.Arn}/invocations'
+          /api/expenses/{expenseId}:
+            get:
+              security:
+                - CognitoUserPool: []
+              parameters:
+                - name: expenseId
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+              responses:
+                '200':
+                  description: One expense in full
+              x-amazon-apigateway-integration:
+                type: aws_proxy
+                httpMethod: POST
+                uri: !Sub 'arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LedgerReadFunction.Arn}/invocations'
+            put:
+              security:
+                - CognitoUserPool: []
+              parameters:
+                - name: expenseId
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+              x-amazon-apigateway-request-validator: body-only
+              requestBody:
+                required: true
+                content:
+                  application/json:
+                    schema:
+                      $ref: '#/components/schemas/ExpenseEditRequest'
+              responses:
+                '200':
+                  description: The saved expense
+              x-amazon-apigateway-integration:
+                type: aws_proxy
+                httpMethod: POST
+                uri: !Sub 'arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ExpensesWriteFunction.Arn}/invocations'
+          /api/payments:
+            get:
+              security:
+                - CognitoUserPool: []
+              responses:
+                '200':
+                  description: One page of payments
+              x-amazon-apigateway-integration:
+                type: aws_proxy
+                httpMethod: POST
+                uri: !Sub 'arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LedgerReadFunction.Arn}/invocations'
+            post:
+              security:
+                - CognitoUserPool: []
+              x-amazon-apigateway-request-validator: body-only
+              requestBody:
+                required: true
+                content:
+                  application/json:
+                    schema:
+                      $ref: '#/components/schemas/PaymentRequest'
+              responses:
+                '201':
+                  description: The saved payment
+              x-amazon-apigateway-integration:
+                type: aws_proxy
+                httpMethod: POST
+                uri: !Sub 'arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${PaymentsPostFunction.Arn}/invocations'
+          /api/groups:
+            post:
+              security:
+                - CognitoUserPool: []
+              x-amazon-apigateway-request-validator: body-only
+              requestBody:
+                required: true
+                content:
+                  application/json:
+                    schema:
+                      $ref: '#/components/schemas/NewGroupRequest'
+              responses:
+                '201':
+                  description: The saved group
+              x-amazon-apigateway-integration:
+                type: aws_proxy
+                httpMethod: POST
+                uri: !Sub 'arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GroupsWriteFunction.Arn}/invocations'
+          /api/groups/{groupId}:
+            put:
+              security:
+                - CognitoUserPool: []
+              parameters:
+                - name: groupId
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+              x-amazon-apigateway-request-validator: body-only
+              requestBody:
+                required: true
+                content:
+                  application/json:
+                    schema:
+                      $ref: '#/components/schemas/GroupEditRequest'
+              responses:
+                '200':
+                  description: The saved group
+              x-amazon-apigateway-integration:
+                type: aws_proxy
+                httpMethod: POST
+                uri: !Sub 'arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GroupsWriteFunction.Arn}/invocations'
+          /api/exchange-rates:
+            post:
+              security:
+                - CognitoUserPool: []
+              x-amazon-apigateway-request-validator: body-only
+              requestBody:
+                required: true
+                content:
+                  application/json:
+                    schema:
+                      $ref: '#/components/schemas/ExchangeRatesRequest'
+              responses:
+                '201':
+                  description: The saved rates
+              x-amazon-apigateway-integration:
+                type: aws_proxy
+                httpMethod: POST
+                uri: !Sub 'arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ExchangeRatesPostFunction.Arn}/invocations'
 
   HealthGetInvokePermission:
     Type: AWS::Lambda::Permission
@@ -319,6 +1088,83 @@ Resources:
       FunctionName: !Ref AuthSessionFunction
       Principal: apigateway.amazonaws.com
       SourceArn: !Sub 'arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${RestApi}/*/*/api/auth/session*'
+  LedgerReadLedgerInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !Ref LedgerReadFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${RestApi}/*/GET/api/ledger'
+  LedgerReadExpensesInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !Ref LedgerReadFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${RestApi}/*/GET/api/expenses'
+  LedgerReadExpenseInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !Ref LedgerReadFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${RestApi}/*/GET/api/expenses/*'
+  LedgerReadPaymentsInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !Ref LedgerReadFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${RestApi}/*/GET/api/payments'
+  MeProfilePutInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !Ref MeProfilePutFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${RestApi}/*/PUT/api/me/profile'
+  ExpensesWritePostInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !Ref ExpensesWriteFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${RestApi}/*/POST/api/expenses'
+  ExpensesWritePutInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !Ref ExpensesWriteFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${RestApi}/*/PUT/api/expenses/*'
+  PaymentsPostInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !Ref PaymentsPostFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${RestApi}/*/POST/api/payments'
+  GroupsWritePostInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !Ref GroupsWriteFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${RestApi}/*/POST/api/groups'
+  GroupsWritePutInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !Ref GroupsWriteFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${RestApi}/*/PUT/api/groups/*'
+  ExchangeRatesPostInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !Ref ExchangeRatesPostFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${RestApi}/*/POST/api/exchange-rates'
 
 #  --END -- REST API
 

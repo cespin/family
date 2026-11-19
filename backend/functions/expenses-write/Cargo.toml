@@ -1,0 +1,15 @@
+[package]
+name = "expenses-write"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+description = "POST /api/expenses and PUT /api/expenses/{expenseId}"
+
+[dependencies]
+aws-config.workspace = true
+aws-sdk-dynamodb.workspace = true
+family-core.workspace = true
+family-ledger.workspace = true
+lambda_http.workspace = true
+tokio.workspace = true

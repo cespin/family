@@ -24,6 +24,7 @@
     "forbidden": "No tienes permiso para hacer esto.",
     "not_found": "No encontramos lo que buscas.",
     "conflict": "Alguien más cambió esto. Actualiza e inténtalo de nuevo.",
+    "member_has_open_balance": "Esta persona todavía tiene saldos pendientes en el grupo. Salden las cuentas antes de sacarla.",
     "request_error": "No pudimos procesar tu solicitud.",
     "too_many_requests": "Demasiados intentos. Espera un momento.",
     "internal_error": "Algo salió mal de nuestro lado. Inténtalo más tarde.",

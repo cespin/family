@@ -23,7 +23,7 @@ The OpenAPI document inline in `templates/api/stack.yaml` is the source of truth
 
 ### URL Structure
 
-Routes are unversioned and live under `/api`. Today's routes are all singletons with singular names, such as `/api/me` and `/api/auth/session`. For a future collection, use plural, lowercase nouns in kebab-case. The routes below are illustrative and do not exist yet.
+Routes are unversioned and live under `/api`. Singletons have singular names, such as `/api/me` and `/api/auth/session`. Collections use plural, lowercase nouns in kebab-case, such as `/api/exchange-rates`. The routes below are illustrative and do not exist yet.
 
 ```
 GET    /api/shopping-lists
@@ -118,7 +118,7 @@ The `body-only` validator does not check query strings or path parameters, so th
 
 ## Pagination, Filtering and Sorting
 
-No route returns a list yet, so no pagination contract exists. When the first one arrives, decide the contract and record it in `docs/api-contract.md`. DynamoDB has no offset, so a cursor built from `LastEvaluatedKey` is the natural fit. Treat the cursor as opaque to the client.
+`GET /api/expenses` and `GET /api/payments` set the contract, which is in `docs/api-contract.md`: `limit`, an opaque `cursor` tied to the filters it was read with, and `nextCursor`, which is null on the last page.
 
 Use query parameters for filtering (`?status=active`), and design the sort key for the order the screen needs.
 
@@ -132,7 +132,7 @@ Use query parameters for filtering (`?status=active`), and design the sort key f
 
 - **Identity comes only from the authorizer's claims,** through `family_core::claims::Caller`. Never take it from a body, a query string or a self-parsed header.
 - **The authorizer expects the ID token.** The empty scope list makes API Gateway validate an ID token, and `../frontend/web/src/lib/api.js` sends it as the raw `Authorization` value with no `Bearer` prefix.
-- **A valid token does not prove current membership.** `functions/me-get/src/main.rs` re-reads the allowlist through `Members::is_member`, so a removed member is refused while their token is still valid. Do the same on any route that returns or changes family data.
+- **A valid token does not prove current membership.** `account_of` in `functions/family-ledger/src/service/access.rs` re-reads the allowlist, so a removed member is refused while their token is still valid. Do the same on any route that returns or changes family data.
 - **The browser and the API share one origin,** so there is no CORS configuration.
 
 ## Rate Limiting
@@ -141,7 +141,7 @@ Throttling is set on the stage by `scripts/deploy-vertical.sh`, at 10 requests p
 
 ## Implementation Pattern
 
-One crate per Lambda, kept thin. The handler is generic over its dependencies so tests can use a fake, as in `functions/me-get/src/main.rs`:
+One crate per Lambda, kept thin. The handler is generic over its dependencies so tests can use a fake. Ledger routes put this logic in `functions/family-ledger/src/api.rs`, generic over `Table`. A route outside the ledger follows this shape:
 
 ```rust
 use family_core::claims::Caller;

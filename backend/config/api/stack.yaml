@@ -13,3 +13,9 @@ parameters:
   HealthGetCodeS3Key: lambda/health-get/{{ var.code_health_get }}/bootstrap.zip
   MeGetCodeS3Key: lambda/me-get/{{ var.code_me_get }}/bootstrap.zip
   AuthSessionCodeS3Key: lambda/auth-session/{{ var.code_auth_session }}/bootstrap.zip
+  LedgerReadCodeS3Key: lambda/ledger-read/{{ var.code_ledger_read }}/bootstrap.zip
+  MeProfilePutCodeS3Key: lambda/me-profile-put/{{ var.code_me_profile_put }}/bootstrap.zip
+  ExpensesWriteCodeS3Key: lambda/expenses-write/{{ var.code_expenses_write }}/bootstrap.zip
+  PaymentsPostCodeS3Key: lambda/payments-post/{{ var.code_payments_post }}/bootstrap.zip
+  GroupsWriteCodeS3Key: lambda/groups-write/{{ var.code_groups_write }}/bootstrap.zip
+  ExchangeRatesPostCodeS3Key: lambda/exchange-rates-post/{{ var.code_exchange_rates_post }}/bootstrap.zip

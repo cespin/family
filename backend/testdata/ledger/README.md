@@ -10,8 +10,8 @@ All names and addresses are made up, and every address uses `example.test`.
 |---|---|
 | `items.jsonl` | The base data: one DynamoDB item per line, in typed JSON |
 | `scenarios/<name>.jsonl` | Items to load on top of the base data for one situation |
-| `expected.json` | What the API must return to each caller, for the base data and each scenario |
-| `requests.json` | Requests to send against the base data, with the answer each must get. Nothing has run them yet, because the API does not exist |
+| `expected.json` | What the API must return to each caller, for the base data and each scenario, and the requests behind each scenario's writes |
+| `requests.json` | Requests to send against the base data, with the answer each must get |
 | `COVERAGE.md` | Which data represents each requirement, and what data cannot represent |
 | `dataset.mjs` | The source: the family's writes, in order, plus scenarios and request cases |
 | `replay.mjs` | Reference model of the allocation rules, used to compute `expected.json` |
@@ -33,8 +33,8 @@ scripts/ddb-local.sh seed payment-over       # the base data plus one scenario
 
 ## Use it in tests
 
-- **Tests against DynamoDB Local** load the data as above. `cargo test --workspace` must stay hermetic, so keep these tests out of the default run.
-- **Hermetic tests** can read the same files with `include_str!` and feed the items to a hand-written fake.
+- **Tests against DynamoDB Local** run through `scripts/test-ddb-local.sh`. `cargo test --workspace` must stay hermetic, so they stay out of the default run.
+- **Hermetic tests** in `functions/family-ledger/tests` load the same files into an in-memory table.
 - **Each case in `requests.json` assumes freshly loaded base data**, because many of them change it.
 - **Stored pair items must equal a full replay.** `items.jsonl` holds the correct `PAIR#` and `ALLOC#` items, so a test can run the API's writes and compare the results with them.
 - **`expected.json` uses aliases** such as `carlos` and `care`. Its `ids` section maps each alias to the real identifier.

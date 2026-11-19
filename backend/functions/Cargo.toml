@@ -2,10 +2,17 @@
 resolver = "2"
 members = [
     "family-core",
+    "family-ledger",
     "health-get",
     "me-get",
     "auth-session",
     "auth-presignup",
+    "ledger-read",
+    "me-profile-put",
+    "expenses-write",
+    "payments-post",
+    "groups-write",
+    "exchange-rates-post",
 ]
 
 [workspace.package]
@@ -16,6 +23,7 @@ rust-version = "1.94.1"
 
 [workspace.dependencies]
 family-core = { path = "family-core" }
+family-ledger = { path = "family-ledger" }
 
 lambda_http = "1.3.0"
 lambda_runtime = "1.3.0"
@@ -33,6 +41,12 @@ serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.151"
 thiserror = "2.0.19"
 tracing = "0.1"
+# Exact arithmetic for money. Floats never touch an amount or a rate.
+num-bigint = "0.4"
+num-rational = { version = "0.4", default-features = false, features = ["num-bigint-std"] }
+num-traits = "0.2"
+sha2 = "0.10"
+uuid = { version = "1", features = ["v4"] }
 # ring and webpki-roots only, which cross-compile to arm64 without cmake. Blocking, so calls run
 # inside spawn_blocking.
 ureq = { version = "3.3", default-features = false, features = ["rustls"] }

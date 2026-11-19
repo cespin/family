@@ -1,0 +1,15 @@
+[package]
+name = "me-profile-put"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+description = "PUT /api/me/profile"
+
+[dependencies]
+aws-config.workspace = true
+aws-sdk-dynamodb.workspace = true
+family-core.workspace = true
+family-ledger.workspace = true
+lambda_http.workspace = true
+tokio.workspace = true

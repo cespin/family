@@ -72,6 +72,11 @@ export class Ledger {
   group = (alias) => this.id('group', alias);
   expenseId = (alias) => this.id('expense', alias);
 
+  // Scenarios keep the requests behind their writes, so tests can send them through the API.
+  record(by, method, path, body) {
+    this.state.writes?.push({ caller: this.state.members[by].alias, method, path, body });
+  }
+
   commit(sortKeys) {
     this.state.rev += 1;
     this.state.lastWrite = sortKeys.map((SK) => ({ PK: LEDGER_PK, SK }));
@@ -103,12 +108,13 @@ export class Ledger {
           })),
         credits: pair.credits
           .filter((credit) => credit.minor !== 0)
-          .map(({ paymentId, seq, minor, currency, groupId }) => ({
+          .map(({ paymentId, seq, minor, currency, groupId, applied }) => ({
             paymentId,
             seq,
             amountMinor: minor,
             currency,
             groupId: groupId ?? undefined,
+            appliedTotal: `${applied.n}/${applied.d}`,
           })),
         newestDebt: newest ?? undefined,
       });
@@ -221,6 +227,7 @@ export class Ledger {
     const split = usualSplit && this.percentMap(usualSplit);
     const body = { requestId, name, memberIds, usualSplit: split };
     const rev = this.commit([`GROUP#${id}`]);
+    this.record(this.member(by), 'POST', '/api/groups', body);
     this.state.bodies[alias] = body;
     this.state.groups[id] = {
       id,
@@ -261,6 +268,7 @@ export class Ledger {
     const version = group.version;
     const body = { requestId, name: name ?? group.name, memberIds, usualSplit, version };
     const rev = this.commit([`GROUP#${group.id}`]);
+    this.record(group.createdBy, 'PUT', `/api/groups/${group.id}`, body);
     Object.assign(group, {
       name: body.name,
       memberIds,
@@ -278,6 +286,7 @@ export class Ledger {
     const latest = this.state.rates[this.state.rates.length - 1]?.date ?? date;
     const effective = date < latest ? latest : date;
     const rev = this.commit([`RATE#${id}`]);
+    this.record(this.member(by), 'POST', '/api/exchange-rates', body);
     this.state.rates.push({
       id,
       alias,
@@ -352,6 +361,7 @@ export class Ledger {
     const keys = [`EXPENSE#${id}`, ...(split ? [`GROUP#${group.id}`] : [])];
     const rev = this.commit(keys);
     const hash = requestHash(body);
+    this.record(this.member(by ?? payer), 'POST', '/api/expenses', body);
     this.state.bodies[alias] = body;
     this.state.expenses[id] = {
       ...fields,
@@ -413,6 +423,7 @@ export class Ledger {
       version: expense.version,
     };
     const rev = this.commit([`EXPENSE#${expense.id}`]);
+    this.record(expense.addedBy, 'PUT', `/api/expenses/${expense.id}`, body);
     this.state.expenses[expense.id] = {
       ...updated,
       version: expense.version + 1,
@@ -439,6 +450,7 @@ export class Ledger {
       groupId,
     };
     const rev = this.commit([`PAYMENT#${id}`]);
+    this.record(this.member(by ?? from), 'POST', '/api/payments', body);
     this.state.bodies[alias] = body;
     this.state.payments[id] = {
       id,
@@ -1124,6 +1136,64 @@ export const SCENARIOS = [
       }),
     expect: { almuerzo: 'settled', kinesiologia: 'settled', creditCurrency: 'CAD' },
   },
+  {
+    name: 'credit-exact-paid-share',
+    requirement: 'Section 12, amounts stay whole',
+    description: 'Credit from a payment credited at another value pays a later debt in a third currency',
+    apply: (l) => {
+      l.addExpense('dolares', {
+        title: 'Compra en dólares',
+        kind: 'other',
+        group: 'family',
+        payer: 'papa',
+        amountMinor: 301,
+        currency: 'USD',
+        date: '2026-11-18',
+        participants: ['carlos'],
+      });
+      l.pay('carlos-papa', {
+        from: 'carlos',
+        to: 'papa',
+        amountMinor: 3963,
+        currency: 'CAD',
+        method: 'transfer',
+        date: '2026-11-18',
+        credited: { amountMinor: 26550, currency: 'CLP' },
+      });
+      l.addExpense('pesos', {
+        title: 'Compra en pesos',
+        kind: 'other',
+        group: 'family',
+        payer: 'papa',
+        amountMinor: 952,
+        currency: 'CLP',
+        date: '2026-11-19',
+        participants: ['carlos'],
+      });
+    },
+    // Rounding the credit first would give CAD 1,42.
+    expect: { paidSlice: ['pesos', 'carlos-papa', 143] },
+  },
+  {
+    name: 'zero-share',
+    requirement: 'Section 5, splits',
+    description: 'CLP 1 split equally between two people leaves Lucía with a share of zero and no debt',
+    views: ['lucia'],
+    apply: (l) =>
+      l.addExpense('peso', {
+        title: 'Un peso',
+        kind: 'other',
+        group: 'care',
+        payer: 'carlos',
+        amountMinor: 1,
+        currency: 'CLP',
+        date: '2026-11-18',
+        participants: ['carlos', 'lucia'],
+      }),
+    expect: {
+      standing: ['peso', 'lucia', { involved: true, openMinor: 0, settled: true }, 'paid'],
+    },
+  },
 ];
 
 /** Requests to send against the base data, each with the answer the API must give. */
@@ -1264,6 +1334,8 @@ export function requestCases(l) {
     ['editing after leaving the group', 'beto', putExpense('cabana'), edit('cabana'), NOT_FOUND],
     ['an edit that changes what a former member owes', 'diego', putExpense('gasolina'), edit('gasolina', { amountMinor: 6000 }), INVALID],
     ['an edit that leaves a former member untouched', 'diego', putExpense('gasolina'), edit('gasolina', { title: 'Bencina del viaje' }), OK],
+    ['moving an expense to a group a participant is not in', 'diego', putExpense('compra-cad'), edit('compra-cad', { groupId: g('care') }), INVALID],
+    ['adding a participant from outside the group', 'carlos', putExpense('tablet'), edit('tablet', { splitMode: 'equal', percents: undefined, participantIds: [m('carlos'), m('lucia'), m('diego'), m('mama')] }), INVALID],
 
     // Section 7, recording a payment.
     ['paying yourself', 'carlos', POST_PAYMENT, payment({ toId: m('carlos') }), INVALID],
@@ -1399,6 +1471,8 @@ export const COVERAGE = [
   ['9', 'Expenses load in pages, and filters run on the server', '`requests.json`, `lists` in `expected.json`'],
   ['9', 'Moving an expense to another group retires its old list entries', 'scenario `edit-changes-group`'],
   ['4', 'A payment that became pure credit can still be listed', 'payment `papa-rosa`, `requests.json`'],
+  ['12', 'A later slice of credit keeps the exact share of what was paid', 'scenario `credit-exact-paid-share`'],
+  ['5', 'A share that rounds to zero creates no debt', 'scenario `zero-share`'],
 ];
 
 /** Requirements that stored data cannot show, and what has to test them instead. */

@@ -5,7 +5,8 @@ Rust Lambdas (`functions/`), CloudFormation templates (`templates/<vertical>/`) 
 ## Layout
 
 - `functions/family-core`: shared errors, HTTP helpers, claims and allowlist access.
-- `functions/<route>`: one crate per Lambda, kept thin.
+- `functions/family-ledger`: the expenses ledger's money rules, storage protocols and route handlers.
+- `functions/<route>`: one crate per Lambda, kept thin. Routes that need the same table access share one.
 - `stacks/main.yaml`: environment values. `stacks/main.build.yaml` is generated and gitignored.
 - `scripts/`: the only supported way to build and deploy.
 - `testdata/ledger/`: the data set tests load into DynamoDB Local.
@@ -20,7 +21,7 @@ Rust Lambdas (`functions/`), CloudFormation templates (`templates/<vertical>/`) 
 
 ## Checks
 
-From `functions/`: `cargo test --workspace`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo fmt --all -- --check`.
+From `functions/`: `cargo test --workspace`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo fmt --all -- --check`. From `backend/`: `scripts/test-ddb-local.sh` runs the ledger against DynamoDB Local.
 
 ## Map
 

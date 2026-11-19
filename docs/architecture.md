@@ -40,4 +40,4 @@ Before storing family data, decide its backup and retention needs. Files and pho
 - **No origin mutual TLS.** The API's default endpoint stays reachable, protected by the Cognito authorizer, the origin check on session routes and stage throttling.
 - **One environment.** `main` is production. A second environment would be a new var file in `backend/stacks/`.
 - **Private by default.** Every response carries `X-Robots-Tag: noindex`, and staged frontend builds are unlisted rather than access-controlled, so family data must never be baked into a build.
-- **Financial records are kept indefinitely,** as section 8 of `docs/frontend-requirements.md` sets out. The expenses design is in `backend/docs/dynamodb-schema.md` and `backend/docs/api-contract.md`, and is not deployed yet.
+- **Financial records are kept indefinitely,** as section 8 of `docs/frontend-requirements.md` sets out. The expenses design is in `backend/docs/dynamodb-schema.md` and `backend/docs/api-contract.md`.

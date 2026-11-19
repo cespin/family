@@ -9,7 +9,16 @@ import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'nod
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { COVERAGE, LEDGER_PK, NOT_REPRESENTED, SCENARIOS, baseLedger, requestCases } from './dataset.mjs';
-import { appliedPayments, expenseView, pairBalances, replay, standingsFor, sumIn } from './replay.mjs';
+import {
+  allocationSlices,
+  appliedPayments,
+  creditSlicePaid,
+  expenseView,
+  pairBalances,
+  replay,
+  standingsFor,
+  sumIn,
+} from './replay.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SCHEMA_DOC = join(HERE, '..', '..', 'docs', 'dynamodb-schema.md');
@@ -316,12 +325,26 @@ function assertSeenBy(ledger, name, seenBy) {
 }
 
 function assertScenario(ledger, { name, expect }) {
-  const { groupsCad, credit, credits, creditCurrency, pairs, group, seenBy, ...debts } = expect;
+  const { groupsCad, credit, credits, creditCurrency, pairs, group, seenBy, paidSlice, standing, ...debts } = expect;
   for (const [alias, left] of Object.entries(debts)) {
     assert.equal(debtLeft(ledger, alias), left, `${name}: ${alias}`);
   }
   for (const [alias, x, y, left] of pairs ?? []) {
     assert.equal(pairLeft(ledger, alias, x, y), left, `${name}: ${alias} between ${x} and ${y}`);
+  }
+  if (paidSlice) {
+    const [expense, payment, paidMinor] = paidSlice;
+    const slices = appliedPayments(ledger.pairs(), Object.values(ledger.state.payments), ledger.expenseId(expense));
+    const slice = slices.find((item) => item.paymentId === ledger.id('payment', payment));
+    assert.equal(slice?.paidMinor, paidMinor, `${name}: paid amount of the slice`);
+  }
+  if (standing) {
+    const [expense, alias, expected, status] = standing;
+    const item = ledger.state.expenses[ledger.expenseId(expense)];
+    const view = expenseView(ledger.pairs(), item, ledger.member(alias));
+    assert.deepEqual(view.standing, expected, `${name}: standing`);
+    const row = view.participants.find((entry) => entry.memberId === ledger.member(alias));
+    assert.equal(row.status, status, `${name}: status`);
   }
   if (group) assertGroup(ledger, name, group);
   if (seenBy) assertSeenBy(ledger, name, seenBy);
@@ -344,15 +367,31 @@ function assertOpenStateIsEnough(ledger, name) {
   const ids = Object.keys(ledger.state.members);
   const full = ledger.pairs();
   const pruned = replay(ids, ledger.events(), { prune: true });
+  const payments = Object.values(ledger.state.payments);
   const open = (pair) => ({
     balances: pairBalances(pair),
     debts: pair.debts.filter((debt) => !debt.closed),
     credits: pair.credits,
     newest: pair.newest,
-    allocations: pair.allocations.map(({ paymentId, expenseId, coveredMinor }) => ({ paymentId, expenseId, coveredMinor })),
+    allocations: allocationSlices(pair, payments).map(({ paymentId, expenseId, coveredMinor, paidMinor }) => ({
+      paymentId,
+      expenseId,
+      coveredMinor,
+      paidMinor,
+    })),
   });
   for (const [key, pair] of full) {
     assert.deepEqual(open(pruned.get(key)), open(pair), `${name}: open state alone gives a different result`);
+
+    // A slice funded by stored credit must get its paid amount from what the credit item holds.
+    const slices = allocationSlices(pair, payments);
+    pair.allocations.forEach((allocation, index) => {
+      if (allocation.creditBefore) {
+        const payment = payments.find((item) => item.id === allocation.paymentId);
+        const paid = creditSlicePaid(payment, allocation.creditBefore, allocation.applied);
+        assert.equal(paid, slices[index].paidMinor, `${name}: stored credit gives a different paid amount`);
+      }
+    });
   }
 }
 
@@ -384,6 +423,7 @@ function describeScenario(ledger, { name, requirement, description, views = [] }
     description,
     file: `scenarios/${name}.jsonl`,
     head: { rev: ledger.state.rev },
+    ids: ledger.state.ids,
     carlos: describeCaller(ledger, carlos, pairs, names),
     otherCallers: Object.fromEntries(
       views.map((alias) => [
@@ -393,6 +433,7 @@ function describeScenario(ledger, { name, requirement, description, views = [] }
     ),
     creditWithLucia: creditWithLucia(ledger),
     groupBalancesInCad: groupsInCad(ledger),
+    writes: ledger.state.writes,
   };
 }
 
@@ -534,6 +575,7 @@ function buildFiles() {
   const scenarios = [];
   for (const scenario of SCENARIOS) {
     const ledger = base.clone();
+    ledger.state.writes = [];
     scenario.apply(ledger);
     assertScenario(ledger, scenario);
     assertOpenStateIsEnough(ledger, scenario.name);

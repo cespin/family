@@ -160,7 +160,10 @@ function replayPair(low, high, events, { prune = false } = {}) {
               ? Math.abs(credit.minor)
               : round(convert(taken, currency, credit.currency, rates));
           if (cover(debt, taken, owed, currency, rates, credit.paymentId)) {
-            allocations[allocations.length - 1].applied = frac(used);
+            const allocation = allocations[allocations.length - 1];
+            allocation.applied = frac(used);
+            allocation.creditBefore = credit.applied;
+            credit.applied = add(credit.applied, frac(used));
             credit.minor -= Math.sign(credit.minor) * used;
           }
         }
@@ -175,6 +178,7 @@ function replayPair(low, high, events, { prune = false } = {}) {
     // The payer owes the debts whose sign this is.
     const direction = fromId === low ? -1 : 1;
     let left = frac(amountMinor);
+    let allocated = frac(0);
 
     const owing = debts
       .filter((debt) => !debt.closed && Math.sign(debt.remaining) === direction)
@@ -189,6 +193,7 @@ function replayPair(low, high, events, { prune = false } = {}) {
         const taken = smallest(left, owed, room(debt.groupId, direction, currency, rates));
         if (isPositive(taken) && cover(debt, taken, owed, currency, rates, id)) {
           left = sub(left, taken);
+          allocated = add(allocated, taken);
           closeIfEven(debt.groupId, currency, rates);
         }
       }
@@ -218,6 +223,9 @@ function replayPair(low, high, events, { prune = false } = {}) {
         seq,
         minor: -direction * rest,
         currency,
+        // Exactly how much of this payment has reached debts. The credit itself is rounded, so the
+        // paid amount of a later slice cannot be worked out from it.
+        applied: allocated,
         groupId: chosen ?? newest?.groupId ?? null,
       });
     }
@@ -296,26 +304,28 @@ export function expenseView(pairs, expense, me) {
   const others = participantIds.filter((memberId) => memberId !== payerId);
   const involved = payerId === me || participantIds.includes(me);
 
+  // A share that rounds to zero creates no debt, so there is nothing left to pay on it.
   let standing = { involved: false, openMinor: null, settled: false };
   if (payerId === me) {
     const mine = others.map((memberId) => debtBetween(pairs, id, me, memberId)).filter(Boolean);
     const openMinor = mine
       .filter((debt) => !debt.closed)
       .reduce((sum, debt) => sum + Math.abs(debt.remaining), 0);
-    standing = { involved, openMinor, settled: mine.length > 0 && mine.every((d) => d.closed) };
+    standing = { involved, openMinor, settled: others.length > 0 && mine.every((d) => d.closed) };
   } else if (involved) {
     const debt = debtBetween(pairs, id, me, payerId);
+    const closed = !debt || debt.closed;
     standing = {
       involved,
-      openMinor: debt.closed ? 0 : -Math.abs(debt.remaining),
-      settled: debt.closed,
+      openMinor: closed ? 0 : -Math.abs(debt.remaining),
+      settled: closed,
     };
   }
 
   const participants = participantIds.map((memberId) => {
     if (memberId === payerId) return { memberId, status: 'paid' };
     const debt = debtBetween(pairs, id, memberId, payerId);
-    if (debt.closed) return { memberId, status: 'paid' };
+    if (!debt || debt.closed) return { memberId, status: 'paid' };
     const partly = Math.abs(debt.remaining) < Math.abs(debt.gross);
     return { memberId, status: partly ? 'partly_paid' : 'owes' };
   });
@@ -336,6 +346,15 @@ export function pairBalances(pair) {
   return [...totals.values()].filter((entry) => entry.amountMinor !== 0);
 }
 
+// Rounding the running total means the slices of a payment add up to what was paid.
+const paidShare = (payment, value) =>
+  round(mul(frac(payment.paid.amountMinor), div(value, frac(payment.credited.amountMinor))));
+
+/** The paid amount of a slice funded by stored credit, from the credit's exact running total. */
+export function creditSlicePaid(payment, appliedBefore, used) {
+  return paidShare(payment, add(appliedBefore, used)) - paidShare(payment, appliedBefore);
+}
+
 /** Each slice of a pair's payments, with its share of what was really paid. */
 export function allocationSlices(pair, payments) {
   const applied = new Map();
@@ -344,15 +363,12 @@ export function allocationSlices(pair, payments) {
     const before = applied.get(payment.id) ?? frac(0);
     const after = add(before, allocation.applied);
     applied.set(payment.id, after);
-    // Rounding the running total means the slices of a payment add up to what was paid.
-    const paidShare = (value) =>
-      round(mul(frac(payment.paid.amountMinor), div(value, frac(payment.credited.amountMinor))));
     return {
       expenseId: allocation.expenseId,
       paymentId: payment.id,
       fromId: payment.fromId,
       toId: payment.toId,
-      paidMinor: paidShare(after) - paidShare(before),
+      paidMinor: paidShare(payment, after) - paidShare(payment, before),
       paidCurrency: payment.paid.currency,
       coveredMinor: allocation.coveredMinor,
       method: payment.method,

@@ -5,7 +5,18 @@ Routes are unversioned under `/api`. The OpenAPI document inline in `templates/a
 | Route | Auth | Purpose |
 |---|---|---|
 | `GET /api/health` | None | Confirms the API is reachable |
-| `GET /api/me` | Cognito | The signed-in family member |
+| `GET /api/me` | Cognito | The signed-in family member. `memberId`, `displayName` and `homeCurrency` are null until the first-sign-in step is done |
+| `PUT /api/me/profile` | Cognito | Completes the first-sign-in step, and later changes the home currency |
+| `GET /api/ledger` | Cognito | Members, groups, exchange rates and the caller's balances |
+| `GET /api/expenses` | Cognito | One page of expenses, newest first |
+| `GET /api/expenses/{expenseId}` | Cognito | One expense in full, with its payments |
+| `POST /api/expenses` | Cognito | Adds an expense, answering 201 |
+| `PUT /api/expenses/{expenseId}` | Cognito | Edits an expense |
+| `GET /api/payments` | Cognito | One page of the caller's own payments, newest first |
+| `POST /api/payments` | Cognito | Records a payment, answering 201 |
+| `POST /api/groups` | Cognito | Creates a group, answering 201 |
+| `PUT /api/groups/{groupId}` | Cognito | Renames a group or changes its members |
+| `POST /api/exchange-rates` | Cognito | Enters new exchange rates, answering 201 |
 | `POST /api/auth/session` | None | Exchanges an authorization code and sets the session cookie |
 | `POST /api/auth/session/refresh` | Session cookie | Returns a fresh ID token |
 | `DELETE /api/auth/session` | Session cookie | Revokes the session and clears the cookie |
@@ -27,28 +38,14 @@ Every non-2xx response with a body has this shape:
 | `forbidden` | 403 |
 | `not_found` | 404 |
 | `conflict` | 409 |
+| `member_has_open_balance` | 409 |
 | `too_many_requests` | 429 |
 | `request_error` | Other 4xx |
 | `internal_error` | 5xx |
 
-## Designed, not deployed: family expenses
+## Family expenses
 
-Nothing in this section is live. Each route moves into the tables above when it ships. The rules behind these routes are in `docs/frontend-requirements.md`, and the item layout is in `dynamodb-schema.md`.
-
-| Route | Success | Purpose |
-|---|---|---|
-| `GET /api/me` | 200 | Adds `memberId`, `displayName` and `homeCurrency`, each null until the first-sign-in step is done |
-| `PUT /api/me/profile` | 200 | Completes the first-sign-in step, and later changes the home currency |
-| `GET /api/ledger` | 200 | Members, groups, exchange rates and the caller's balances |
-| `GET /api/expenses` | 200 | One page of expenses, newest first |
-| `GET /api/expenses/{expenseId}` | 200 | One expense in full, with its payments |
-| `POST /api/expenses` | 201 | Adds an expense |
-| `PUT /api/expenses/{expenseId}` | 200 | Edits an expense |
-| `GET /api/payments` | 200 | One page of the caller's own payments, newest first |
-| `POST /api/payments` | 201 | Records a payment |
-| `POST /api/groups` | 201 | Creates a group |
-| `PUT /api/groups/{groupId}` | 200 | Renames a group or changes its members |
-| `POST /api/exchange-rates` | 201 | Enters new exchange rates |
+The rules behind these routes are in `docs/frontend-requirements.md`, and the item layout is in `dynamodb-schema.md`.
 
 Every route uses the `CognitoUserPool` authorizer, re-reads the allowlist and answers with `Cache-Control: no-store`. Apart from `GET /api/me` and `PUT /api/me/profile`, a caller who has not finished the first-sign-in step gets `forbidden`.
 
@@ -122,7 +119,7 @@ Balances come from `GET /api/ledger` and never depend on how many expenses have 
 }
 ```
 
-- **`active`** is false for a former member, who stays in the history but cannot be chosen for anything new.
+- **`active`** is false for a former member, who stays in the history but cannot be added to a new expense or group. A payment with them is still accepted, so an old debt can always be cleared.
 - **`exchangeRates`** runs newest first, so the first entry is the current one. It is empty until rates are entered.
 - **`standings`** amounts stay in their original currencies. Positive means that member owes the caller. A `groupId` of null is credit between two people who share no group.
 
@@ -231,9 +228,10 @@ Takes `limit` and `cursor` as above, and optionally `memberId` to list only the 
 - **`usualSplit` on an expense** asks to make it the group's usual split, and holds a whole percentage for every current member of the group.
 - **The debt currency** is `currency`. It must be one of the purchase's two currencies, and the form defaults it to `chargedCurrency`.
 - **`credited`** is sent only when a payment clears the debt. It can be in any supported currency, and is accepted only within the tolerance in section 12 of the requirements. Otherwise the server credits exactly what was paid.
+- **`paid.amountMinor`** can be at most 9007199254740991, the largest integer a browser reads exactly.
 - **`participantIds` order is not significant.** The server stores participants in group order, because equal splits depend on it. A participant who has left the group keeps their position on the expense.
 
-A write returns the saved resource, in the shape its read route uses: `GET /api/expenses/{expenseId}` for an expense, `GET /api/payments` for a payment, and `GET /api/ledger` for the others. The frontend reloads the balances and the first page after every save, because one change can move many standings.
+A write returns the saved resource, in the shape its read route uses: `GET /api/expenses/{expenseId}` for an expense, one entry of `payments` in `GET /api/payments` for a payment, and one entry of `groups` or `exchangeRates` in `GET /api/ledger` for a group or exchange rate. `PUT /api/me/profile` returns the `GET /api/me` shape. The frontend reloads the balances and the first page after every save, because one change can move many standings.
 
 ### Errors on these routes
 
@@ -243,6 +241,4 @@ A write returns the saved resource, in the shape its read route uses: `GET /api/
 | The caller did not add this expense or create this group, or has not finished the first-sign-in step | `forbidden` |
 | The expense, group or member does not exist or is not visible to the caller, including in a query parameter | `not_found` |
 | A stale `version`, a reused `requestId` with different content, or a write that kept losing to others | `conflict` |
-| A member with an open balance in the group cannot be removed from it | `member_has_open_balance` (409) |
-
-`member_has_open_balance` is the one new code. It needs its `ApiError` variant and an `errors.member_has_open_balance` translation when the route ships.
+| A member with an open balance in the group cannot be removed from it | `member_has_open_balance` |

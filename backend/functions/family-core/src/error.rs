@@ -22,6 +22,9 @@ pub enum ApiError {
     NotFound(String),
     #[error("{0}")]
     Conflict(String),
+    /// A member cannot leave a group while they still owe or are owed money in it.
+    #[error("{0}")]
+    MemberHasOpenBalance(String),
     /// The reason is logged and never returned.
     #[error("{0}")]
     Internal(String),
@@ -37,6 +40,7 @@ impl ApiError {
             Self::Forbidden(_) => "forbidden",
             Self::NotFound(_) => "not_found",
             Self::Conflict(_) => "conflict",
+            Self::MemberHasOpenBalance(_) => "member_has_open_balance",
             Self::Internal(_) => "internal_error",
         }
     }
@@ -47,7 +51,7 @@ impl ApiError {
             Self::Unauthorized(_) => 401,
             Self::Forbidden(_) => 403,
             Self::NotFound(_) => 404,
-            Self::Conflict(_) => 409,
+            Self::Conflict(_) | Self::MemberHasOpenBalance(_) => 409,
             Self::Internal(_) => 500,
         }
     }
@@ -78,6 +82,10 @@ impl ApiError {
         Self::NotFound(msg.into())
     }
 
+    pub fn conflict(msg: impl Into<String>) -> Self {
+        Self::Conflict(msg.into())
+    }
+
     pub fn internal(msg: impl Into<String>) -> Self {
         Self::Internal(msg.into())
     }
@@ -102,6 +110,7 @@ mod tests {
     #[case(ApiError::Forbidden("f".into()), 403, "forbidden")]
     #[case(ApiError::NotFound("n".into()), 404, "not_found")]
     #[case(ApiError::Conflict("c".into()), 409, "conflict")]
+    #[case(ApiError::MemberHasOpenBalance("m".into()), 409, "member_has_open_balance")]
     #[case(ApiError::Internal("i".into()), 500, "internal_error")]
     fn every_variant_maps_to_its_status_and_code(
         #[case] err: ApiError,

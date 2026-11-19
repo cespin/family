@@ -4,7 +4,7 @@ What the Tres Monos web app needs from the backend, described by what family mem
 
 ## 1. Where things stand
 
-The expense screens are built and deployed, but no expenses API exists. A deployed build shows signed-in members a notice that the accounts are not available yet. Under `npm run dev` the screens run on an in-memory sample ledger.
+The expense screens are built and deployed, but they are not connected to the expenses API yet. A deployed build shows signed-in members a notice that the accounts are not available yet. Under `npm run dev` the screens run on an in-memory sample ledger.
 
 | File in `frontend/web/src/` | Why it matters to the API work |
 |---|---|
@@ -181,7 +181,7 @@ The backend owns these figures (see section 6):
 | Equal | Divide and round down. Any remainder goes one minor unit at a time to the first participants, in group order |
 | Percent | Whole percentages adding up to exactly 100 across participants. Round each share, and the largest share absorbs the difference |
 
-Shares always add up to exactly the expense total.
+Shares always add up to exactly the expense total. A share that rounds to zero creates no debt, so that participant has nothing to pay.
 
 ### Purchases charged in a different currency
 
@@ -316,7 +316,7 @@ A percentage expense can also ask to become the group's usual split. That change
 | Rule | Detail |
 |---|---|
 | Parties | Two different members, and the caller must be one of them. Either side can record it |
-| Amount paid | A positive integer in minor units of a supported currency. The expense maximum does not apply, because one payment can cover several expenses |
+| Amount paid | A positive integer in minor units of a supported currency, up to 9007199254740991. The expense maximum does not apply, because one payment can cover several expenses |
 | Method | One of the values in section 4 |
 | Group | Optional. When present, both parties must belong to it |
 | Date | A valid calendar date supplied by the browser |
@@ -444,7 +444,7 @@ Continuing the last scenario in section 6, where Lucía owes Carlos CLP 3.450 he
 
 ### Full payments against mixed currencies
 
-When a payment clears a balance held in several currencies, the backend works out the net debt itself at the current rates. It accepts the credited value only if that value is within one minor unit of the paying currency, and otherwise credits exactly what was paid. The credited value can be in any supported currency, and it is the amount allocated to debts.
+When a payment clears a balance held in several currencies, the frontend sends the debt's value as the credited value. The backend converts what was paid at the current rates, accepts the credited value only if it is within one minor unit of the paying currency, and otherwise credits exactly what was paid. The credited value can be in any supported currency, and it is the amount allocated to debts.
 
 ### Credit with no group
 

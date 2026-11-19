@@ -8,9 +8,9 @@ One table, `main-fa01-family`, with string keys `PK` and `SK`. The `expiresAt` a
 
 New modules add their own `PK` prefix here.
 
-## Designed, not deployed: family expenses
+## Family expenses
 
-Nothing below exists in the table yet. Each item moves into the table above when the route that writes it ships. The behaviour comes from `docs/frontend-requirements.md`, and the routes are in `api-contract.md`.
+The behaviour comes from `docs/frontend-requirements.md`, and the routes are in `api-contract.md`.
 
 The design needs no GSI and no change to the table definition in `templates/data/stack.yaml`.
 
@@ -78,7 +78,7 @@ Each pair of members has one state item. Amounts in it are signed from the point
 
 - **`balances`** holds the open amount per group and currency. An entry with no `groupId` is credit that belongs to no group.
 - **`openDebts`** holds each debt that is not closed: `expenseId`, `groupId`, `date`, `seq`, `currency`, `grossMinor` and `remainingMinor`. A closed debt leaves the list, so the item's size follows what is unpaid rather than the length of the history.
-- **`credits`** holds unused credit: `paymentId`, `seq`, `amountMinor`, `currency` and `groupId`.
+- **`credits`** holds unused credit: `paymentId`, `seq`, `amountMinor`, `currency`, `groupId` and `appliedTotal`. `appliedTotal` is the exact amount of the payment that has reached debts so far, in the credited currency, written as a fraction such as `141169/50`. `amountMinor` is rounded, so a later slice needs this value to work out its share of what was really paid.
 - **`newestDebt`** holds the `date`, `seq` and `groupId` of the newest expense between the two, closed or not, because leftover credit can belong to its group.
 
 Each allocation item holds what payments covered on expenses dated in that year: `paymentId`, `expenseId`, `fromId`, `toId`, `paidMinor`, `paidCurrency`, `coveredMinor`, `method` and `date`. An expense's date never changes, so its detail screen reads exactly one allocation item per pair.
@@ -93,11 +93,13 @@ Each allocation item holds what payments covered on expenses dated in that year:
 
 ### Write protocol
 
-1. If the item already carries this `requestId`, answer from it: the same request hash returns the saved result, and a different hash is `conflict`. This check runs before any other, so a retried save that already landed never reports a conflict.
+1. Confirm the caller is invited and is a member. Then, if the item already carries this `requestId`, answer from it: the same request hash from the same member returns the saved result, and anything else is `conflict`. This check runs before the remaining ones, so a retried save that already landed never reports a conflict.
 2. Run the read protocol to load the balances, groups, members and rates. An edit also replays the affected pairs.
 3. Validate against the loaded state, including `version` on an edit.
 4. Send one `TransactWriteItems` with the changed items, a `ConditionCheck` that the caller's allowlist item exists, and an update of the head conditioned on the `rev` read in step 2. It stamps the new `rev` on each changed item except the account link, and lists their keys in `lastWrite`.
-5. If only the head condition failed, repeat from step 1, up to three times. After that, answer `conflict`.
+5. If the transaction was cancelled only by the head condition or by a `TransactionConflict`, repeat from step 1, up to three times. After that, answer `conflict`.
+
+**The head is created by the first write.** A table with no head item is at revision 0, so that write is conditioned on the head not existing.
 
 | Write | Items in the transaction |
 |---|---|
@@ -122,7 +124,7 @@ AWS documents `Query` as read-committed against transactions, so a read can see 
 5. Accept the result only if both heads have the same `rev`, no item has a higher `rev`, and every key in `lastWrite` carries that `rev`.
 6. Otherwise repeat, up to three times, then fail with `internal_error`. A failed read is never returned as partial data.
 
-This protocol comes from the documented isolation levels. It has not been exercised against concurrent writes yet, so the implementation needs a test for it.
+`family-ledger/tests/protocols.rs` interleaves writes with each step of this protocol. DynamoDB Local cannot produce a partly visible transaction on demand, so that part is proven only against the in-memory table.
 
 ### Test data set
 
