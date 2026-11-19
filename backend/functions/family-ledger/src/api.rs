@@ -124,17 +124,24 @@ pub async fn expenses_write<T: Table, E: Env>(
     finish(if creating { 201 } else { 200 }, result.await)
 }
 
-/// `POST /api/payments`.
+/// `POST /api/payments` and `PUT /api/payments/{paymentId}`.
 pub async fn payments_post<T: Table, E: Env>(
     table: &T,
     env: &E,
     event: &Request,
 ) -> Response<Body> {
+    let creating = event.method() == Method::POST;
     let result = async {
         let caller = Caller::from_request(event)?;
-        payments::post_payment(table, env, &caller, http::parse_json_body(event)?).await
+        let body = http::parse_json_body(event)?;
+        if creating {
+            payments::post_payment(table, env, &caller, body).await
+        } else {
+            let payment_id = path_parameter(event, "paymentId")?;
+            payments::put_payment(table, &caller, &payment_id, body).await
+        }
     };
-    finish(201, result.await)
+    finish(if creating { 201 } else { 200 }, result.await)
 }
 
 /// `POST /api/groups` and `PUT /api/groups/{groupId}`.

@@ -282,6 +282,9 @@ function participantIds(expense) {
   return Object.keys(expense.shares);
 }
 
+// Seed items predate transaction dates, so they read their entry date, as the API's old items do.
+const transactionDay = (item) => item.transactionDate ?? item.date;
+
 function listItemJson(expense) {
   return {
     id: expense.id,
@@ -293,6 +296,7 @@ function listItemJson(expense) {
     amountMinor: expense.amountMinor,
     currency: expense.currency,
     date: expense.date,
+    transactionDate: transactionDay(expense),
     participantIds: participantIds(expense),
     standing: standingJson(expense),
   };
@@ -337,6 +341,7 @@ function detailJson(expense) {
       coveredMinor: payment.coversMinor ?? payment.amountMinor,
       method: payment.method,
       date: payment.date,
+      transactionDate: transactionDay(payment),
     })),
   };
   delete body.participantIds;
@@ -357,7 +362,7 @@ function listExpenses(params) {
   const matches = state.expenses
     .filter((expense) => groupIds.includes(expense.groupId))
     .filter((expense) => (!groupId || expense.groupId === groupId) && (!kind || expense.kind === kind))
-    .sort((a, b) => b.date.localeCompare(a.date) || b.seq - a.seq);
+    .sort((a, b) => transactionDay(b).localeCompare(transactionDay(a)) || b.seq - a.seq);
   const page = matches.slice(offset, offset + limit);
   return {
     revision: state.revision,
@@ -404,6 +409,7 @@ function addExpense(body) {
     seq: state.nextSeq++,
     addedById: ME,
     date: body.date,
+    transactionDate: body.transactionDate ?? body.date,
     version: 1,
     ...expenseFields(body, group),
   };
@@ -417,7 +423,10 @@ function editExpense(id, body) {
   if (expense.addedById !== ME) fail(403, 'forbidden');
   if (body.version !== (expense.version ?? 1)) fail(409, 'conflict');
   const group = findGroup(body.groupId);
-  Object.assign(expense, expenseFields(body, group), { version: body.version + 1 });
+  Object.assign(expense, expenseFields(body, group), {
+    transactionDate: body.transactionDate ?? transactionDay(expense),
+    version: body.version + 1,
+  });
   saveUsual(body, group);
   return detailJson(expense);
 }
@@ -434,18 +443,67 @@ function addPayment(body) {
     groupId: body.groupId,
     method: body.method,
     date: body.date,
+    transactionDate: body.transactionDate ?? body.date,
+    paid: clone(body.paid),
+    version: 1,
   };
   state.settlements.push(payment);
+  return paymentJson(payment);
+}
+
+function paymentJson(payment) {
+  const counted = { amountMinor: payment.amountMinor, currency: payment.currency };
   return {
     id: payment.id,
     fromId: payment.fromId,
     toId: payment.toId,
-    paid: clone(body.paid),
-    credited: clone(counted),
+    paid: clone(payment.paid ?? counted),
+    credited: counted,
     method: payment.method,
     date: payment.date,
+    transactionDate: transactionDay(payment),
     groupId: payment.groupId ?? null,
+    version: payment.version ?? 1,
   };
+}
+
+// Every payment with me, once each: those recorded here and those the seed puts on expenses.
+function myPayments() {
+  const all = [...state.settlements, ...state.expenses.flatMap((expense) => expense.payments ?? [])];
+  const byId = new Map();
+  for (const payment of all) {
+    if ((payment.fromId === ME || payment.toId === ME) && !byId.has(payment.id)) {
+      byId.set(payment.id, payment);
+    }
+  }
+  return [...byId.values()];
+}
+
+function listPayments(params) {
+  const limit = Number(params.get('limit') ?? 50);
+  const offset = Number(params.get('cursor') ?? 0);
+  const matches = myPayments().sort(
+    (a, b) => transactionDay(b).localeCompare(transactionDay(a)) || b.id.localeCompare(a.id),
+  );
+  return {
+    revision: state.revision,
+    payments: matches.slice(offset, offset + limit).map(paymentJson),
+    nextCursor: offset + limit < matches.length ? String(offset + limit) : null,
+  };
+}
+
+// The seed repeats a payment on each expense it covers, so every copy gets the new day.
+function editPayment(id, body) {
+  const copies = [...state.settlements, ...state.expenses.flatMap((expense) => expense.payments ?? [])]
+    .filter((payment) => payment.id === id);
+  if (copies.length === 0 || !myPayments().some((payment) => payment.id === id)) {
+    fail(404, 'not_found');
+  }
+  if (body.version !== (copies[0].version ?? 1)) fail(409, 'conflict');
+  for (const payment of copies) {
+    Object.assign(payment, { transactionDate: body.transactionDate, version: body.version + 1 });
+  }
+  return paymentJson(copies[0]);
 }
 
 function addGroup(body) {
@@ -511,6 +569,7 @@ const WRITES = [
   ['POST', /^\/expenses$/, (body) => addExpense(body)],
   ['PUT', /^\/expenses\/([^/]+)$/, (body, id) => editExpense(id, body)],
   ['POST', /^\/payments$/, (body) => addPayment(body)],
+  ['PUT', /^\/payments\/([^/]+)$/, (body, id) => editPayment(id, body)],
   ['POST', /^\/groups$/, (body) => addGroup(body)],
   ['PUT', /^\/groups\/([^/]+)$/, (body, id) => editGroup(id, body)],
   ['POST', /^\/exchange-rates$/, (body) => addRates(body)],
@@ -522,6 +581,7 @@ export async function sampleApi(path, { method = 'GET', body } = {}) {
 
   if (method === 'GET' && route === '/ledger') return clone(ledgerJson());
   if (method === 'GET' && route === '/expenses') return clone(listExpenses(url.searchParams));
+  if (method === 'GET' && route === '/payments') return clone(listPayments(url.searchParams));
   const detail = route.match(/^\/expenses\/([^/]+)$/);
   if (method === 'GET' && detail) {
     return clone(detailJson(findExpense(decodeURIComponent(detail[1]))));

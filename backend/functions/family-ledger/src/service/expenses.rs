@@ -37,6 +37,7 @@ struct NewExpenseRequest {
     amount_minor: i64,
     currency: Currency,
     date: String,
+    transaction_date: Option<String>,
     split_mode: SplitMode,
     participant_ids: Vec<String>,
     percents: Option<BTreeMap<String, i64>>,
@@ -46,7 +47,8 @@ struct NewExpenseRequest {
     usual_split: Option<BTreeMap<String, i64>>,
 }
 
-/// The same fields without the date, which an edit keeps, and with the version it read.
+/// The same fields without the entry date, which an edit keeps, and with the version it read. An
+/// absent transaction date keeps the one saved.
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct ExpenseEditRequest {
@@ -57,6 +59,7 @@ struct ExpenseEditRequest {
     payer_id: String,
     amount_minor: i64,
     currency: Currency,
+    transaction_date: Option<String>,
     split_mode: SplitMode,
     participant_ids: Vec<String>,
     percents: Option<BTreeMap<String, i64>>,
@@ -76,6 +79,7 @@ struct Fields {
     payer_id: String,
     amount_minor: i64,
     currency: Currency,
+    transaction_date: Option<String>,
     split_mode: SplitMode,
     participant_ids: Vec<String>,
     percents: Option<BTreeMap<String, i64>>,
@@ -96,6 +100,9 @@ fn require_amount(money_minor: i64, currency: Currency) -> Result<()> {
 /// The rules in section 7 that need nothing but the request itself.
 fn check_fields(fields: &mut Fields) -> Result<()> {
     require_request_id(&fields.request_id)?;
+    if let Some(date) = &fields.transaction_date {
+        require_date(date)?;
+    }
     fields.title = required_name(&fields.title, "title")?;
     if fields
         .note
@@ -210,17 +217,17 @@ fn usual_split_item(fields: &Fields, group: &Group, hash: &str, rev: u64) -> Res
     Ok(Some(to_item(&keys::group(&group.id), &changed, rev)?))
 }
 
-fn group_entry_key(expense: &Expense) -> Key {
+pub(crate) fn group_entry_key(expense: &Expense) -> Key {
     Key::new(
         keys::group_expenses_pk(&expense.group_id),
-        keys::entry_sort_key(&expense.date, expense.seq),
+        keys::entry_sort_key(expense.transaction_date(), expense.seq),
     )
 }
 
-fn kind_entry_key(expense: &Expense) -> Key {
+pub(crate) fn kind_entry_key(expense: &Expense) -> Key {
     Key::new(
         keys::group_kind_pk(&expense.group_id, expense.kind),
-        keys::entry_sort_key(&expense.date, expense.seq),
+        keys::entry_sort_key(expense.transaction_date(), expense.seq),
     )
 }
 
@@ -252,6 +259,12 @@ async fn add_once<T: Table, E: Env>(
         other_currency: fields.other_amount.as_ref().map(|other| other.currency),
         charged_currency: fields.charged_currency,
         date: date.to_string(),
+        transaction_date: Some(
+            fields
+                .transaction_date
+                .clone()
+                .unwrap_or_else(|| date.to_string()),
+        ),
         split_mode: fields.split_mode,
         participant_ids,
         shares,
@@ -319,6 +332,7 @@ pub async fn post_expense<T: Table, E: Env>(
         payer_id: request.payer_id,
         amount_minor: request.amount_minor,
         currency: request.currency,
+        transaction_date: request.transaction_date,
         split_mode: request.split_mode,
         participant_ids: request.participant_ids,
         percents: request.percents,
@@ -541,6 +555,12 @@ async fn edit_once<T: Table>(table: &T, context: &EditContext<'_>) -> Result<Opt
         other_amount_minor: fields.other_amount.as_ref().map(|other| other.amount_minor),
         other_currency: fields.other_amount.as_ref().map(|other| other.currency),
         charged_currency: fields.charged_currency,
+        transaction_date: Some(
+            fields
+                .transaction_date
+                .clone()
+                .unwrap_or_else(|| old.transaction_date().to_string()),
+        ),
         split_mode: fields.split_mode,
         participant_ids,
         shares,
@@ -600,6 +620,7 @@ pub async fn put_expense<T: Table>(
         payer_id: request.payer_id,
         amount_minor: request.amount_minor,
         currency: request.currency,
+        transaction_date: request.transaction_date,
         split_mode: request.split_mode,
         participant_ids: request.participant_ids,
         percents: request.percents,

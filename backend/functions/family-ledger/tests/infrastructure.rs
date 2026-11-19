@@ -14,7 +14,7 @@ const CONFIG: &str = include_str!("../../../config/api/stack.yaml");
 const BUILD_SCRIPT: &str = include_str!("../../../scripts/build-functions.sh");
 
 /// Every ledger route: method, path, resource name, crate and request schema.
-const ROUTES: [(&str, &str, &str, &str, Option<&str>); 11] = [
+const ROUTES: [(&str, &str, &str, &str, Option<&str>); 12] = [
     (
         "put",
         "/api/me/profile",
@@ -52,6 +52,13 @@ const ROUTES: [(&str, &str, &str, &str, Option<&str>); 11] = [
         "PaymentsPost",
         "payments-post",
         Some("PaymentRequest"),
+    ),
+    (
+        "put",
+        "/api/payments/{paymentId}",
+        "PaymentsPost",
+        "payments-post",
+        Some("PaymentEditRequest"),
     ),
     (
         "post",

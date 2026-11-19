@@ -182,6 +182,7 @@ async fn check_caller(table: &FakeTable, caller: &str, view: &Value, expected: &
                     "coveredMinor": slice["coveredMinor"],
                     "method": slice["method"],
                     "date": slice["date"],
+                    "transactionDate": slice["transactionDate"],
                 })
             })
             .collect();

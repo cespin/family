@@ -383,7 +383,7 @@ Resources:
     DependsOn: PaymentsPostLogGroup
     Properties:
       FunctionName: !Sub '${StackName}-${Salt}-payments-post'
-      Description: !Sub 'POST /api/payments - ${AppName} - stack ${StackName}'
+      Description: !Sub 'POST /api/payments and PUT /api/payments/{paymentId} - ${AppName} - stack ${StackName}'
       Runtime: provided.al2023
       Architectures:
         - arm64
@@ -633,6 +633,8 @@ Resources:
                   type: string
                 date:
                   type: string
+                transactionDate:
+                  type: string
                 splitMode:
                   type: string
                 participantIds:
@@ -690,6 +692,8 @@ Resources:
                 amountMinor:
                   type: integer
                 currency:
+                  type: string
+                transactionDate:
                   type: string
                 splitMode:
                   type: string
@@ -765,8 +769,24 @@ Resources:
                   type: string
                 date:
                   type: string
+                transactionDate:
+                  type: string
                 groupId:
                   type: string
+            PaymentEditRequest:
+              type: object
+              additionalProperties: false
+              required:
+                - requestId
+                - transactionDate
+                - version
+              properties:
+                requestId:
+                  type: string
+                transactionDate:
+                  type: string
+                version:
+                  type: integer
             NewGroupRequest:
               type: object
               additionalProperties: false
@@ -1006,6 +1026,30 @@ Resources:
                 type: aws_proxy
                 httpMethod: POST
                 uri: !Sub 'arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${PaymentsPostFunction.Arn}/invocations'
+          /api/payments/{paymentId}:
+            put:
+              security:
+                - CognitoUserPool: []
+              parameters:
+                - name: paymentId
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+              x-amazon-apigateway-request-validator: body-only
+              requestBody:
+                required: true
+                content:
+                  application/json:
+                    schema:
+                      $ref: '#/components/schemas/PaymentEditRequest'
+              responses:
+                '200':
+                  description: The saved payment
+              x-amazon-apigateway-integration:
+                type: aws_proxy
+                httpMethod: POST
+                uri: !Sub 'arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${PaymentsPostFunction.Arn}/invocations'
           /api/groups:
             post:
               security:
@@ -1144,6 +1188,13 @@ Resources:
       FunctionName: !Ref PaymentsPostFunction
       Principal: apigateway.amazonaws.com
       SourceArn: !Sub 'arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${RestApi}/*/POST/api/payments'
+  PaymentsPostPutInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !Ref PaymentsPostFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${RestApi}/*/PUT/api/payments/*'
   GroupsWritePostInvokePermission:
     Type: AWS::Lambda::Permission
     Properties:

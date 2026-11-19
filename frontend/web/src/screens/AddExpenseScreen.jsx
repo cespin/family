@@ -10,6 +10,7 @@ import {
   usualSplitLabel,
 } from '../components/expenses/labels.js';
 import { SubHeader } from '../components/expenses/SubHeader.jsx';
+import { TransactionDateField } from '../components/expenses/TransactionDateField.jsx';
 import {
   Avatar,
   Button,
@@ -25,7 +26,14 @@ import { useSession } from '../hooks/useSession.js';
 import { errorMessage } from '../i18n/errors.js';
 import { currencyDigits, formatAmountInput, formatMinor, formatNumber } from '../i18n/format.js';
 import { saveExpense } from '../lib/expenses.js';
-import { groupById, memberById, myself, todayIso } from '../lib/ledger.js';
+import {
+  groupById,
+  isTransactionDate,
+  memberById,
+  myself,
+  todayIso,
+  transactionDateOf,
+} from '../lib/ledger.js';
 import {
   CURRENCIES,
   EXPENSE_MAX_MINOR,
@@ -83,6 +91,7 @@ function formForGroup(ledger, group, base) {
 function blankForm(ledger) {
   return formForGroup(ledger, ledger.groups[0], {
     title: '',
+    transactionDate: todayIso(),
     note: '',
     amount: '',
     currency: myself(ledger).currency,
@@ -113,6 +122,7 @@ function formFromExpense(ledger, expense) {
   const chargedMoney = charged && debtIsCharged ? own : expense.otherAmount;
   return {
     title: expense.title,
+    transactionDate: transactionDateOf(expense),
     note: expense.note ?? '',
     amount: formatAmountInput(receipt.amountMinor, receipt.currency),
     currency: receipt.currency,
@@ -396,7 +406,8 @@ function ExpenseForm({ ledger, ledgerState, expense, nav, onConflict }) {
     chargedProblem: other ? amountProblem(t, other.minor, other.currency) : null,
   });
   const hasTitle = form.title.trim().length > 0;
-  const canSave = split.ok && hasTitle && !saving;
+  const hasDate = isTransactionDate(form.transactionDate);
+  const canSave = split.ok && hasTitle && hasDate && !saving;
   // A usual split names every current member of the group, so it cannot include someone who left.
   const canKeepUsual = isPercent && includedIds.every((id) => group.memberIds.includes(id));
 
@@ -404,6 +415,7 @@ function ExpenseForm({ ledger, ledgerState, expense, nav, onConflict }) {
     if (saving) return t('expenses:add.submit.saving');
     if (!split.ok) return split.submit;
     if (!hasTitle) return t('expenses:add.submit.needTitle');
+    if (!hasDate) return t('expenses:when.submitNeedDate');
     return expense ? t('expenses:add.submit.save') : t('expenses:add.submit.ready');
   }
 
@@ -480,6 +492,7 @@ function ExpenseForm({ ledger, ledgerState, expense, nav, onConflict }) {
       payerId: form.payerId,
       amountMinor: debt.minor,
       currency: debt.currency,
+      transactionDate: form.transactionDate,
       splitMode: form.mode,
       participantIds: includedIds,
     };
@@ -496,6 +509,7 @@ function ExpenseForm({ ledger, ledgerState, expense, nav, onConflict }) {
         group.memberIds.map((id) => [id, form.included[id] ? (form.percents[id] ?? 0) : 0]),
       );
     }
+    // The entry date is today's, and an edit keeps the one it was saved with.
     if (expense) body.version = expense.version;
     else body.date = todayIso();
     return prepare(body);
@@ -556,6 +570,11 @@ function ExpenseForm({ ledger, ledgerState, expense, nav, onConflict }) {
             maxLength={TITLE_MAX}
             value={form.title}
             onChange={(event) => update({ title: event.target.value })}
+          />
+
+          <TransactionDateField
+            value={form.transactionDate}
+            onChange={(transactionDate) => update({ transactionDate })}
           />
 
           <div className="fa-add__group">

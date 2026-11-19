@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { Card, ExpenseRow } from '../ui';
 import { formatCalendarDate, formatMinor } from '../../i18n/format.js';
-import { memberById } from '../../lib/ledger.js';
+import { memberById, transactionDateOf } from '../../lib/ledger.js';
 
 /** What the expense means for me, from the `standing` the API sent with it. */
 function shareLabel(t, { involved, openMinor, settled }) {
@@ -21,7 +21,7 @@ export function ExpenseList({ ledger, expenses, onOpen }) {
         const payer = memberById(ledger, expense.payerId);
         const { standing } = expense;
         const details = {
-          date: formatCalendarDate(expense.date, { day: 'numeric', month: 'short' }),
+          date: formatCalendarDate(transactionDateOf(expense), { day: 'numeric', month: 'short' }),
           total: formatMinor(expense.amountMinor, expense.currency),
         };
         // A settled expense shows no amount: the API reports nothing left open on it.

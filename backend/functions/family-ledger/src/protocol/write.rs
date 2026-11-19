@@ -24,10 +24,9 @@ pub enum Commit {
     Contended,
 }
 
-/// Sends the transaction for a write based on what was read at `rev`.
-pub async fn commit<T: Table>(table: &T, rev: u64, email: &str, plan: WritePlan) -> Result<Commit> {
-    let last_write = plan
-        .items
+/// The head after a write based on what was read at `rev`, naming every item it changes.
+fn head_put(rev: u64, items: &[Item]) -> Result<TxOp> {
+    let last_write = items
         .iter()
         .map(|item| {
             let key = Key::of(item)?;
@@ -41,12 +40,30 @@ pub async fn commit<T: Table>(table: &T, rev: u64, email: &str, plan: WritePlan)
     head_item.insert("SK".to_string(), Value::from(head.sk));
     head_item.insert("rev".to_string(), Value::from(rev + 1));
     head_item.insert("lastWrite".to_string(), Value::Array(last_write));
+    Ok(TxOp::Put {
+        item: head_item,
+        guard: Guard::Rev(rev),
+    })
+}
 
+/// Sends a write made by an operator rather than a member, such as a one-time backfill. It moves
+/// the head like any other write, so reads in flight notice it.
+pub async fn commit_as_operator<T: Table>(table: &T, rev: u64, items: Vec<Item>) -> Result<Commit> {
+    let mut ops = vec![head_put(rev, &items)?];
+    ops.extend(items.into_iter().map(|item| TxOp::Put {
+        item,
+        guard: Guard::None,
+    }));
+    match table.transact(ops).await? {
+        TxOutcome::Committed => Ok(Commit::Saved),
+        TxOutcome::Cancelled(_) => Ok(Commit::Contended),
+    }
+}
+
+/// Sends the transaction for a write based on what was read at `rev`.
+pub async fn commit<T: Table>(table: &T, rev: u64, email: &str, plan: WritePlan) -> Result<Commit> {
     let mut ops = vec![
-        TxOp::Put {
-            item: head_item,
-            guard: Guard::Rev(rev),
-        },
+        head_put(rev, &plan.items)?,
         TxOp::Check {
             key: keys::allowlist(email),
             guard: Guard::Exists,

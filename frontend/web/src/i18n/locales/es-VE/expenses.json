@@ -53,7 +53,8 @@
     "unknown": "Cuentas con {{name}}",
     "theirCurrency": "En su moneda: {{amount}}",
     "settle": "Saldar cuentas",
-    "advance": "Anotar un adelanto"
+    "advance": "Anotar un adelanto",
+    "payments": "Pagos y adelantos"
   },
   "row": {
     "meta": "Pagó {{name}} · {{date}} · {{total}}",
@@ -339,5 +340,25 @@
     "needName": "Primero escribe un nombre",
     "needPeople": "Elige al menos a una persona más",
     "conflict": "Alguien más cambió este grupo mientras lo editabas. Ya cargamos su versión: revisa tus cambios y vuelve a guardar."
+  },
+  "when": {
+    "label": "¿Qué día fue?",
+    "hint": "Puede ser un día pasado, pero no uno que todavía no llega.",
+    "submitNeedDate": "Elige un día de hoy o antes"
+  },
+  "payments": {
+    "back": "Volver a saldos",
+    "title": "Pagos y adelantos",
+    "intro": "Lo que has pagado o recibido, por el día en que pasó el dinero. Toca uno para cambiar su día: no cambia lo que se debe.",
+    "youGave": "Le diste {{amount}} a {{name}}",
+    "gaveYou": "{{name}} te dio {{amount}}",
+    "meta": "{{date}} · {{method}}",
+    "save": "Guardar el día",
+    "cancel": "Cancelar",
+    "saved": "Listo: «{{title}}» quedó el {{date}}.",
+    "conflict": "Alguien más cambió este pago mientras lo editabas. Ya cargamos su versión: vuelve a elegir el día.",
+    "emptyTitle": "Todavía no hay pagos",
+    "emptyBody": "Cuando saldes cuentas o anotes un adelanto, aparecerá aquí.",
+    "loadMore": "Cargar más pagos"
   }
 }

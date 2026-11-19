@@ -104,6 +104,20 @@ export async function recordPayment(auth, body) {
   return call(auth, '/payments', { method: 'POST', body });
 }
 
+/** One page of the caller's own payments and advances, newest first by the day money changed hands. */
+export async function fetchPayments(auth, { cursor, limit } = {}) {
+  const query = new URLSearchParams();
+  if (limit) query.set('limit', String(limit));
+  if (cursor) query.set('cursor', cursor);
+  const search = query.toString();
+  return call(auth, `/payments${search ? `?${search}` : ''}`);
+}
+
+/** Corrects the day a payment's money was given, the only thing about it that can change. */
+export async function updatePayment(auth, paymentId, body) {
+  return call(auth, `/payments/${encodeURIComponent(paymentId)}`, { method: 'PUT', body });
+}
+
 /** Creates a group, or changes one when `groupId` is given. */
 export async function saveGroup(auth, body, groupId) {
   return groupId

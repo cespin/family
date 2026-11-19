@@ -9,9 +9,12 @@ import {
   fetchExpense,
   fetchExpenses,
   fetchLedger,
+  fetchPayments,
   recordPayment,
   saveExpense,
+  updatePayment,
 } from '../lib/expenses.js';
+import { todayIso } from '../lib/ledger.js';
 import { ratesFromEntry } from '../lib/money.js';
 import { DashboardScreen } from './DashboardScreen.jsx';
 
@@ -22,6 +25,8 @@ vi.mock('../lib/expenses.js', () => ({
   fetchExpense: vi.fn(),
   saveExpense: vi.fn(),
   recordPayment: vi.fn(),
+  fetchPayments: vi.fn(),
+  updatePayment: vi.fn(),
   saveGroup: vi.fn(),
   saveExchangeRates: vi.fn(),
   saveProfile: vi.fn(),
@@ -106,6 +111,22 @@ const SESSION = {
 
 const button = (name) => screen.findByRole('button', { name });
 
+const TODAY = todayIso();
+
+/** A day `days` after today, in the reader's time zone, as YYYY-MM-DD. */
+function dayFromToday(days) {
+  const date = new Date();
+  date.setDate(date.getDate() + days);
+  return todayIso(date);
+}
+
+/** Replaces the day in the date field, which starts at today. */
+async function chooseDay(day) {
+  const field = screen.getByLabelText(i18n.t('expenses:when.label'));
+  await userEvent.clear(field);
+  await userEvent.type(field, day);
+}
+
 // Currency formats use non-breaking spaces, which Testing Library collapses before comparing.
 const shown = (text) => text.replace(/\s+/g, ' ');
 
@@ -117,7 +138,15 @@ function renderWith(data = ledger(), expenses = page()) {
 
 describe('DashboardScreen', () => {
   beforeEach(() => {
-    for (const fn of [fetchLedger, fetchExpenses, fetchExpense, saveExpense, recordPayment]) {
+    for (const fn of [
+      fetchLedger,
+      fetchExpenses,
+      fetchExpense,
+      saveExpense,
+      recordPayment,
+      fetchPayments,
+      updatePayment,
+    ]) {
       vi.mocked(fn).mockReset();
     }
     vi.mocked(useSession).mockReturnValue(SESSION);
@@ -336,10 +365,34 @@ describe('DashboardScreen', () => {
         payerId: 'ana',
         amountMinor: 10001,
         currency: 'CAD',
-        date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+        date: TODAY,
+        transactionDate: TODAY,
         splitMode: 'equal',
         participantIds: ['ana', 'leo'],
       });
+    });
+
+    it('records the day the money was spent apart from the day it is entered', async () => {
+      vi.mocked(saveExpense).mockResolvedValue({});
+      await openForm();
+      await fillIn('Mercado de agosto', '50');
+      await chooseDay('2026-08-03');
+      await submit();
+
+      const body = vi.mocked(saveExpense).mock.calls[0][1];
+      expect(body.transactionDate).toBe('2026-08-03');
+      expect(body.date).toBe(TODAY);
+    });
+
+    it('cannot be saved for a day that has not come yet', async () => {
+      await openForm();
+      await fillIn('Farmacia', '100');
+      await chooseDay(dayFromToday(1));
+
+      const save = screen.getByRole('button', { name: i18n.t('expenses:when.submitNeedDate') });
+      expect(save.disabled).toBe(true);
+      await userEvent.click(save);
+      expect(saveExpense).not.toHaveBeenCalled();
     });
 
     it('sends the same requestId when retrying a save that failed', async () => {
@@ -623,19 +676,22 @@ describe('DashboardScreen', () => {
       expect(second.title).toBe('Almuerzo largo');
     });
 
-    it('edits it with its version and without a date', async () => {
-      const mine = detail({ addedBy: 'ana', payerId: 'ana' });
+    it('edits it with its version and transaction date, and without the entry date', async () => {
+      const mine = detail({ addedBy: 'ana', payerId: 'ana', transactionDate: '2026-11-10' });
       vi.mocked(saveExpense).mockResolvedValue(mine);
       await openLunch(mine);
       await userEvent.click(screen.getByRole('button', { name: i18n.t('expenses:detail.edit') }));
 
       const title = await screen.findByLabelText(i18n.t('expenses:add.what'));
       expect(title.value).toBe('Almuerzo');
+      expect(screen.getByLabelText(i18n.t('expenses:when.label')).value).toBe('2026-11-10');
+      await chooseDay('2026-10-30');
       await userEvent.click(screen.getByRole('button', { name: i18n.t('expenses:add.submit.save') }));
 
       const [, body, expenseId] = vi.mocked(saveExpense).mock.calls[0];
       expect(expenseId).toBe('lunch');
       expect(body.version).toBe(4);
+      expect(body.transactionDate).toBe('2026-10-30');
       expect(body).not.toHaveProperty('date');
       expect(body.amountMinor).toBe(67000);
       expect(body.participantIds).toEqual(['ana', 'leo']);
@@ -669,7 +725,8 @@ describe('DashboardScreen', () => {
         paid: { amountMinor: 5000, currency: 'CAD' },
         credited: { amountMinor: 33500, currency: 'CLP' },
         method: 'transfer',
-        date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+        date: TODAY,
+        transactionDate: TODAY,
       });
     });
 
@@ -752,6 +809,83 @@ describe('DashboardScreen', () => {
       });
       expect(screen.queryByLabelText(i18n.t('expenses:settle.amountYouPay'))).toBeNull();
       expect(recordPayment).toHaveBeenCalledOnce();
+    });
+  });
+
+  describe('payments and advances', () => {
+    const ADVANCE = {
+      id: 'p1',
+      fromId: 'leo',
+      toId: 'ana',
+      paid: { amountMinor: 20000, currency: 'CLP' },
+      credited: { amountMinor: 20000, currency: 'CLP' },
+      method: 'cash',
+      date: '2026-11-19',
+      transactionDate: '2026-11-19',
+      groupId: null,
+      version: 1,
+    };
+    const title = i18n.t('expenses:payments.gaveYou', {
+      name: 'Leo',
+      amount: formatMinor(20000, 'CLP'),
+    });
+
+    async function openPayments(payments = [ADVANCE]) {
+      vi.mocked(fetchPayments).mockResolvedValue({ revision: 1, payments, nextCursor: null });
+      renderWith();
+      await userEvent.click(await button(i18n.t('expenses:balance.payments')));
+      await screen.findByRole('heading', { name: i18n.t('expenses:payments.title') });
+    }
+
+    it('corrects the day an advance was given, sending only the day and its version', async () => {
+      vi.mocked(updatePayment).mockResolvedValue({ ...ADVANCE, transactionDate: '2026-08-05', version: 2 });
+      await openPayments();
+      await userEvent.click(await screen.findByRole('button', { name: new RegExp(title) }));
+      expect(screen.getByLabelText(i18n.t('expenses:when.label')).value).toBe('2026-11-19');
+      await chooseDay('2026-08-05');
+      await userEvent.click(screen.getByRole('button', { name: i18n.t('expenses:payments.save') }));
+
+      expect(updatePayment).toHaveBeenCalledOnce();
+      const [auth, id, body] = vi.mocked(updatePayment).mock.calls[0];
+      expect(auth).toBe(SESSION);
+      expect(id).toBe('p1');
+      expect(body).toEqual({
+        requestId: expect.stringMatching(/^[0-9a-f-]{36}$/),
+        transactionDate: '2026-08-05',
+        version: 1,
+      });
+      await waitFor(() => expect(fetchPayments).toHaveBeenCalledTimes(2));
+      expect(screen.queryByLabelText(i18n.t('expenses:when.label'))).toBeNull();
+    });
+
+    it('reloads the payment when someone else changed it first', async () => {
+      vi.mocked(updatePayment).mockRejectedValue(new ApiError(409, 'conflict'));
+      await openPayments();
+      await userEvent.click(await screen.findByRole('button', { name: new RegExp(title) }));
+      await chooseDay('2026-08-05');
+      await userEvent.click(screen.getByRole('button', { name: i18n.t('expenses:payments.save') }));
+
+      expect(await screen.findByText(i18n.t('expenses:payments.conflict'))).toBeTruthy();
+      await waitFor(() => expect(fetchPayments).toHaveBeenCalledTimes(2));
+    });
+
+    it('cannot move a payment to a day that has not come yet', async () => {
+      await openPayments();
+      await userEvent.click(await screen.findByRole('button', { name: new RegExp(title) }));
+      await chooseDay(dayFromToday(1));
+      const save = screen.getByRole('button', { name: i18n.t('expenses:when.submitNeedDate') });
+      expect(save.disabled).toBe(true);
+      expect(updatePayment).not.toHaveBeenCalled();
+    });
+
+    it('shows a failed load as a failure, not as having no payments', async () => {
+      vi.mocked(fetchPayments).mockRejectedValue(new ApiError(500, 'internal_error'));
+      renderWith();
+      await userEvent.click(await button(i18n.t('expenses:balance.payments')));
+
+      const alert = await screen.findByRole('alert');
+      expect(within(alert).getByText(i18n.t('common:errors.internal_error'))).toBeTruthy();
+      expect(screen.queryByText(i18n.t('expenses:payments.emptyTitle'))).toBeNull();
     });
   });
 
@@ -839,8 +973,21 @@ describe('DashboardScreen', () => {
         toId: 'ana',
         paid: { amountMinor: 200000, currency: 'USD' },
         method: 'transfer',
-        date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+        date: TODAY,
+        transactionDate: TODAY,
       });
+    });
+
+    it('records an advance given months ago on the day it was given', async () => {
+      vi.mocked(recordPayment).mockResolvedValue({});
+      await openAdvance();
+      await fill({});
+      await chooseDay('2026-08-05');
+      await submit(200000, 'USD');
+
+      const body = vi.mocked(recordPayment).mock.calls[0][1];
+      expect(body.transactionDate).toBe('2026-08-05');
+      expect(body.date).toBe(TODAY);
     });
 
     it('records money I gave them the other way round', async () => {

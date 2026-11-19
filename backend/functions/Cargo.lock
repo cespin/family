@@ -811,6 +811,7 @@ dependencies = [
 name = "family-ledger"
 version = "0.1.0"
 dependencies = [
+ "aws-config",
  "aws-sdk-dynamodb",
  "family-core",
  "lambda_http",

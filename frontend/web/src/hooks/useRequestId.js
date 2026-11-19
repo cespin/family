@@ -4,7 +4,9 @@ import { useRef } from 'react';
  * Prepares a save's request with its `requestId`. Sending the same content again, such as after a
  * timeout, reuses the id and the first attempt's `date`, so the API records the expense or payment
  * only once even if the retry happens after midnight. Changed content is a new save and gets a new
- * id, because the API refuses a reused id with different content. Call `done()` after a save
+ * id, because the API refuses a reused id with different content. A `transactionDate` the member
+ * chose is content like any other field, so changing it after a failed save is a new save. Call
+ * `done()` after a save
  * succeeds, so the next one is new even with the same content.
  */
 export function useRequestId() {

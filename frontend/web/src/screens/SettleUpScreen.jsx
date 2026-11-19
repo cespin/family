@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { currencyLabel, quoteLabel } from '../components/expenses/labels.js';
 import { MethodChoice } from '../components/expenses/MethodChoice.jsx';
 import { SubHeader } from '../components/expenses/SubHeader.jsx';
+import { TransactionDateField } from '../components/expenses/TransactionDateField.jsx';
 import {
   Amount,
   Avatar,
@@ -21,7 +22,7 @@ import { useSession } from '../hooks/useSession.js';
 import { errorMessage } from '../i18n/errors.js';
 import { formatAmountInput, formatMinor } from '../i18n/format.js';
 import { recordPayment } from '../lib/expenses.js';
-import { balancesFor, myself, todayIso } from '../lib/ledger.js';
+import { balancesFor, isTransactionDate, myself, todayIso } from '../lib/ledger.js';
 import {
   CURRENCIES,
   PAYMENT_MAX_MINOR,
@@ -86,6 +87,7 @@ function SettleForm({ ledger, row, onRecorded }) {
   const [currency, setCurrency] = useState(other.currency);
   const [amountText, setAmountText] = useState(null);
   const [method, setMethod] = useState('transfer');
+  const [transactionDate, setTransactionDate] = useState(todayIso);
   const [chosenGroupId, setChosenGroupId] = useState(null);
   const [saving, setSaving] = useState(false);
   const [errorCode, setErrorCode] = useState(null);
@@ -134,9 +136,16 @@ function SettleForm({ ledger, row, onRecorded }) {
     setAmountText(null);
   }
 
+  const hasDate = isTransactionDate(transactionDate);
+  let submitText = t('expenses:settle.submitNeedAmount');
+  if (hasAmount && !hasDate) submitText = t('expenses:when.submitNeedDate');
+  else if (hasAmount) {
+    submitText = t('expenses:settle.submit', { amount: formatMinor(paidMinor, currency) });
+  }
+
   async function handleSubmit(event) {
     event.preventDefault();
-    if (!hasAmount || saving) return;
+    if (!hasAmount || !hasDate || saving) return;
     setSaving(true);
     setErrorCode(null);
     const paidText = formatMinor(paidMinor, currency);
@@ -147,6 +156,7 @@ function SettleForm({ ledger, row, onRecorded }) {
         paid: { amountMinor: paidMinor, currency },
         method,
         date: todayIso(),
+        transactionDate,
       };
       if (chosenGroup) body.groupId = chosenGroup.id;
       // A payment that clears the debt also sends the debt's exact value, so conversion rounding
@@ -259,6 +269,8 @@ function SettleForm({ ledger, row, onRecorded }) {
           })}
         </StatusNote>
 
+        <TransactionDateField value={transactionDate} onChange={setTransactionDate} />
+
         {groupsWithDebt.length > 1 && (
           <div className="fa-settle__question">
             <p id={groupLabelId} className="fa-text-label">
@@ -297,10 +309,8 @@ function SettleForm({ ledger, row, onRecorded }) {
           </p>
         )}
 
-        <Button type="submit" size="large" block disabled={!hasAmount || saving}>
-          {hasAmount
-            ? t('expenses:settle.submit', { amount: formatMinor(paidMinor, currency) })
-            : t('expenses:settle.submitNeedAmount')}
+        <Button type="submit" size="large" block disabled={!hasAmount || !hasDate || saving}>
+          {submitText}
         </Button>
       </form>
     </Card>

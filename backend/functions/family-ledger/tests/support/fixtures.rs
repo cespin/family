@@ -97,3 +97,27 @@ pub fn ledger_items<T>(items: &Items, prefix: &str, read: impl Fn(&str, Value) -
         .map(|((_, sk), item)| read(&sk[prefix.len()..], Value::Object(item.clone())))
         .collect()
 }
+
+/// A list entry of expenses or payments.
+pub fn is_list_entry(pk: &str) -> bool {
+    pk.ends_with("#EXPENSES") || pk.contains("#KIND#") || pk.ends_with("#PAYMENTS")
+}
+
+/// The base data as it was stored before transaction dates existed. Every list entry already sits
+/// at `<date>#<seq>`, because the base data's transaction dates equal its entry dates.
+pub fn before_transaction_dates() -> Items {
+    base_items()
+        .into_iter()
+        .map(|((pk, sk), mut item)| {
+            let record =
+                pk == "LEDGER#main" && (sk.starts_with("EXPENSE#") || sk.starts_with("PAYMENT#"));
+            if record || is_list_entry(&pk) {
+                item.remove("transactionDate");
+                if sk.starts_with("PAYMENT#") || pk.ends_with("#PAYMENTS") {
+                    item.remove("version");
+                }
+            }
+            ((pk, sk), item)
+        })
+        .collect()
+}

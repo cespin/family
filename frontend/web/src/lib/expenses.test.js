@@ -4,11 +4,13 @@ import {
   fetchExpense,
   fetchExpenses,
   fetchLedger,
+  fetchPayments,
   recordPayment,
   saveExchangeRates,
   saveExpense,
   saveGroup,
   saveProfile,
+  updatePayment,
 } from './expenses.js';
 
 vi.mock('./api.js', async (importOriginal) => ({
@@ -140,6 +142,12 @@ describe('the expenses seam', () => {
       );
     });
 
+    it('reads a later page of payments', async () => {
+      vi.mocked(apiFetch).mockResolvedValue({ revision: 1, payments: [], nextCursor: null });
+      await fetchPayments(session(), { limit: 50, cursor: 'abc' });
+      expect(vi.mocked(apiFetch).mock.calls[0][0]).toBe('/payments?limit=50&cursor=abc');
+    });
+
     it('opens one expense by id', async () => {
       vi.mocked(apiFetch).mockResolvedValue({ id: 'e/1' });
       await fetchExpense(session(), 'e/1');
@@ -156,6 +164,7 @@ describe('the expenses seam', () => {
       ['adds an expense', () => saveExpense(session(), { title: 'x' }), 'POST', '/expenses'],
       ['edits an expense', () => saveExpense(session(), { title: 'x' }, 'e1'), 'PUT', '/expenses/e1'],
       ['records a payment', () => recordPayment(session(), { title: 'x' }), 'POST', '/payments'],
+      ['corrects a payment', () => updatePayment(session(), 'p/1', { title: 'x' }), 'PUT', '/payments/p%2F1'],
       ['creates a group', () => saveGroup(session(), { title: 'x' }), 'POST', '/groups'],
       ['changes a group', () => saveGroup(session(), { title: 'x' }, 'g1'), 'PUT', '/groups/g1'],
       ['enters rates', () => saveExchangeRates(session(), { title: 'x' }), 'POST', '/exchange-rates'],

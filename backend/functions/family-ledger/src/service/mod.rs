@@ -1,6 +1,7 @@
 //! One use case per route, on top of the protocols.
 
 pub mod access;
+pub mod backfill;
 pub mod env;
 pub mod expenses;
 pub mod groups;

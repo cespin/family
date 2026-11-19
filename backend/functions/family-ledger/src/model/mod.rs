@@ -72,7 +72,12 @@ pub struct Expense {
     pub other_currency: Option<Currency>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub charged_currency: Option<Currency>,
+    /// The day the expense was entered. It orders the debts and never changes.
     pub date: String,
+    /// The day the money was spent, chosen by the member. Absent only on items saved before it
+    /// existed, which read it as `date`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub transaction_date: Option<String>,
     pub split_mode: SplitMode,
     pub participant_ids: Vec<String>,
     pub shares: BTreeMap<String, i64>,
@@ -101,16 +106,42 @@ pub struct Payment {
     pub credited_minor: i64,
     pub credited_currency: Currency,
     pub method: Method,
+    /// The day the payment was entered. It never changes.
     pub date: String,
+    /// The day the money was given, chosen by the member. Absent only on items saved before it
+    /// existed, which read it as `date`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub transaction_date: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub group_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub recorded_rates: Option<RecordedRates>,
     pub recorded_by: String,
     pub recorded_at: String,
+    /// Payments saved before they could be edited are at version 1.
+    #[serde(default = "first_version")]
+    pub version: u64,
     pub seq: u64,
     #[serde(flatten)]
     pub stamp: Stamp,
+}
+
+fn first_version() -> u64 {
+    1
+}
+
+impl Expense {
+    /// The day the money was spent.
+    pub fn transaction_date(&self) -> &str {
+        self.transaction_date.as_deref().unwrap_or(&self.date)
+    }
+}
+
+impl Payment {
+    /// The day the money was given.
+    pub fn transaction_date(&self) -> &str {
+        self.transaction_date.as_deref().unwrap_or(&self.date)
+    }
 }
 
 /// One expense's open debt between two members, signed from the lower member's point of view.
@@ -259,8 +290,16 @@ pub struct ExpenseEntry {
     pub amount_minor: i64,
     pub currency: Currency,
     pub date: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub transaction_date: Option<String>,
     pub participant_ids: Vec<String>,
     pub seq: u64,
+}
+
+impl ExpenseEntry {
+    pub fn transaction_date(&self) -> &str {
+        self.transaction_date.as_deref().unwrap_or(&self.date)
+    }
 }
 
 impl From<&Expense> for ExpenseEntry {
@@ -275,6 +314,7 @@ impl From<&Expense> for ExpenseEntry {
             amount_minor: expense.amount_minor,
             currency: expense.currency,
             date: expense.date.clone(),
+            transaction_date: expense.transaction_date.clone(),
             participant_ids: expense.participant_ids.clone(),
             seq: expense.seq,
         }
@@ -295,8 +335,18 @@ pub struct PaymentEntry {
     pub method: Method,
     pub date: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub transaction_date: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub group_id: Option<String>,
+    #[serde(default = "first_version")]
+    pub version: u64,
     pub seq: u64,
+}
+
+impl PaymentEntry {
+    pub fn transaction_date(&self) -> &str {
+        self.transaction_date.as_deref().unwrap_or(&self.date)
+    }
 }
 
 impl From<&Payment> for PaymentEntry {
@@ -311,7 +361,9 @@ impl From<&Payment> for PaymentEntry {
             credited_currency: payment.credited_currency,
             method: payment.method,
             date: payment.date.clone(),
+            transaction_date: payment.transaction_date.clone(),
             group_id: payment.group_id.clone(),
+            version: payment.version,
             seq: payment.seq,
         }
     }

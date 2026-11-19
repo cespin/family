@@ -1,4 +1,4 @@
-//! `POST /api/payments`.
+//! `POST /api/payments` and `PUT /api/payments/{paymentId}`.
 
 use std::collections::{BTreeMap, HashMap};
 
@@ -13,13 +13,15 @@ use crate::protocol::read::read_head;
 use crate::protocol::request_hash::request_hash;
 use crate::protocol::write::{commit, kept_losing, Commit, WritePlan, WRITE_TRIES};
 use crate::rules::money::{within_tolerance, Money};
-use crate::rules::validate::{invalid, require_date, require_request_id, MAX_PAYMENT_MINOR};
+use crate::rules::validate::{
+    invalid, is_uuid, require_date, require_request_id, MAX_PAYMENT_MINOR,
+};
 use crate::service::access::member_of;
 use crate::service::env::Env;
 use crate::service::reads::{payment_json, read_payment};
 use crate::service::view::LedgerView;
 use crate::store::keys;
-use crate::store::table::{from_item, is_retired, to_item, Item, Key, Table};
+use crate::store::table::{from_item, is_retired, retired_item, to_item, Item, Key, Table};
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -31,7 +33,17 @@ struct PaymentRequest {
     credited: Option<Money>,
     method: Method,
     date: String,
+    transaction_date: Option<String>,
     group_id: Option<String>,
+}
+
+/// An edit changes only the day the money was given.
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct PaymentEditRequest {
+    request_id: String,
+    transaction_date: String,
+    version: u64,
 }
 
 fn require_amount(money: &Money) -> Result<()> {
@@ -71,6 +83,14 @@ pub async fn allocation_items<T: Table>(
     Ok(items)
 }
 
+/// Where a payment is listed between its two members.
+pub fn entry_key(payment: &Payment) -> Key {
+    Key::new(
+        keys::pair_payments_pk(&payment.from_id, &payment.to_id),
+        keys::entry_sort_key(payment.transaction_date(), payment.seq),
+    )
+}
+
 fn answer(payment: &Payment, rev: u64) -> Value {
     let mut body = payment_json(&PaymentEntry::from(payment));
     body["revision"] = json!(rev);
@@ -93,6 +113,9 @@ pub async fn post_payment<T: Table, E: Env>(
         require_amount(credited)?;
     }
     require_date(&request.date)?;
+    if let Some(date) = &request.transaction_date {
+        require_date(date)?;
+    }
     if request.from_id == request.to_id {
         return invalid("A payment needs two different members.");
     }
@@ -148,10 +171,17 @@ pub async fn post_payment<T: Table, E: Env>(
             credited_currency: credited.currency,
             method: request.method,
             date: request.date.clone(),
+            transaction_date: Some(
+                request
+                    .transaction_date
+                    .clone()
+                    .unwrap_or_else(|| request.date.clone()),
+            ),
             group_id: request.group_id.clone(),
             recorded_rates: recorded,
             recorded_by: me.clone(),
             recorded_at: env.now(),
+            version: 1,
             seq: new_rev,
             stamp: Stamp {
                 rev: new_rev,
@@ -169,10 +199,7 @@ pub async fn post_payment<T: Table, E: Env>(
         let slices = state.apply_payment(&payment)?;
 
         let (low, high) = (state.low.clone(), state.high.clone());
-        let entry_key = Key::new(
-            keys::pair_payments_pk(&low, &high),
-            keys::entry_sort_key(&payment.date, payment.seq),
-        );
+        let entry_key = entry_key(&payment);
         let mut items = vec![
             to_item(&key, &payment, new_rev)?,
             to_item(&entry_key, &PaymentEntry::from(&payment), new_rev)?,
@@ -186,6 +213,73 @@ pub async fn post_payment<T: Table, E: Env>(
         };
         if commit(table, rev, &signed.email, plan).await? == Commit::Saved {
             return Ok(answer(&payment, new_rev));
+        }
+    }
+    Err(kept_losing())
+}
+
+/// `PUT /api/payments/{paymentId}`. Either member of a payment may correct the day it was given.
+/// The money it moved stays where it is, because debts are paid in the order payments were entered.
+pub async fn put_payment<T: Table>(
+    table: &T,
+    caller: &Caller,
+    payment_id: &str,
+    raw: Value,
+) -> Result<Value> {
+    let signed = member_of(table, caller).await?;
+    let me = &signed.member_id;
+    let hash = request_hash(&raw);
+    let request: PaymentEditRequest = serde_json::from_value(raw)?;
+    let not_found = || ApiError::not_found("The payment was not found.");
+    if !is_uuid(payment_id) {
+        return Err(not_found());
+    }
+    require_request_id(&request.request_id)?;
+    require_date(&request.transaction_date)?;
+    let key = keys::payment(payment_id);
+
+    for _ in 0..WRITE_TRIES {
+        let (rev, item) = consistent_read!(table, session, session.get(&key).await?);
+        let old = read_payment(&item.ok_or_else(not_found)?, payment_id)?;
+        if old.from_id != *me && old.to_id != *me {
+            return Err(not_found());
+        }
+        if old.stamp.last_request_id.as_deref() == Some(&request.request_id) {
+            if old.stamp.last_request_hash.as_deref() == Some(&hash) {
+                return Ok(answer(&old, rev));
+            }
+            return Err(ApiError::conflict(
+                "This requestId was used for something else.",
+            ));
+        }
+        if old.version != request.version {
+            return Err(ApiError::conflict("The payment changed since it was read."));
+        }
+
+        let new_rev = rev + 1;
+        let new = Payment {
+            transaction_date: Some(request.transaction_date.clone()),
+            version: old.version + 1,
+            stamp: Stamp {
+                rev: new_rev,
+                last_request_id: Some(request.request_id.clone()),
+                last_request_hash: Some(hash.clone()),
+            },
+            ..old.clone()
+        };
+        let (old_entry, new_entry) = (entry_key(&old), entry_key(&new));
+        let mut items = vec![to_item(&key, &new, new_rev)?];
+        if old_entry != new_entry {
+            items.push(retired_item(&old_entry, new_rev));
+        }
+        items.push(to_item(&new_entry, &PaymentEntry::from(&new), new_rev)?);
+
+        let plan = WritePlan {
+            items,
+            unstamped: Vec::new(),
+        };
+        if commit(table, rev, &signed.email, plan).await? == Commit::Saved {
+            return Ok(answer(&new, new_rev));
         }
     }
     Err(kept_losing())

@@ -12,12 +12,15 @@ use aws_sdk_dynamodb::types::{
     AttributeDefinition, BillingMode, KeySchemaElement, KeyType, ScalarAttributeType,
 };
 use aws_sdk_dynamodb::Client;
+use family_ledger::service::backfill::transaction_dates;
 use family_ledger::store::dynamo::DynamoTable;
 use family_ledger::store::table::{
     CancelReason, Guard, Item, Key, PageQuery, Table, TxOp, TxOutcome,
 };
 use serde_json::{json, Value};
-use support::fixtures::{base_items, data_dir, scenario_items, Items};
+use support::fixtures::{
+    base_items, before_transaction_dates, data_dir, is_list_entry, scenario_items, Items,
+};
 use support::router::send;
 
 static TABLES: AtomicUsize = AtomicUsize::new(0);
@@ -267,6 +270,38 @@ async fn each_scenarios_writes_store_exactly_what_the_data_set_says() {
         let actual = all_items(&table, &wanted).await;
         assert_eq!(without_times(&actual), without_times(&wanted), "{name}");
     }
+}
+
+#[tokio::test]
+async fn the_backfill_moves_every_list_entry_to_the_day_once() {
+    let before = before_transaction_dates();
+    let table = seeded(&before).await;
+    let done = transaction_dates(&table, "2026-11-19", false)
+        .await
+        .unwrap();
+    assert!(done.expenses > 0 && done.payments > 0);
+
+    let mut reference = before.clone();
+    for ((pk, sk), _) in base_items() {
+        if is_list_entry(&pk) {
+            let seq = sk.split_once('#').unwrap().1;
+            reference.insert((pk.clone(), format!("2026-11-19#{seq}")), Item::new());
+        }
+    }
+    let after = all_items(&table, &reference).await;
+    for ((pk, sk), item) in &after {
+        if is_list_entry(pk) {
+            let live = item.get("removed") != Some(&Value::Bool(true));
+            assert_eq!(live, sk.starts_with("2026-11-19#"), "{pk} {sk}");
+        }
+    }
+
+    let rev = head_rev(&table).await;
+    let again = transaction_dates(&table, "2026-11-19", false)
+        .await
+        .unwrap();
+    assert_eq!((again.expenses, again.payments), (0, 0));
+    assert_eq!(head_rev(&table).await, rev);
 }
 
 fn payment_body(request_id: &str, amount_minor: u64) -> Value {

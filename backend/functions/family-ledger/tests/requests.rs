@@ -84,7 +84,7 @@ async fn every_request_case_gets_the_answer_it_must_get() {
     let cases = cases();
     assert_eq!(
         cases.len(),
-        95,
+        111,
         "the data set changed, so check this runner still covers it"
     );
 

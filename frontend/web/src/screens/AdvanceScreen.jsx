@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { currencyLabel } from '../components/expenses/labels.js';
 import { MethodChoice } from '../components/expenses/MethodChoice.jsx';
 import { SubHeader } from '../components/expenses/SubHeader.jsx';
+import { TransactionDateField } from '../components/expenses/TransactionDateField.jsx';
 import {
   Avatar,
   Button,
@@ -19,7 +20,7 @@ import { useSession } from '../hooks/useSession.js';
 import { errorMessage } from '../i18n/errors.js';
 import { formatMinor } from '../i18n/format.js';
 import { recordPayment } from '../lib/expenses.js';
-import { advanceCandidates, myself, todayIso } from '../lib/ledger.js';
+import { advanceCandidates, isTransactionDate, myself, todayIso } from '../lib/ledger.js';
 import { CURRENCIES, PAYMENT_MAX_MINOR, convertMinor, parseAmount } from '../lib/money.js';
 import { scrollToTop } from '../lib/scroll.js';
 import './AdvanceScreen.css';
@@ -76,10 +77,11 @@ function advanceStatus(t, { theyGave, name, amount, balance, received, format })
     : t('expenses:advance.status.growsIGave', { name, amount, owed, total: credit });
 }
 
-function submitLabel(t, { person, direction, hasAmount, paidText }) {
+function submitLabel(t, { person, direction, hasAmount, hasDate, paidText }) {
   if (!person) return t('expenses:advance.submitNeedPerson');
   if (!direction) return t('expenses:advance.submitNeedDirection');
   if (!hasAmount) return t('expenses:advance.submitNeedAmount');
+  if (!hasDate) return t('expenses:when.submitNeedDate');
   return t('expenses:advance.submit', { amount: paidText });
 }
 
@@ -97,6 +99,7 @@ function AdvanceForm({ ledger, candidates, onStart, onRecorded }) {
   const [chosenCurrency, setChosenCurrency] = useState(null);
   const [amountText, setAmountText] = useState('');
   const [method, setMethod] = useState('transfer');
+  const [transactionDate, setTransactionDate] = useState(todayIso);
   const [saving, setSaving] = useState(false);
   const [errorCode, setErrorCode] = useState(null);
 
@@ -108,7 +111,8 @@ function AdvanceForm({ ledger, candidates, onStart, onRecorded }) {
   const currency = chosenCurrency ?? giverCurrency;
   const paidMinor = parseAmount(amountText, currency);
   const hasAmount = paidMinor != null && paidMinor > 0 && paidMinor <= PAYMENT_MAX_MINOR;
-  const ready = Boolean(person && direction && hasAmount);
+  const hasDate = isTransactionDate(transactionDate);
+  const ready = Boolean(person && direction && hasAmount && hasDate);
   const paidText = hasAmount ? formatMinor(paidMinor, currency) : '';
 
   function handlePerson(id) {
@@ -129,6 +133,7 @@ function AdvanceForm({ ledger, candidates, onStart, onRecorded }) {
         paid: { amountMinor: paidMinor, currency },
         method,
         date: todayIso(),
+        transactionDate,
       };
       await recordPayment(session, prepare(body));
       done();
@@ -243,6 +248,8 @@ function AdvanceForm({ ledger, candidates, onStart, onRecorded }) {
 
             {status && <StatusNote tone="warning">{status}</StatusNote>}
 
+            <TransactionDateField value={transactionDate} onChange={setTransactionDate} />
+
             <MethodChoice
               label={
                 theyGave ? t('expenses:advance.methodTheyGave') : t('expenses:advance.methodIGave')
@@ -260,7 +267,7 @@ function AdvanceForm({ ledger, candidates, onStart, onRecorded }) {
         )}
 
         <Button type="submit" size="large" block disabled={!ready || saving}>
-          {submitLabel(t, { person, direction, hasAmount, paidText })}
+          {submitLabel(t, { person, direction, hasAmount, hasDate, paidText })}
         </Button>
       </form>
     </Card>

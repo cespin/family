@@ -13,6 +13,7 @@ export DDB_LOCAL_ENDPOINT="http://localhost:${DDB_LOCAL_PORT}"
 trap '"${SCRIPT_DIR}/ddb-local.sh" stop' EXIT
 
 cd "${SCRIPT_DIR}/../functions"
-# The workspace's clippy command skips this test target, so it is linted here.
-cargo clippy -p family-ledger --features ddb-local-tests --all-targets -- -D warnings
+# The workspace's clippy command skips this test target and the backfill binary, so they are
+# linted here.
+cargo clippy -p family-ledger --features ddb-local-tests,backfill --all-targets -- -D warnings
 cargo test -p family-ledger --features ddb-local-tests --test ddb_local

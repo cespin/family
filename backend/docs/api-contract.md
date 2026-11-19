@@ -14,6 +14,7 @@ Routes are unversioned under `/api`. The OpenAPI document inline in `templates/a
 | `PUT /api/expenses/{expenseId}` | Cognito | Edits an expense |
 | `GET /api/payments` | Cognito | One page of the caller's own payments, newest first |
 | `POST /api/payments` | Cognito | Records a payment, answering 201 |
+| `PUT /api/payments/{paymentId}` | Cognito | Corrects the day a payment's money was given |
 | `POST /api/groups` | Cognito | Creates a group, answering 201 |
 | `PUT /api/groups/{groupId}` | Cognito | Renames a group or changes its members |
 | `POST /api/exchange-rates` | Cognito | Enters new exchange rates, answering 201 |
@@ -53,6 +54,7 @@ Every route uses the `CognitoUserPool` authorizer, re-reads the allowlist and an
 
 - **Money** is an integer in minor units, always next to its currency: `amountMinor` and `currency`. The supported currencies are `CAD`, `USD` and `CLP`.
 - **Dates** are calendar dates written `YYYY-MM-DD`, with no time or time zone.
+- **Expenses and payments carry two dates.** `date` is the day it was entered, which the browser sends as its own local today and nobody can change. It decides which debts a payment pays first and which rates the detail names. `transactionDate` is the day the money was spent or given, which the member chooses and can correct. It orders the lists and is the date screens show. A request without `transactionDate`, from a browser that predates it, stores its `date`.
 - **Exchange rates** are decimal strings, such as `"1.40"`, so no float reaches the money rules.
 - **The backend sends data and stable codes**, never display text.
 - **Shares are computed by the server.** A request sends participants and percentages, and never sends shares.
@@ -62,7 +64,7 @@ Every route uses the `CognitoUserPool` authorizer, re-reads the allowlist and an
 
 - **Every write carries a `requestId`**, a UUID the browser generates once per save and reuses when it retries. On a `POST` it also becomes the new resource's `id`. `PUT /api/me/profile` is the exception, because repeating it changes nothing.
 - **A repeated request is safe.** The same `requestId` with the same content returns the saved result with the original success status, such as 201. The same `requestId` with different content returns `conflict`.
-- **Expenses and groups carry a `version`.** A `PUT` sends back the version it read, and a stale version returns `conflict`.
+- **Expenses, payments and groups carry a `version`.** A `PUT` sends back the version it read, and a stale version returns `conflict`.
 - **Saving a usual split through an expense** also increases the group's `version`.
 
 ### Pagination
@@ -76,7 +78,7 @@ Every route uses the `CognitoUserPool` authorizer, re-reads the allowlist and an
 | `limit` | Page size from 1 to 100. The default is 50 |
 | `cursor` | The `nextCursor` of the previous page, sent with the same `groupId` and `kind` |
 
-- **Order** is newest first by date, then by the order expenses were recorded.
+- **Order** is newest first by `transactionDate`, then by the order they were recorded. `GET /api/payments` uses the same order.
 - **`cursor` is opaque.** Send it back unchanged. A cursor that is malformed or belongs to other filters returns `validation_error`.
 - **`nextCursor` is null** on the last page.
 - **Filters are complete.** Each one reads a list built for it, and the handler keeps reading until the page is full or the list ends.
@@ -139,6 +141,7 @@ Balances come from `GET /api/ledger` and never depend on how many expenses have 
       "amountMinor": 84000,
       "currency": "CLP",
       "date": "2026-11-08",
+      "transactionDate": "2026-11-08",
       "participantIds": ["<memberId>"],
       "standing": { "involved": true, "openMinor": -16800, "settled": false }
     }
@@ -165,6 +168,7 @@ Balances come from `GET /api/ledger` and never depend on how many expenses have 
   "otherAmount": { "amountMinor": 120000, "currency": "CLP" },
   "chargedCurrency": "CAD",
   "date": "2026-11-16",
+  "transactionDate": "2026-11-16",
   "splitMode": "percent",
   "note": null,
   "ratesId": "<rateId>",
@@ -174,15 +178,15 @@ Balances come from `GET /api/ledger` and never depend on how many expenses have 
   ],
   "standing": { "involved": true, "openMinor": -4635, "settled": false },
   "appliedPayments": [
-    { "paymentId": "<paymentId>", "fromId": "<memberId>", "toId": "<memberId>", "paidMinor": 3311, "paidCurrency": "USD", "coveredMinor": 4635, "method": "transfer", "date": "2026-11-17" }
+    { "paymentId": "<paymentId>", "fromId": "<memberId>", "toId": "<memberId>", "paidMinor": 3311, "paidCurrency": "USD", "coveredMinor": 4635, "method": "transfer", "date": "2026-11-17", "transactionDate": "2026-11-17" }
   ]
 }
 ```
 
-- **`ratesId`** names the entry in force on the expense's date, and is null when none existed.
+- **`ratesId`** names the entry in force on the expense's entry `date`, and is null when none existed.
 - **`otherAmount`, `chargedCurrency` and `otherShareMinor`** are present only on a purchase charged in a different currency. `percent` is present only when `splitMode` is `percent`.
 - **`status`** is `owes`, `partly_paid` or `paid`.
-- **`appliedPayments`** includes credit applied to the expense, naming the payment the credit came from.
+- **`appliedPayments`** includes credit applied to the expense, naming the payment the credit came from. `date` is the payment's entry date and `transactionDate` the day its money was given.
 
 ### `GET /api/payments`
 
@@ -200,7 +204,9 @@ Takes `limit` and `cursor` as above, and optionally `memberId` to list only the 
       "credited": { "amountMinor": 26550, "currency": "CLP" },
       "method": "transfer",
       "date": "2026-11-15",
-      "groupId": null
+      "transactionDate": "2026-11-15",
+      "groupId": null,
+      "version": 1
     }
   ],
   "nextCursor": null
@@ -218,9 +224,10 @@ Takes `limit` and `cursor` as above, and optionally `memberId` to list only the 
 | Route | Fields |
 |---|---|
 | `PUT /api/me/profile` | `homeCurrency`, `displayName` on the first call, and optionally `tone` |
-| `POST /api/expenses` | `requestId`, `title`, `kind`, `groupId`, `payerId`, `amountMinor`, `currency`, `date`, `splitMode`, `participantIds`, and optionally `percents`, `otherAmount`, `chargedCurrency`, `note`, `usualSplit` |
-| `PUT /api/expenses/{expenseId}` | The same fields except `date`, plus `version` |
-| `POST /api/payments` | `requestId`, `fromId`, `toId`, `paid`, `method`, `date`, and optionally `credited`, `groupId` |
+| `POST /api/expenses` | `requestId`, `title`, `kind`, `groupId`, `payerId`, `amountMinor`, `currency`, `date`, `splitMode`, `participantIds`, and optionally `transactionDate`, `percents`, `otherAmount`, `chargedCurrency`, `note`, `usualSplit` |
+| `PUT /api/expenses/{expenseId}` | The same fields except `date`, plus `version`. Without `transactionDate` the saved one is kept |
+| `POST /api/payments` | `requestId`, `fromId`, `toId`, `paid`, `method`, `date`, and optionally `transactionDate`, `credited`, `groupId` |
+| `PUT /api/payments/{paymentId}` | `requestId`, `transactionDate`, `version`. Nothing else about a payment can change |
 | `POST /api/groups` | `requestId`, `name`, `memberIds`, and optionally `usualSplit` |
 | `PUT /api/groups/{groupId}` | `requestId`, `name`, `memberIds`, `version`, and optionally `usualSplit` |
 | `POST /api/exchange-rates` | `requestId`, `usdCad`, `cadClp`, `date` |
@@ -229,6 +236,7 @@ Takes `limit` and `cursor` as above, and optionally `memberId` to list only the 
 - **The debt currency** is `currency`. It must be one of the purchase's two currencies, and the form defaults it to `chargedCurrency`.
 - **`credited`** is sent only when a payment clears the debt. It can be in any supported currency, and is accepted only within the tolerance in section 12 of the requirements. Otherwise the server credits exactly what was paid.
 - **`paid.amountMinor`** can be at most 9007199254740991, the largest integer a browser reads exactly.
+- **Either member of a payment can correct its `transactionDate`.** Anyone else gets `not_found`, as for a payment they cannot list. The money it moved stays where it is.
 - **`participantIds` order is not significant.** The server stores participants in group order, because equal splits depend on it. A participant who has left the group keeps their position on the expense.
 
 A write returns the saved resource, in the shape its read route uses: `GET /api/expenses/{expenseId}` for an expense, one entry of `payments` in `GET /api/payments` for a payment, and one entry of `groups` or `exchangeRates` in `GET /api/ledger` for a group or exchange rate. `PUT /api/me/profile` returns the `GET /api/me` shape. The frontend reloads the balances and the first page after every save, because one change can move many standings.
@@ -239,6 +247,6 @@ A write returns the saved resource, in the shape its read route uses: `GET /api/
 |---|---|
 | A rule in section 7 of the requirements is broken, or a query parameter is not valid | `validation_error` |
 | The caller did not add this expense or create this group, or has not finished the first-sign-in step | `forbidden` |
-| The expense, group or member does not exist or is not visible to the caller, including in a query parameter | `not_found` |
+| The expense, payment, group or member does not exist or is not visible to the caller, including in a query parameter | `not_found` |
 | A stale `version`, a reused `requestId` with different content, or a write that kept losing to others | `conflict` |
 | A member with an open balance in the group cannot be removed from it | `member_has_open_balance` |

@@ -1,5 +1,5 @@
 import { useId, useState } from 'react';
-import { ArrowLeftRight, HandCoins, Wallet } from 'lucide-react';
+import { ArrowLeftRight, HandCoins, ReceiptText, Wallet } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Amount, Button, Card, PersonRow, Segmented } from '../ui';
 import { formatMinor } from '../../i18n/format.js';
@@ -29,7 +29,7 @@ function rowTitle(t, row) {
     : t('expenses:balance.theyOwe', { name });
 }
 
-export function BalanceCard({ ledger, groupId, onSettle, onAdvance, onRates }) {
+export function BalanceCard({ ledger, groupId, onSettle, onAdvance, onPayments, onRates }) {
   const { t } = useTranslation();
   const labelId = useId();
   const [currency, setCurrency] = useState(myself(ledger).currency);
@@ -107,6 +107,11 @@ export function BalanceCard({ ledger, groupId, onSettle, onAdvance, onRates }) {
         {canAdvance && (
           <Button variant="quiet" block icon={HandCoins} onClick={onAdvance}>
             {t('expenses:balance.advance')}
+          </Button>
+        )}
+        {canAdvance && (
+          <Button variant="quiet" block icon={ReceiptText} onClick={onPayments}>
+            {t('expenses:balance.payments')}
           </Button>
         )}
       </div>

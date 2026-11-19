@@ -13,6 +13,24 @@ export function todayIso(now = new Date()) {
   return `${now.getFullYear()}-${month}-${day}`;
 }
 
+/**
+ * Whether a day typed into a date field can be a transaction date: a real calendar day, today or
+ * earlier. A browser lets someone type a day past the field's `max`, so the form checks it too.
+ */
+export function isTransactionDate(value, today = todayIso()) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value ?? '')) return false;
+  const [year, month, day] = value.split('-').map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  const real =
+    date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
+  return real && value <= today;
+}
+
+/** The day an expense's or payment's money changed hands. Older answers carry only `date`. */
+export function transactionDateOf(item) {
+  return item.transactionDate ?? item.date;
+}
+
 export function memberById(ledger, id) {
   return ledger.members.find((member) => member.id === id);
 }
@@ -31,14 +49,15 @@ export function ratesById(ledger, ratesId) {
   return ledger.rateEntries.find((entry) => entry.id === ratesId) ?? null;
 }
 
-/** Groups already sorted expenses by calendar month, keeping their order. */
+/** Groups already sorted expenses by the month their money was spent, keeping their order. */
 export function expensesByMonth(expenses) {
   const months = [];
   for (const expense of expenses) {
-    const key = expense.date.slice(0, 7);
+    const date = transactionDateOf(expense);
+    const key = date.slice(0, 7);
     const current = months[months.length - 1];
     if (current?.key === key) current.expenses.push(expense);
-    else months.push({ key, date: expense.date, expenses: [expense] });
+    else months.push({ key, date, expenses: [expense] });
   }
   return months;
 }

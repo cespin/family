@@ -12,7 +12,14 @@ import { Amount, Avatar, Button, Card, PersonRow, SplitBar, StatusNote } from '.
 import { useExpense } from '../hooks/useExpense.js';
 import { errorMessage } from '../i18n/errors.js';
 import { formatCalendarDate, formatMinor } from '../i18n/format.js';
-import { groupById, memberById, myself, ratesById, sharePercent } from '../lib/ledger.js';
+import {
+  groupById,
+  memberById,
+  myself,
+  ratesById,
+  sharePercent,
+  transactionDateOf,
+} from '../lib/ledger.js';
 import { convertMinor, quoteBetween } from '../lib/money.js';
 import './ExpenseDetailScreen.css';
 
@@ -64,7 +71,12 @@ function activityOf(t, ledger, expense) {
     } else text = t('expenses:detail.activityPaid', { amount, from: from.name, to: to.name });
     // Credit from one payment can reach the same expense more than once, so the id alone is not
     // unique. The list never reorders.
-    return { id: `${payment.paymentId}:${index}`, person: from, text, date: payment.date };
+    return {
+      id: `${payment.paymentId}:${index}`,
+      person: from,
+      text,
+      date: transactionDateOf(payment),
+    };
   });
 
   const adder = memberById(ledger, expense.addedBy);
@@ -75,6 +87,7 @@ function activityOf(t, ledger, expense) {
       adder.id === me
         ? t('expenses:detail.activityAddedYou')
         : t('expenses:detail.activityAdded', { name: adder.name }),
+    // When it was added, which is not when its money was spent.
     date: expense.date,
   };
   return [...payments, added].sort((a, b) => b.date.localeCompare(a.date));
@@ -149,7 +162,7 @@ function ExpenseDetail({ ledger, expense, nav }) {
   const net = standing.involved ? standing.openMinor : null;
   const gross = grossFor(expense, me);
   const mine = expense.participants.find((participant) => participant.memberId === me);
-  const longDate = formatCalendarDate(expense.date, {
+  const longDate = formatCalendarDate(transactionDateOf(expense), {
     weekday: 'long',
     day: 'numeric',
     month: 'long',

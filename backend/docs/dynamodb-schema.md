@@ -46,31 +46,33 @@ The design needs no GSI and no change to the table definition in `templates/data
 | Exchange rate | `LEDGER#main` | `RATE#<rateId>` | `usdCad`, `cadClp`, `date`, `enteredBy`, `seq` |
 | Pair state | `LEDGER#main` | `PAIR#<lowMemberId>#<highMemberId>` | `balances`, `openDebts`, `credits`, `newestDebt` |
 | Pair allocations | `LEDGER#main` | `ALLOC#<lowMemberId>#<highMemberId>#<year>` | `allocations` |
-| Group expense entry | `GROUP#<groupId>#EXPENSES` | `<date>#<seq>` | See below |
-| Group kind entry | `GROUP#<groupId>#KIND#<kind>` | `<date>#<seq>` | See below |
-| Pair payment entry | `PAIR#<lowMemberId>#<highMemberId>#PAYMENTS` | `<date>#<seq>` | See below |
+| Group expense entry | `GROUP#<groupId>#EXPENSES` | `<transactionDate>#<seq>` | See below |
+| Group kind entry | `GROUP#<groupId>#KIND#<kind>` | `<transactionDate>#<seq>` | See below |
+| Pair payment entry | `PAIR#<lowMemberId>#<highMemberId>#PAYMENTS` | `<transactionDate>#<seq>` | See below |
 
 Every `LEDGER#main` item except the head also carries `rev`, the revision of its latest write. Items saved with a `requestId` carry `lastRequestId` and `lastRequestHash`, the SHA-256 in hexadecimal of the request body with sorted keys and no whitespace.
 
-**Expense:** `title`, `kind`, `groupId`, `payerId`, `addedBy`, `amountMinor`, `currency`, `otherAmountMinor`, `otherCurrency`, `chargedCurrency`, `date`, `splitMode`, `participantIds`, `shares`, `percents`, `note`, `recordedRates`, `recordedAt`, `version`, `seq`.
+**Expense:** `title`, `kind`, `groupId`, `payerId`, `addedBy`, `amountMinor`, `currency`, `otherAmountMinor`, `otherCurrency`, `chargedCurrency`, `date`, `transactionDate`, `splitMode`, `participantIds`, `shares`, `percents`, `note`, `recordedRates`, `recordedAt`, `version`, `seq`.
 
-**Payment:** `fromId`, `toId`, `paidMinor`, `paidCurrency`, `creditedMinor`, `creditedCurrency`, `method`, `date`, `groupId`, `recordedRates`, `recordedBy`, `recordedAt`, `seq`. The credited value is what the replay allocates. It equals the paid value unless a full payment was accepted within tolerance.
+**Payment:** `fromId`, `toId`, `paidMinor`, `paidCurrency`, `creditedMinor`, `creditedCurrency`, `method`, `date`, `transactionDate`, `groupId`, `recordedRates`, `recordedBy`, `recordedAt`, `version`, `seq`. The credited value is what the replay allocates. It equals the paid value unless a full payment was accepted within tolerance.
 
-**Group expense entry:** `expenseId`, `title`, `kind`, `groupId`, `payerId`, `addedBy`, `amountMinor`, `currency`, `date`, `participantIds`, `seq`, `rev`.
+**Group expense entry:** `expenseId`, `title`, `kind`, `groupId`, `payerId`, `addedBy`, `amountMinor`, `currency`, `date`, `transactionDate`, `participantIds`, `seq`, `rev`.
 
-**Group kind entry:** `expenseId`, `title`, `kind`, `groupId`, `payerId`, `addedBy`, `amountMinor`, `currency`, `date`, `participantIds`, `seq`, `rev`.
+**Group kind entry:** `expenseId`, `title`, `kind`, `groupId`, `payerId`, `addedBy`, `amountMinor`, `currency`, `date`, `transactionDate`, `participantIds`, `seq`, `rev`.
 
-**Pair payment entry:** `paymentId`, `fromId`, `toId`, `paidMinor`, `paidCurrency`, `creditedMinor`, `creditedCurrency`, `method`, `date`, `groupId`, `seq`, `rev`.
+**Pair payment entry:** `paymentId`, `fromId`, `toId`, `paidMinor`, `paidCurrency`, `creditedMinor`, `creditedCurrency`, `method`, `date`, `transactionDate`, `groupId`, `version`, `seq`, `rev`.
 
+- **An expense and a payment carry two dates.** `date` is the day it was entered, which the browser supplies. It orders the debts a payment pays, names the allocation item, and picks the rates shown on the detail, so it never changes. `transactionDate` is the day the money was spent or given, which the member chooses and can correct later. It orders the lists and is what every screen shows. Correcting it moves list entries and no money.
+- **An item saved before `transactionDate` existed reads it as `date`**, so its list entries sit at `<date>#<seq>` until the backfill below moves them.
 - **`seq`** is the head revision that created the item. It never changes, so an edited expense keeps its place in the replay. In a sort key it is zero-padded to eight digits, as in `2026-11-14#00000017`.
-- **`version`** counts the changes to an expense or group, for detecting concurrent edits.
+- **`version`** counts the changes to an expense, payment or group, for detecting concurrent edits. A payment saved before it could be edited reads as version 1.
 - **`memberIds` and `participantIds` are ordered.** Equal splits depend on the order, and an expense keeps its own copy so a participant who left the group still has a position.
 - **`recordedRates`** holds the `usdCad` and `cadClp` in force when the item was recorded, or is absent if no rates existed.
 - **Rates are decimal strings**, compared and multiplied with decimal arithmetic. Floats never touch money.
 - **`email` on a member is private.** It locates the allowlist item and is never returned by a route.
 - **The account link has its own prefix** so `family-member.sh list`, which scans `MEMBER#`, does not report removed people as invited. What the link means is in `docs/auth/architecture.md`.
 - **Nothing in the ledger is ever deleted or carries `expiresAt`**, as section 8 of the requirements requires.
-- **A worked-out item that no longer applies is retired, not deleted.** When an edit moves an expense to another group or kind, its old list entries are overwritten with `removed: true` and the new `rev`, and readers skip them. A delete would leave nothing for the read protocol to detect, so a read caught mid-write could silently miss the expense.
+- **A worked-out item that no longer applies is retired, not deleted.** When an edit moves an expense to another group, kind or transaction date, or a payment to another transaction date, its old list entries are overwritten with `removed: true` and the new `rev`, and readers skip them. A delete would leave nothing for the read protocol to detect, so a read caught mid-write could silently miss the expense.
 
 ### Balances are stored per pair
 
@@ -81,7 +83,7 @@ Each pair of members has one state item. Amounts in it are signed from the point
 - **`credits`** holds unused credit: `paymentId`, `seq`, `amountMinor`, `currency`, `groupId` and `appliedTotal`. `appliedTotal` is the exact amount of the payment that has reached debts so far, in the credited currency, written as a fraction such as `141169/50`. `amountMinor` is rounded, so a later slice needs this value to work out its share of what was really paid.
 - **`newestDebt`** holds the `date`, `seq` and `groupId` of the newest expense between the two, closed or not, because leftover credit can belong to its group.
 
-Each allocation item holds what payments covered on expenses dated in that year: `paymentId`, `expenseId`, `fromId`, `toId`, `paidMinor`, `paidCurrency`, `coveredMinor`, `method` and `date`. An expense's date never changes, so its detail screen reads exactly one allocation item per pair.
+Each allocation item holds what payments covered on expenses entered in that year: `paymentId`, `expenseId`, `fromId`, `toId`, `paidMinor`, `paidCurrency`, `coveredMinor`, `method` and `date`, the payment's entry date. An expense's `date` never changes, so its detail screen reads exactly one allocation item per pair. The detail reads each payment's `transactionDate` from the payment item, so correcting it never rewrites an allocation.
 
 **Adding an expense or recording a payment** applies the rules in sections 6 and 12 of the requirements to the pair state alone, without reading the history.
 
@@ -106,6 +108,7 @@ Each allocation item holds what payments covered on expenses dated in that year:
 | Add an expense | The head, the expense, two list entries, one pair state per other participant, and any allocation items credit touches |
 | Record a payment | The head, the payment, its list entry, one pair state, and one allocation item per year it covers |
 | Edit an expense | The head, the expense, its list entries, and the state and allocation items of each affected pair |
+| Correct a payment's transaction date | The head, the payment, and its list entry at the old and the new date |
 | Save a usual split through an expense | The items above, plus the group, whose `version` increases |
 | Finish the first sign-in step | The head, the member and the account link |
 
@@ -125,6 +128,10 @@ AWS documents `Query` as read-committed against transactions, so a read can see 
 6. Otherwise repeat, up to three times, then fail with `internal_error`. A failed read is never returned as partial data.
 
 `family-ledger/tests/protocols.rs` interleaves writes with each step of this protocol. DynamoDB Local cannot produce a partly visible transaction on demand, so that part is proven only against the in-memory table.
+
+### Backfilling transaction dates
+
+Expenses and payments saved before `transactionDate` existed get one from `scripts/backfill-transaction-date.sh`, run once after the API that reads both kinds is deployed, at a quiet moment because each record moves the head. It writes one transaction per item through the write protocol, with no allowlist check because an operator rather than a member runs it. Each transaction sets `transactionDate`, retires the list entries at `<date>#<seq>` and writes them at `<transactionDate>#<seq>`. It skips items that already have one, so running it again changes nothing. `--dry-run` only counts them.
 
 ### Test data set
 

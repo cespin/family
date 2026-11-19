@@ -1,6 +1,6 @@
 //! The read routes.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use family_core::claims::Caller;
 use family_core::{ApiError, Result};
@@ -57,7 +57,9 @@ pub fn payment_json(entry: &PaymentEntry) -> Value {
         "credited": { "amountMinor": entry.credited_minor, "currency": entry.credited_currency },
         "method": entry.method,
         "date": entry.date,
+        "transactionDate": entry.transaction_date(),
         "groupId": entry.group_id,
+        "version": entry.version,
     })
 }
 
@@ -342,6 +344,7 @@ pub async fn list_expenses<T: Table>(
                 "amountMinor": entry.amount_minor,
                 "currency": entry.currency,
                 "date": entry.date,
+                "transactionDate": entry.transaction_date(),
                 "participantIds": entry.participant_ids,
                 "standing": standing_json(&standing),
             }))
@@ -454,6 +457,26 @@ async fn slices_of<T: Table>(
     Ok(slices)
 }
 
+/// The day each payment behind these slices was given. A slice keeps the day it was entered, so
+/// correcting a payment's day never rewrites the allocations.
+async fn transaction_dates<T: Table>(
+    session: &mut ReadSession<'_, T>,
+    slices: &[AllocationSlice],
+) -> Result<HashMap<String, String>> {
+    let wanted: BTreeSet<&str> = slices.iter().map(|s| s.payment_id.as_str()).collect();
+    let keys: Vec<Key> = wanted.into_iter().map(keys::payment).collect();
+    if keys.is_empty() {
+        return Ok(HashMap::new());
+    }
+    let mut dates = HashMap::new();
+    for item in session.batch_get(&keys).await? {
+        let key = Key::of(&item)?;
+        let payment = read_payment(&item, &key.sk["PAYMENT#".len()..])?;
+        dates.insert(payment.id.clone(), payment.transaction_date().to_string());
+    }
+    Ok(dates)
+}
+
 fn other_share(expense: &Expense, share: i64) -> Option<i64> {
     let other = expense.other_amount_minor?;
     let value = exact::whole(share) * exact::whole(other) / exact::whole(expense.amount_minor);
@@ -465,6 +488,7 @@ fn detail_json(
     expense: &Expense,
     view: &LedgerView,
     slices: &[AllocationSlice],
+    paid_on: &HashMap<String, String>,
     me: &str,
 ) -> Value {
     let participants: Vec<Value> = expense
@@ -499,6 +523,7 @@ fn detail_json(
                 "coveredMinor": slice.covered_minor,
                 "method": slice.method,
                 "date": slice.date,
+                "transactionDate": paid_on.get(&slice.payment_id).unwrap_or(&slice.date),
             })
         })
         .collect();
@@ -520,6 +545,7 @@ fn detail_json(
         "amountMinor": expense.amount_minor,
         "currency": expense.currency,
         "date": expense.date,
+        "transactionDate": expense.transaction_date(),
         "splitMode": expense.split_mode,
         "note": expense.note,
         "ratesId": view.rates_on(&expense.date).map(|rate| &rate.id),
@@ -541,7 +567,7 @@ pub async fn expense_detail<T: Table>(table: &T, me: &str, expense_id: &str) -> 
     if !is_uuid(expense_id) {
         return Err(not_found());
     }
-    let (rev, (expense, view, slices)) = consistent_read!(table, session, {
+    let (rev, (expense, view, slices, paid_on)) = consistent_read!(table, session, {
         let item = session
             .get(&keys::expense(expense_id))
             .await?
@@ -551,9 +577,10 @@ pub async fn expense_detail<T: Table>(table: &T, me: &str, expense_id: &str) -> 
         view.visible_group(&expense.group_id, me)
             .map_err(|_| not_found())?;
         let slices = slices_of(&mut session, &expense).await?;
-        (expense, view, slices)
+        let paid_on = transaction_dates(&mut session, &slices).await?;
+        (expense, view, slices, paid_on)
     });
-    Ok(detail_json(rev, &expense, &view, &slices, me))
+    Ok(detail_json(rev, &expense, &view, &slices, &paid_on, me))
 }
 
 /// `GET /api/expenses/{expenseId}`.

@@ -768,12 +768,94 @@
     }
   },
   {
-    "name": "shares sent by the browser",
+    "name": "a transaction date in the past",
     "caller": "carlos",
     "method": "POST",
     "path": "/api/expenses",
     "body": {
       "requestId": "90000000-0000-4000-8000-000000000032",
+      "title": "Caso de prueba",
+      "kind": "other",
+      "groupId": "b0000000-0000-4000-8000-000000000003",
+      "payerId": "a0000000-0000-4000-8000-000000000001",
+      "amountMinor": 1000,
+      "currency": "CAD",
+      "date": "2026-11-18",
+      "splitMode": "equal",
+      "participantIds": [
+        "a0000000-0000-4000-8000-000000000001",
+        "a0000000-0000-4000-8000-000000000002"
+      ],
+      "transactionDate": "2026-08-03"
+    },
+    "expect": {
+      "status": 201,
+      "body": {
+        "date": "2026-11-18",
+        "transactionDate": "2026-08-03"
+      }
+    }
+  },
+  {
+    "name": "a transaction date that does not exist",
+    "caller": "carlos",
+    "method": "POST",
+    "path": "/api/expenses",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000033",
+      "title": "Caso de prueba",
+      "kind": "other",
+      "groupId": "b0000000-0000-4000-8000-000000000003",
+      "payerId": "a0000000-0000-4000-8000-000000000001",
+      "amountMinor": 1000,
+      "currency": "CAD",
+      "date": "2026-11-18",
+      "splitMode": "equal",
+      "participantIds": [
+        "a0000000-0000-4000-8000-000000000001",
+        "a0000000-0000-4000-8000-000000000002"
+      ],
+      "transactionDate": "2026-02-30"
+    },
+    "expect": {
+      "status": 400,
+      "code": "validation_error"
+    }
+  },
+  {
+    "name": "no transaction date, from a browser that predates it",
+    "caller": "carlos",
+    "method": "POST",
+    "path": "/api/expenses",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000034",
+      "title": "Caso de prueba",
+      "kind": "other",
+      "groupId": "b0000000-0000-4000-8000-000000000003",
+      "payerId": "a0000000-0000-4000-8000-000000000001",
+      "amountMinor": 1000,
+      "currency": "CAD",
+      "date": "2026-11-18",
+      "splitMode": "equal",
+      "participantIds": [
+        "a0000000-0000-4000-8000-000000000001",
+        "a0000000-0000-4000-8000-000000000002"
+      ]
+    },
+    "expect": {
+      "status": 201,
+      "body": {
+        "transactionDate": "2026-11-18"
+      }
+    }
+  },
+  {
+    "name": "shares sent by the browser",
+    "caller": "carlos",
+    "method": "POST",
+    "path": "/api/expenses",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000035",
       "title": "Caso de prueba",
       "kind": "other",
       "groupId": "b0000000-0000-4000-8000-000000000003",
@@ -801,7 +883,7 @@
     "method": "POST",
     "path": "/api/expenses",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000033",
+      "requestId": "90000000-0000-4000-8000-000000000036",
       "title": "Caso de prueba",
       "kind": "other",
       "groupId": "b0000000-0000-4000-8000-000000000003",
@@ -834,7 +916,7 @@
     "method": "PUT",
     "path": "/api/expenses/c0000000-0000-4000-8000-000000000010",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000034",
+      "requestId": "90000000-0000-4000-8000-000000000037",
       "title": "Almuerzo familiar del domingo",
       "kind": "meal",
       "groupId": "b0000000-0000-4000-8000-000000000002",
@@ -862,7 +944,7 @@
     "method": "PUT",
     "path": "/api/expenses/c0000000-0000-4000-8000-000000000012",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000035",
+      "requestId": "90000000-0000-4000-8000-000000000038",
       "title": "Tablet para las videollamadas",
       "kind": "parents",
       "groupId": "b0000000-0000-4000-8000-000000000003",
@@ -893,7 +975,7 @@
     "method": "PUT",
     "path": "/api/expenses/c0000000-0000-4000-8000-000000000012",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000036",
+      "requestId": "90000000-0000-4000-8000-000000000039",
       "title": "Tablet para las videollamadas",
       "kind": "parents",
       "groupId": "b0000000-0000-4000-8000-000000000003",
@@ -920,12 +1002,113 @@
     }
   },
   {
+    "name": "changing the transaction date on an edit",
+    "caller": "carlos",
+    "method": "PUT",
+    "path": "/api/expenses/c0000000-0000-4000-8000-000000000012",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000040",
+      "title": "Tablet para las videollamadas",
+      "kind": "parents",
+      "groupId": "b0000000-0000-4000-8000-000000000003",
+      "payerId": "a0000000-0000-4000-8000-000000000001",
+      "amountMinor": 30000,
+      "currency": "CAD",
+      "splitMode": "percent",
+      "participantIds": [
+        "a0000000-0000-4000-8000-000000000001",
+        "a0000000-0000-4000-8000-000000000002",
+        "a0000000-0000-4000-8000-000000000003"
+      ],
+      "percents": {
+        "a0000000-0000-4000-8000-000000000001": 50,
+        "a0000000-0000-4000-8000-000000000002": 25,
+        "a0000000-0000-4000-8000-000000000003": 25
+      },
+      "version": 1,
+      "transactionDate": "2026-10-30"
+    },
+    "expect": {
+      "status": 200,
+      "body": {
+        "date": "2026-11-12",
+        "transactionDate": "2026-10-30",
+        "version": 2
+      }
+    }
+  },
+  {
+    "name": "an edit that sends no transaction date keeps it",
+    "caller": "carlos",
+    "method": "PUT",
+    "path": "/api/expenses/c0000000-0000-4000-8000-000000000012",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000041",
+      "title": "Tablet",
+      "kind": "parents",
+      "groupId": "b0000000-0000-4000-8000-000000000003",
+      "payerId": "a0000000-0000-4000-8000-000000000001",
+      "amountMinor": 30000,
+      "currency": "CAD",
+      "splitMode": "percent",
+      "participantIds": [
+        "a0000000-0000-4000-8000-000000000001",
+        "a0000000-0000-4000-8000-000000000002",
+        "a0000000-0000-4000-8000-000000000003"
+      ],
+      "percents": {
+        "a0000000-0000-4000-8000-000000000001": 50,
+        "a0000000-0000-4000-8000-000000000002": 25,
+        "a0000000-0000-4000-8000-000000000003": 25
+      },
+      "version": 1
+    },
+    "expect": {
+      "status": 200,
+      "body": {
+        "transactionDate": "2026-11-12"
+      }
+    }
+  },
+  {
+    "name": "an edit with a transaction date that does not exist",
+    "caller": "carlos",
+    "method": "PUT",
+    "path": "/api/expenses/c0000000-0000-4000-8000-000000000012",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000042",
+      "title": "Tablet para las videollamadas",
+      "kind": "parents",
+      "groupId": "b0000000-0000-4000-8000-000000000003",
+      "payerId": "a0000000-0000-4000-8000-000000000001",
+      "amountMinor": 30000,
+      "currency": "CAD",
+      "splitMode": "percent",
+      "participantIds": [
+        "a0000000-0000-4000-8000-000000000001",
+        "a0000000-0000-4000-8000-000000000002",
+        "a0000000-0000-4000-8000-000000000003"
+      ],
+      "percents": {
+        "a0000000-0000-4000-8000-000000000001": 50,
+        "a0000000-0000-4000-8000-000000000002": 25,
+        "a0000000-0000-4000-8000-000000000003": 25
+      },
+      "version": 1,
+      "transactionDate": "2026-11-31"
+    },
+    "expect": {
+      "status": 400,
+      "code": "validation_error"
+    }
+  },
+  {
     "name": "editing an expense in a group the caller is not in",
     "caller": "mama",
     "method": "PUT",
     "path": "/api/expenses/c0000000-0000-4000-8000-000000000012",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000037",
+      "requestId": "90000000-0000-4000-8000-000000000043",
       "title": "Tablet para las videollamadas",
       "kind": "parents",
       "groupId": "b0000000-0000-4000-8000-000000000003",
@@ -956,7 +1139,7 @@
     "method": "PUT",
     "path": "/api/expenses/c0000000-0000-4000-8000-000000000005",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000038",
+      "requestId": "90000000-0000-4000-8000-000000000044",
       "title": "Cabaña en Pucón",
       "kind": "other",
       "groupId": "b0000000-0000-4000-8000-000000000005",
@@ -982,7 +1165,7 @@
     "method": "PUT",
     "path": "/api/expenses/c0000000-0000-4000-8000-000000000006",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000039",
+      "requestId": "90000000-0000-4000-8000-000000000045",
       "title": "Gasolina del viaje",
       "kind": "other",
       "groupId": "b0000000-0000-4000-8000-000000000005",
@@ -1008,7 +1191,7 @@
     "method": "PUT",
     "path": "/api/expenses/c0000000-0000-4000-8000-000000000006",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000040",
+      "requestId": "90000000-0000-4000-8000-000000000046",
       "title": "Bencina del viaje",
       "kind": "other",
       "groupId": "b0000000-0000-4000-8000-000000000005",
@@ -1033,7 +1216,7 @@
     "method": "PUT",
     "path": "/api/expenses/c0000000-0000-4000-8000-000000000014",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000041",
+      "requestId": "90000000-0000-4000-8000-000000000047",
       "title": "Compra con tarjeta canadiense",
       "kind": "other",
       "groupId": "b0000000-0000-4000-8000-000000000003",
@@ -1064,7 +1247,7 @@
     "method": "PUT",
     "path": "/api/expenses/c0000000-0000-4000-8000-000000000012",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000042",
+      "requestId": "90000000-0000-4000-8000-000000000048",
       "title": "Tablet para las videollamadas",
       "kind": "parents",
       "groupId": "b0000000-0000-4000-8000-000000000003",
@@ -1091,7 +1274,7 @@
     "method": "POST",
     "path": "/api/payments",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000043",
+      "requestId": "90000000-0000-4000-8000-000000000049",
       "fromId": "a0000000-0000-4000-8000-000000000001",
       "toId": "a0000000-0000-4000-8000-000000000001",
       "paid": {
@@ -1112,7 +1295,7 @@
     "method": "POST",
     "path": "/api/payments",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000044",
+      "requestId": "90000000-0000-4000-8000-000000000050",
       "fromId": "a0000000-0000-4000-8000-000000000002",
       "toId": "a0000000-0000-4000-8000-000000000003",
       "paid": {
@@ -1133,7 +1316,7 @@
     "method": "POST",
     "path": "/api/payments",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000045",
+      "requestId": "90000000-0000-4000-8000-000000000051",
       "fromId": "a0000000-0000-4000-8000-000000000002",
       "toId": "a0000000-0000-4000-8000-000000000001",
       "paid": {
@@ -1153,7 +1336,7 @@
     "method": "POST",
     "path": "/api/payments",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000046",
+      "requestId": "90000000-0000-4000-8000-000000000052",
       "fromId": "a0000000-0000-4000-8000-000000000001",
       "toId": "a0000000-0000-4000-8000-000000000002",
       "paid": {
@@ -1174,7 +1357,7 @@
     "method": "POST",
     "path": "/api/payments",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000047",
+      "requestId": "90000000-0000-4000-8000-000000000053",
       "fromId": "a0000000-0000-4000-8000-000000000001",
       "toId": "a0000000-0000-4000-8000-000000000002",
       "paid": {
@@ -1194,7 +1377,7 @@
     "method": "POST",
     "path": "/api/payments",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000048",
+      "requestId": "90000000-0000-4000-8000-000000000054",
       "fromId": "a0000000-0000-4000-8000-000000000001",
       "toId": "a0000000-0000-4000-8000-000000000002",
       "paid": {
@@ -1215,7 +1398,7 @@
     "method": "POST",
     "path": "/api/payments",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000049",
+      "requestId": "90000000-0000-4000-8000-000000000055",
       "fromId": "a0000000-0000-4000-8000-000000000001",
       "toId": "a0000000-0000-4000-8000-000000000002",
       "paid": {
@@ -1236,7 +1419,7 @@
     "method": "POST",
     "path": "/api/payments",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000050",
+      "requestId": "90000000-0000-4000-8000-000000000056",
       "fromId": "a0000000-0000-4000-8000-000000000004",
       "toId": "a0000000-0000-4000-8000-000000000002",
       "paid": {
@@ -1258,7 +1441,7 @@
     "method": "POST",
     "path": "/api/payments",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000051",
+      "requestId": "90000000-0000-4000-8000-000000000057",
       "fromId": "a0000000-0000-4000-8000-000000000001",
       "toId": "a0000000-0000-4000-8000-000000000006",
       "paid": {
@@ -1268,6 +1451,182 @@
       "method": "transfer",
       "date": "2026-11-18",
       "groupId": "b0000000-0000-4000-8000-000000000003"
+    },
+    "expect": {
+      "status": 400,
+      "code": "validation_error"
+    }
+  },
+  {
+    "name": "a payment given in the past",
+    "caller": "carlos",
+    "method": "POST",
+    "path": "/api/payments",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000058",
+      "fromId": "a0000000-0000-4000-8000-000000000001",
+      "toId": "a0000000-0000-4000-8000-000000000002",
+      "paid": {
+        "amountMinor": 1000,
+        "currency": "CLP"
+      },
+      "method": "transfer",
+      "date": "2026-11-18",
+      "transactionDate": "2026-08-05"
+    },
+    "expect": {
+      "status": 201,
+      "body": {
+        "date": "2026-11-18",
+        "transactionDate": "2026-08-05",
+        "version": 1
+      }
+    }
+  },
+  {
+    "name": "a payment transaction date that does not exist",
+    "caller": "carlos",
+    "method": "POST",
+    "path": "/api/payments",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000059",
+      "fromId": "a0000000-0000-4000-8000-000000000001",
+      "toId": "a0000000-0000-4000-8000-000000000002",
+      "paid": {
+        "amountMinor": 1000,
+        "currency": "CLP"
+      },
+      "method": "transfer",
+      "date": "2026-11-18",
+      "transactionDate": "2026-13-01"
+    },
+    "expect": {
+      "status": 400,
+      "code": "validation_error"
+    }
+  },
+  {
+    "name": "correcting a payment made to you",
+    "caller": "carlos",
+    "method": "PUT",
+    "path": "/api/payments/d0000000-0000-4000-8000-000000000002",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000060",
+      "transactionDate": "2026-09-30",
+      "version": 1
+    },
+    "expect": {
+      "status": 200,
+      "body": {
+        "date": "2026-10-05",
+        "transactionDate": "2026-09-30",
+        "version": 2
+      }
+    }
+  },
+  {
+    "name": "correcting a payment you made",
+    "caller": "lucia",
+    "method": "PUT",
+    "path": "/api/payments/d0000000-0000-4000-8000-000000000002",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000061",
+      "transactionDate": "2026-09-30",
+      "version": 1
+    },
+    "expect": {
+      "status": 200
+    }
+  },
+  {
+    "name": "correcting a payment between two other people",
+    "caller": "diego",
+    "method": "PUT",
+    "path": "/api/payments/d0000000-0000-4000-8000-000000000002",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000062",
+      "transactionDate": "2026-09-30",
+      "version": 1
+    },
+    "expect": {
+      "status": 404,
+      "code": "not_found"
+    }
+  },
+  {
+    "name": "correcting a payment that does not exist",
+    "caller": "carlos",
+    "method": "PUT",
+    "path": "/api/payments/d0000000-0000-4000-8000-000000009999",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000063",
+      "transactionDate": "2026-09-30",
+      "version": 1
+    },
+    "expect": {
+      "status": 404,
+      "code": "not_found"
+    }
+  },
+  {
+    "name": "correcting a payment with a stale version",
+    "caller": "carlos",
+    "method": "PUT",
+    "path": "/api/payments/d0000000-0000-4000-8000-000000000002",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000064",
+      "transactionDate": "2026-09-30",
+      "version": 99
+    },
+    "expect": {
+      "status": 409,
+      "code": "conflict"
+    }
+  },
+  {
+    "name": "correcting a payment to a day that does not exist",
+    "caller": "carlos",
+    "method": "PUT",
+    "path": "/api/payments/d0000000-0000-4000-8000-000000000002",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000065",
+      "transactionDate": "2026-09-31",
+      "version": 1
+    },
+    "expect": {
+      "status": 400,
+      "code": "validation_error"
+    }
+  },
+  {
+    "name": "changing the amount of a payment",
+    "caller": "carlos",
+    "method": "PUT",
+    "path": "/api/payments/d0000000-0000-4000-8000-000000000002",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000066",
+      "transactionDate": "2026-09-30",
+      "version": 1,
+      "paid": {
+        "amountMinor": 1,
+        "currency": "CLP"
+      }
+    },
+    "expect": {
+      "status": 400,
+      "code": "validation_error"
+    }
+  },
+  {
+    "name": "changing the entry date of a payment",
+    "caller": "carlos",
+    "method": "PUT",
+    "path": "/api/payments/d0000000-0000-4000-8000-000000000002",
+    "body": {
+      "requestId": "90000000-0000-4000-8000-000000000067",
+      "transactionDate": "2026-09-30",
+      "version": 1,
+      "date": "2026-09-30"
     },
     "expect": {
       "status": 400,
@@ -1331,7 +1690,7 @@
     "method": "POST",
     "path": "/api/groups",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000052",
+      "requestId": "90000000-0000-4000-8000-000000000068",
       "name": "  ",
       "memberIds": [
         "a0000000-0000-4000-8000-000000000001",
@@ -1349,7 +1708,7 @@
     "method": "POST",
     "path": "/api/groups",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000053",
+      "requestId": "90000000-0000-4000-8000-000000000069",
       "name": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
       "memberIds": [
         "a0000000-0000-4000-8000-000000000001",
@@ -1367,7 +1726,7 @@
     "method": "POST",
     "path": "/api/groups",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000054",
+      "requestId": "90000000-0000-4000-8000-000000000070",
       "name": "Grupo de prueba",
       "memberIds": [
         "a0000000-0000-4000-8000-000000000001"
@@ -1384,7 +1743,7 @@
     "method": "POST",
     "path": "/api/groups",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000055",
+      "requestId": "90000000-0000-4000-8000-000000000071",
       "name": "Grupo de prueba",
       "memberIds": [
         "a0000000-0000-4000-8000-000000000002",
@@ -1402,7 +1761,7 @@
     "method": "POST",
     "path": "/api/groups",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000056",
+      "requestId": "90000000-0000-4000-8000-000000000072",
       "name": "Grupo de prueba",
       "memberIds": [
         "a0000000-0000-4000-8000-000000000001",
@@ -1420,7 +1779,7 @@
     "method": "POST",
     "path": "/api/groups",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000057",
+      "requestId": "90000000-0000-4000-8000-000000000073",
       "name": "Grupo de prueba",
       "memberIds": [
         "a0000000-0000-4000-8000-000000000001",
@@ -1438,7 +1797,7 @@
     "method": "PUT",
     "path": "/api/groups/b0000000-0000-4000-8000-000000000003",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000058",
+      "requestId": "90000000-0000-4000-8000-000000000074",
       "name": "Otro nombre",
       "memberIds": [
         "a0000000-0000-4000-8000-000000000001",
@@ -1458,7 +1817,7 @@
     "method": "PUT",
     "path": "/api/groups/b0000000-0000-4000-8000-000000000004",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000059",
+      "requestId": "90000000-0000-4000-8000-000000000075",
       "name": "Otro nombre",
       "memberIds": [
         "a0000000-0000-4000-8000-000000000007",
@@ -1477,7 +1836,7 @@
     "method": "PUT",
     "path": "/api/groups/b0000000-0000-4000-8000-000000000003",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000060",
+      "requestId": "90000000-0000-4000-8000-000000000076",
       "name": "Cuidado de Mamá y Papá",
       "memberIds": [
         "a0000000-0000-4000-8000-000000000002",
@@ -1496,7 +1855,7 @@
     "method": "PUT",
     "path": "/api/groups/b0000000-0000-4000-8000-000000000003",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000061",
+      "requestId": "90000000-0000-4000-8000-000000000077",
       "name": "Cuidado de Mamá y Papá",
       "memberIds": [
         "a0000000-0000-4000-8000-000000000001",
@@ -1515,7 +1874,7 @@
     "method": "PUT",
     "path": "/api/groups/b0000000-0000-4000-8000-000000000003",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000062",
+      "requestId": "90000000-0000-4000-8000-000000000078",
       "name": "Otro nombre",
       "memberIds": [
         "a0000000-0000-4000-8000-000000000001",
@@ -1535,7 +1894,7 @@
     "method": "PUT",
     "path": "/api/groups/b0000000-0000-4000-8000-000000000003",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000063",
+      "requestId": "90000000-0000-4000-8000-000000000079",
       "name": "Cuidado de los papás",
       "memberIds": [
         "a0000000-0000-4000-8000-000000000001",
@@ -1554,7 +1913,7 @@
     "method": "POST",
     "path": "/api/exchange-rates",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000064",
+      "requestId": "90000000-0000-4000-8000-000000000080",
       "usdCad": "1.41",
       "date": "2026-11-19"
     },
@@ -1569,7 +1928,7 @@
     "method": "POST",
     "path": "/api/exchange-rates",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000065",
+      "requestId": "90000000-0000-4000-8000-000000000081",
       "usdCad": "0",
       "cadClp": "672",
       "date": "2026-11-19"
@@ -1585,7 +1944,7 @@
     "method": "POST",
     "path": "/api/exchange-rates",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000066",
+      "requestId": "90000000-0000-4000-8000-000000000082",
       "usdCad": "-1.40",
       "cadClp": "672",
       "date": "2026-11-19"
@@ -1601,7 +1960,7 @@
     "method": "POST",
     "path": "/api/exchange-rates",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000067",
+      "requestId": "90000000-0000-4000-8000-000000000083",
       "usdCad": "1.41",
       "cadClp": "mucho",
       "date": "2026-11-19"
@@ -1617,7 +1976,7 @@
     "method": "POST",
     "path": "/api/exchange-rates",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000068",
+      "requestId": "90000000-0000-4000-8000-000000000084",
       "usdCad": "1.41",
       "cadClp": "672",
       "date": "2026-13-01"
@@ -1633,7 +1992,7 @@
     "method": "POST",
     "path": "/api/exchange-rates",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000069",
+      "requestId": "90000000-0000-4000-8000-000000000085",
       "usdCad": "1.41",
       "cadClp": "672",
       "date": "2026-10-15"

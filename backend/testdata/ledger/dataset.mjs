@@ -130,9 +130,23 @@ export class Ledger {
     }
 
     for (const expense of Object.values(expenses)) {
-      const { id, title, kind, groupId, payerId, addedBy, amountMinor, currency, date, participantIds, seq } = expense;
-      const SK = `${date}#${String(seq).padStart(8, '0')}`;
-      const entry = { expenseId: id, title, kind, groupId, payerId, addedBy, amountMinor, currency, date, participantIds, seq };
+      const { id, title, kind, groupId, payerId, addedBy, amountMinor, currency, date, transactionDate, participantIds, seq } =
+        expense;
+      const SK = `${transactionDate}#${String(seq).padStart(8, '0')}`;
+      const entry = {
+        expenseId: id,
+        title,
+        kind,
+        groupId,
+        payerId,
+        addedBy,
+        amountMinor,
+        currency,
+        date,
+        transactionDate,
+        participantIds,
+        seq,
+      };
       items.push({ PK: `GROUP#${groupId}#EXPENSES`, SK, ...entry });
       items.push({ PK: `GROUP#${groupId}#KIND#${kind}`, SK, ...entry });
     }
@@ -141,7 +155,7 @@ export class Ledger {
       const [low, high] = [payment.fromId, payment.toId].sort();
       items.push({
         PK: `PAIR#${low}#${high}#PAYMENTS`,
-        SK: `${payment.date}#${String(payment.seq).padStart(8, '0')}`,
+        SK: `${payment.transactionDate}#${String(payment.seq).padStart(8, '0')}`,
         paymentId: payment.id,
         fromId: payment.fromId,
         toId: payment.toId,
@@ -151,7 +165,9 @@ export class Ledger {
         creditedCurrency: payment.credited.currency,
         method: payment.method,
         date: payment.date,
+        transactionDate: payment.transactionDate,
         groupId: payment.groupId,
+        version: payment.version,
         seq: payment.seq,
       });
     }
@@ -350,6 +366,7 @@ export class Ledger {
       amountMinor: fields.amountMinor,
       currency: fields.currency,
       date: fields.date,
+      transactionDate: fields.transactionDate,
       splitMode,
       participantIds,
       percents: percentById,
@@ -365,6 +382,8 @@ export class Ledger {
     this.state.bodies[alias] = body;
     this.state.expenses[id] = {
       ...fields,
+      // A browser that predates transaction dates sends none, and the entry day stands in.
+      transactionDate: fields.transactionDate ?? fields.date,
       id,
       alias,
       groupId: group.id,
@@ -393,7 +412,10 @@ export class Ledger {
     }
   }
 
-  /** An edit keeps the date, who added it, its place in the replay and the rates it recorded. */
+  /**
+   * An edit keeps the entry date, who added it, its place in the replay and the rates it recorded.
+   * It may change the transaction date, which only moves where the expense is listed.
+   */
   editExpense(alias, changes) {
     const expense = this.state.expenses[this.expenseId(alias)];
     const updated = { ...expense, ...changes };
@@ -414,6 +436,7 @@ export class Ledger {
       payerId: updated.payerId,
       amountMinor: updated.amountMinor,
       currency: updated.currency,
+      transactionDate: changes.transactionDate,
       splitMode: updated.splitMode,
       participantIds: updated.participantIds,
       percents: updated.percents,
@@ -433,7 +456,7 @@ export class Ledger {
     };
   }
 
-  pay(alias, { from, to, amountMinor, currency, method, date, group, credited, by }) {
+  pay(alias, { from, to, amountMinor, currency, method, date, transactionDate, group, credited, by }) {
     const id = this.newId('payment', alias);
     const paid = { amountMinor, currency };
     const rates = this.currentRates();
@@ -447,6 +470,7 @@ export class Ledger {
       credited,
       method,
       date,
+      transactionDate,
       groupId,
     };
     const rev = this.commit([`PAYMENT#${id}`]);
@@ -461,10 +485,12 @@ export class Ledger {
       credited: accepted,
       method,
       date,
+      transactionDate: transactionDate ?? date,
       groupId,
       recordedRates: rates,
       recordedBy: this.member(by ?? from),
       recordedAt: stamp(date, rev),
+      version: 1,
       seq: rev,
       rev,
       lastRequestId: id,
@@ -472,12 +498,37 @@ export class Ledger {
     };
   }
 
+  /** Corrects the day a payment's money was given. Nothing else about it can change. */
+  editPayment(alias, { transactionDate, by }) {
+    const payment = this.state.payments[this.id('payment', alias)];
+    const requestId = this.newId('request');
+    const body = { requestId, transactionDate, version: payment.version };
+    const rev = this.commit([`PAYMENT#${payment.id}`]);
+    this.record(by ? this.member(by) : payment.recordedBy, 'PUT', `/api/payments/${payment.id}`, body);
+    Object.assign(payment, {
+      transactionDate,
+      version: payment.version + 1,
+      rev,
+      lastRequestId: requestId,
+      lastRequestHash: requestHash(body),
+    });
+  }
+
   debt(expenseAlias, x, y) {
     return debtBetween(this.pairs(), this.expenseId(expenseAlias), this.member(x), this.member(y));
   }
 }
 
-for (const name of ['profile', 'createGroup', 'updateGroup', 'enterRates', 'addExpense', 'editExpense', 'pay']) {
+for (const name of [
+  'profile',
+  'createGroup',
+  'updateGroup',
+  'enterRates',
+  'addExpense',
+  'editExpense',
+  'pay',
+  'editPayment',
+]) {
   const write = Ledger.prototype[name];
   Ledger.prototype[name] = function writeAndStamp(...args) {
     write.apply(this, args);
@@ -1129,6 +1180,40 @@ export const SCENARIOS = [
     expect: { antigua: 4000, almuerzo: 6800 },
   },
   {
+    name: 'transaction-date-in-the-past',
+    requirement: 'Section 7, the day the money changed hands',
+    description: 'An expense and an advance entered today for money spent and given in August',
+    views: ['lucia'],
+    apply: (l) => {
+      l.addExpense('mercado', {
+        title: 'Mercado de agosto',
+        kind: 'parents',
+        group: 'care',
+        payer: 'lucia',
+        amountMinor: 20000,
+        currency: 'CLP',
+        date: '2026-11-18',
+        transactionDate: '2026-08-03',
+        participants: ['carlos', 'lucia'],
+      });
+      carlosPays(l, 10000, undefined, { alias: 'adelanto-agosto', transactionDate: '2026-08-05' });
+    },
+    // Debts are paid in the order they were entered, so the advance pays Almuerzo, entered earlier,
+    // and leaves Mercado open even though its money was spent first.
+    expect: { mercado: 10000, almuerzo: 6800 },
+  },
+  {
+    name: 'transaction-date-corrected',
+    requirement: 'Section 7, the day the money changed hands',
+    description: 'Correcting the day of an expense and of a payment moves them in the lists and no money',
+    views: ['lucia'],
+    apply: (l) => {
+      l.editExpense('tablet', { transactionDate: '2026-10-30' });
+      l.editPayment('lucia-calefon', { transactionDate: '2026-09-30', by: 'carlos' });
+    },
+    expect: { groupsCad: { meals: -2507, care: 6045, family: -1680 } },
+  },
+  {
     name: 'new-rates-keep-debts-closed',
     requirement: 'Section 6, rates and history',
     description: 'A later rate entry neither reopens the closed debts nor moves the open ones',
@@ -1300,6 +1385,13 @@ export function requestCases(l) {
   const POST_GROUP = ['POST', '/api/groups'];
   const POST_RATES = ['POST', '/api/exchange-rates'];
   const putExpense = (alias) => ['PUT', `/api/expenses/${e(alias)}`];
+  const putPayment = (alias) => ['PUT', `/api/payments/${p(alias)}`];
+  const paymentEdit = (alias, overrides = {}) => ({
+    requestId: requestId(),
+    transactionDate: '2026-09-30',
+    version: l.state.payments[p(alias)].version,
+    ...overrides,
+  });
   const putGroup = (alias) => ['PUT', `/api/groups/${g(alias)}`];
 
   const INVALID = { status: 400, code: 'validation_error' };
@@ -1347,6 +1439,9 @@ export function requestCases(l) {
     ['percentages adding up to 99', 'carlos', POST_EXPENSE, expense({ splitMode: 'percent', percents: { [m('carlos')]: 50, [m('lucia')]: 49 } }), INVALID],
     ['fractional percentages', 'carlos', POST_EXPENSE, expense({ splitMode: 'percent', percents: { [m('carlos')]: 50.5, [m('lucia')]: 49.5 } }), INVALID],
     ['a date that does not exist', 'carlos', POST_EXPENSE, expense({ date: '2026-02-30' }), INVALID],
+    ['a transaction date in the past', 'carlos', POST_EXPENSE, expense({ transactionDate: '2026-08-03' }), { status: 201, body: { date: '2026-11-18', transactionDate: '2026-08-03' } }],
+    ['a transaction date that does not exist', 'carlos', POST_EXPENSE, expense({ transactionDate: '2026-02-30' }), INVALID],
+    ['no transaction date, from a browser that predates it', 'carlos', POST_EXPENSE, expense(), { status: 201, body: { transactionDate: '2026-11-18' } }],
     ['shares sent by the browser', 'carlos', POST_EXPENSE, expense({ shares: { [m('carlos')]: 1000 } }), INVALID],
     ['a usual split missing a member', 'carlos', POST_EXPENSE, expense({ splitMode: 'percent', percents: { [m('carlos')]: 50, [m('lucia')]: 50 }, usualSplit: { [m('carlos')]: 50, [m('lucia')]: 50 } }), INVALID],
 
@@ -1354,6 +1449,9 @@ export function requestCases(l) {
     ['editing an expense someone else added', 'carlos', putExpense('almuerzo'), edit('almuerzo'), FORBIDDEN],
     ['editing with a stale version', 'carlos', putExpense('tablet'), edit('tablet', { version: 99 }), CONFLICT],
     ['changing the date on an edit', 'carlos', putExpense('tablet'), edit('tablet', { date: '2026-11-13' }), INVALID],
+    ['changing the transaction date on an edit', 'carlos', putExpense('tablet'), edit('tablet', { transactionDate: '2026-10-30' }), { status: 200, body: { date: '2026-11-12', transactionDate: '2026-10-30', version: 2 } }],
+    ['an edit that sends no transaction date keeps it', 'carlos', putExpense('tablet'), edit('tablet', { title: 'Tablet' }), { status: 200, body: { transactionDate: '2026-11-12' } }],
+    ['an edit with a transaction date that does not exist', 'carlos', putExpense('tablet'), edit('tablet', { transactionDate: '2026-11-31' }), INVALID],
     ['editing an expense in a group the caller is not in', 'mama', putExpense('tablet'), edit('tablet'), NOT_FOUND],
     ['editing after leaving the group', 'beto', putExpense('cabana'), edit('cabana'), NOT_FOUND],
     ['an edit that changes what a former member owes', 'diego', putExpense('gasolina'), edit('gasolina', { amountMinor: 6000 }), INVALID],
@@ -1371,6 +1469,18 @@ export function requestCases(l) {
     ['an unknown method', 'carlos', POST_PAYMENT, payment({ method: 'cheque' }), INVALID],
     ['a chosen group the caller is not in', 'mama', POST_PAYMENT, payment({ fromId: m('mama'), toId: m('lucia'), groupId: g('care') }), NOT_FOUND],
     ['a chosen group the other person is not in', 'carlos', POST_PAYMENT, payment({ toId: m('beto'), groupId: g('care') }), INVALID],
+    ['a payment given in the past', 'carlos', POST_PAYMENT, payment({ transactionDate: '2026-08-05' }), { status: 201, body: { date: '2026-11-18', transactionDate: '2026-08-05', version: 1 } }],
+    ['a payment transaction date that does not exist', 'carlos', POST_PAYMENT, payment({ transactionDate: '2026-13-01' }), INVALID],
+
+    // Section 7, correcting the day a payment was given.
+    ['correcting a payment made to you', 'carlos', putPayment('lucia-calefon'), paymentEdit('lucia-calefon'), { status: 200, body: { date: '2026-10-05', transactionDate: '2026-09-30', version: 2 } }],
+    ['correcting a payment you made', 'lucia', putPayment('lucia-calefon'), paymentEdit('lucia-calefon'), OK],
+    ['correcting a payment between two other people', 'diego', putPayment('lucia-calefon'), paymentEdit('lucia-calefon'), NOT_FOUND],
+    ['correcting a payment that does not exist', 'carlos', ['PUT', '/api/payments/d0000000-0000-4000-8000-000000009999'], paymentEdit('lucia-calefon'), NOT_FOUND],
+    ['correcting a payment with a stale version', 'carlos', putPayment('lucia-calefon'), paymentEdit('lucia-calefon', { version: 99 }), CONFLICT],
+    ['correcting a payment to a day that does not exist', 'carlos', putPayment('lucia-calefon'), paymentEdit('lucia-calefon', { transactionDate: '2026-09-31' }), INVALID],
+    ['changing the amount of a payment', 'carlos', putPayment('lucia-calefon'), paymentEdit('lucia-calefon', { paid: { amountMinor: 1, currency: 'CLP' } }), INVALID],
+    ['changing the entry date of a payment', 'carlos', putPayment('lucia-calefon'), paymentEdit('lucia-calefon', { date: '2026-09-30' }), INVALID],
 
     // Section 7, home currency.
     ['an unsupported home currency', 'carlos', ['PUT', '/api/me/profile'], { homeCurrency: 'EUR' }, INVALID],
@@ -1492,6 +1602,8 @@ export const COVERAGE = [
   ['12', 'A reverse payment reduces credit', 'scenario `reverse-payment-reduces-credit`'],
   ['3, 12', 'An advance against the giver\'s own open debts becomes credit and pays nothing', 'scenario `advance-against-open-debt`'],
   ['12', 'A backdated expense cannot capture an earlier payment', 'scenario `backdated-expense`'],
+  ['7', 'An expense and an advance whose money changed hands before they were entered', 'scenario `transaction-date-in-the-past`'],
+  ['7, 9', 'Correcting the day of an expense or a payment moves it in the lists and moves no money', 'scenario `transaction-date-corrected`'],
   ['12', 'Credit between two people with no shared group', 'payment `papa-rosa`'],
   ['9', 'Expenses load in pages, and filters run on the server', '`requests.json`, `lists` in `expected.json`'],
   ['9', 'Moving an expense to another group retires its old list entries', 'scenario `edit-changes-group`'],

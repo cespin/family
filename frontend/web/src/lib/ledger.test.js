@@ -8,6 +8,8 @@ import {
   balanceTotal,
   balancesFor,
   expensesByMonth,
+  isTransactionDate,
+  transactionDateOf,
 } from './ledger.js';
 import { ratesFromEntry } from './money.js';
 
@@ -145,5 +147,50 @@ describe('expensesByMonth', () => {
     ]);
     expect(months.map((month) => month.key)).toEqual(['2026-11', '2026-10']);
     expect(months[0].expenses.map((item) => item.id)).toEqual(['new', 'mid']);
+  });
+
+  it('groups by the month the money was spent, not the day it was entered', () => {
+    const months = expensesByMonth([
+      { id: 'entered-late', date: '2026-11-19', transactionDate: '2026-08-03' },
+      { id: 'older', date: '2026-08-01' },
+    ]);
+    expect(months).toEqual([
+      {
+        key: '2026-08',
+        date: '2026-08-03',
+        expenses: [
+          { id: 'entered-late', date: '2026-11-19', transactionDate: '2026-08-03' },
+          { id: 'older', date: '2026-08-01' },
+        ],
+      },
+    ]);
+  });
+});
+
+describe('transactionDateOf', () => {
+  it('reads the entry date of an answer that predates transaction dates', () => {
+    expect(transactionDateOf({ date: '2026-11-14' })).toBe('2026-11-14');
+    expect(transactionDateOf({ date: '2026-11-14', transactionDate: '2026-08-03' })).toBe('2026-08-03');
+  });
+});
+
+describe('isTransactionDate', () => {
+  const today = '2026-11-19';
+
+  it.each([
+    ['today', '2026-11-19', true],
+    ['a past day', '2026-08-03', true],
+    ['a real day still to come', '2028-02-29', false],
+    ['tomorrow', '2026-11-20', false],
+    ['a day that does not exist', '2026-02-30', false],
+    ['an empty field', '', false],
+    ['a partly typed day', '2026-11', false],
+  ])('%s', (_name, value, expected) => {
+    expect(isTransactionDate(value, today)).toBe(expected);
+  });
+
+  it('accepts 29 February in a leap year that has passed', () => {
+    expect(isTransactionDate('2024-02-29', today)).toBe(true);
+    expect(isTransactionDate('2025-02-29', today)).toBe(false);
   });
 });

@@ -232,6 +232,7 @@ export function HomeScreen({ ledgerState, isWide, nav, dataVersion }) {
               groupId={groupId}
               onSettle={nav.settle}
               onAdvance={nav.advance}
+              onPayments={nav.payments}
               onRates={nav.rates}
             />
             {isWide && hasGroups && <GroupsCard ledger={ledger} nav={nav} />}

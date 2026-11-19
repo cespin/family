@@ -54,10 +54,10 @@ fn request(caller: &str, method: &str, path: &str, body: Option<&Value>) -> Requ
     let segments: Vec<&str> = route.trim_matches('/').split('/').collect();
     let mut path_parameters = HashMap::new();
     if let ["api", resource, id] = segments.as_slice() {
-        let name = if *resource == "groups" {
-            "groupId"
-        } else {
-            "expenseId"
+        let name = match *resource {
+            "groups" => "groupId",
+            "payments" => "paymentId",
+            _ => "expenseId",
         };
         path_parameters.insert(name.to_string(), id.to_string());
     }
@@ -88,7 +88,7 @@ pub async fn send<T: Table>(
         ("PUT", "/api/me/profile") => api::me_profile_put(table, &env, &event).await,
         ("GET", _) => api::ledger_read(table, &event).await,
         (_, r) if r.starts_with("/api/expenses") => api::expenses_write(table, &env, &event).await,
-        (_, "/api/payments") => api::payments_post(table, &env, &event).await,
+        (_, r) if r.starts_with("/api/payments") => api::payments_post(table, &env, &event).await,
         (_, r) if r.starts_with("/api/groups") => api::groups_write(table, &event).await,
         (_, "/api/exchange-rates") => api::exchange_rates_post(table, &event).await,
         other => panic!("no handler for {other:?}"),

@@ -151,6 +151,7 @@ function describeExpense(pairs, ledger, expense, memberId, names) {
       coveredMinor: slice.coveredMinor,
       method: slice.method,
       date: slice.date,
+      transactionDate: ledger.state.payments[slice.paymentId].transactionDate,
     })),
   };
 }
@@ -175,7 +176,7 @@ function describeCaller(ledger, member, pairs, names) {
 
   const expenses = Object.values(state.expenses)
     .filter((expense) => visible.has(expense.groupId))
-    .sort((a, b) => b.date.localeCompare(a.date) || b.seq - a.seq);
+    .sort((a, b) => b.transactionDate.localeCompare(a.transactionDate) || b.seq - a.seq);
 
   return {
     access: 'allowed',
@@ -183,7 +184,7 @@ function describeCaller(ledger, member, pairs, names) {
     groups: groups.map((group) => group.alias),
     payments: Object.values(state.payments)
       .filter((payment) => payment.fromId === member.id || payment.toId === member.id)
-      .sort((a, b) => b.date.localeCompare(a.date) || b.seq - a.seq)
+      .sort((a, b) => b.transactionDate.localeCompare(a.transactionDate) || b.seq - a.seq)
       .map((payment) => payment.alias),
     standings: describeStandings(pairs, member.id, names),
     lists: {

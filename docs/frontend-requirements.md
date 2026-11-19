@@ -71,16 +71,17 @@ The frontend's internal data shape is not binding. It can adapt to the API, as l
 ### Add or edit an expense
 
 - Enter a title, amount, currency, kind, group, payer and participants, and optionally a note.
+- Choose the day the money was spent. It defaults to today, can be any past day, and cannot be in the future.
 - Record a purchase charged in a different currency, such as a Canadian credit card used in Chile, by entering both the receipt amount and the charged amount.
 - For those purchases, keep the debt in the charged currency, which is the default, or choose the receipt currency instead.
 - Split equally, or by percentage in whole numbers.
 - Choose "I pay all" or "I pay nothing", from the caller's side, not the payer's. Both are sent as an equal split: with only the caller as participant, or with everyone else. When someone else paid, "I pay all" makes the caller owe them the whole amount, so an advance the caller gave them covers it (section 12).
 - Choose to keep a percentage split as the group's usual split.
-- Edit an expense they added, through the same form.
+- Edit an expense they added, through the same form, including the day the money was spent.
 
 ### Expense detail
 
-- See the title, kind, group, total, its value in their home currency at that date's rate, payer, date and note.
+- See the title, kind, group, total, its value in their home currency at that date's rate, payer, the day the money was spent, and note.
 - See both amounts when a purchase was charged in a different currency, and each participant's share in both currencies.
 - See what they still owe or are owed on this expense, and what has been paid so far.
 - See each participant's share, percentage, home currency and status.
@@ -91,12 +92,19 @@ The frontend's internal data shape is not binding. It can adapt to the API, as l
 - See who they owe and who owes them, one person at a time.
 - Record a payment in either direction, full or partial, in any supported currency, with the method used.
 - Optionally choose which group the payment goes to.
+- Choose the day the money was given, as for an expense.
 
 ### Record an advance
 
 - Record an advance with any other active member, even when nothing is owed between them: who gave the money, the amount in any supported currency, and the method used.
 - See before saving what it will do: it pays any debt the giver owes first, and the rest is credit that later debts draw on (section 12).
+- Choose the day the money was given, as for an expense.
 - It is sent as a payment with no group and no credited value, and needs no exchange rates to be saved.
+
+### Payments and advances
+
+- See their own payments and advances with each person, newest first by the day the money was given.
+- Correct the day of any of them. Nothing else about a payment can change, and correcting the day moves no money.
 
 ## 4. Information the frontend needs
 
@@ -133,14 +141,16 @@ Every expense in the caller's groups, available page by page:
 - The group, the payer and the member who added it.
 - The total and its currency. This is the debt currency, and the shares add up to this amount.
 - Optionally, the purchase's other amount and currency, and which of the two is the charged amount.
-- A calendar date, with no time and no time zone. 14 November stays 14 November for a reader in any country.
+- Two calendar dates, with no time and no time zone. 14 November stays 14 November for a reader in any country:
+  - **The entry date**, the day it was entered. It never changes, decides the order debts are paid in, and picks the exchange rates.
+  - **The transaction date**, the day the money was spent. The member chooses it and can correct it. Lists are ordered by it, and screens show it.
 - The split mode: `equal` or `percent`.
 - Each participant's share, and their percentage when the mode is `percent`.
-- The exchange rates that applied on the expense's date.
+- The exchange rates that applied on the expense's entry date.
 - Optionally, a note.
 - The payments applied to it, including payments between other participants.
 
-Expenses on the same date need a stable order, such as when they were recorded.
+Expenses on the same transaction date need a stable order, such as when they were recorded.
 
 ### Payments
 
@@ -150,8 +160,9 @@ For each payment:
 - What was actually paid, and in which currency.
 - The value credited against the debt (see section 7).
 - The method: `transfer`, `cash` or `other`.
-- A calendar date.
+- An entry date and a transaction date, as for an expense.
 - The group the person chose, if any.
+- A version, for correcting the transaction date.
 
 For each expense a payment was applied to, the amount in the payment's currency and the amount it covered in the expense's currency. The detail screen shows both, as in "Diego paid USD 32,00 (≈ CLP 30.000)".
 
@@ -311,8 +322,9 @@ Client-side checks are a convenience. The backend must enforce every rule below.
 | Participants | At least one, and all members of the group |
 | Shares | Must add up to exactly the total and follow the rules in section 5 |
 | Percentages | Required for `percent`, in whole numbers adding up to 100 |
-| Date | A valid calendar date. The browser supplies it, because family members live in different time zones |
-| Editing | Only the member who added the expense can edit it. Editing keeps the original date and who added it. An expense added by someone who has since left the group or lost access can no longer be edited |
+| Entry date | A valid calendar date. The browser supplies its own today, because family members live in different time zones |
+| Transaction date | A valid calendar date chosen by the member, up to the browser's today. A browser that predates it sends none, and the entry date is used |
+| Editing | Only the member who added the expense can edit it. Editing can change the transaction date, and keeps the entry date and who added it. An expense added by someone who has since left the group or lost access can no longer be edited |
 
 When an expense is edited, a payer or participant who has since left the group may stay on it.
 
@@ -326,7 +338,8 @@ A percentage expense can also ask to become the group's usual split. That change
 | Amount paid | A positive integer in minor units of a supported currency, up to 9007199254740991. The expense maximum does not apply, because one payment can cover several expenses |
 | Method | One of the values in section 4 |
 | Group | Optional. When present, both parties must belong to it |
-| Date | A valid calendar date supplied by the browser |
+| Entry date | A valid calendar date supplied by the browser |
+| Transaction date | As for an expense. Either party can later correct it, and nothing else about a payment can change |
 
 **Full payments in another currency.** Conversion rounding can leave a payment slightly off the exact debt. Paying CAD 39,63 against CLP 26.550 converts to CLP 26.552. When the payment is within one minor unit of the paying currency, the frontend treats the debt as cleared and sends two values: what was actually paid, and the debt's exact amount as the value credited. The backend must accept this only within that tolerance, and otherwise credit exactly what was paid.
 
@@ -444,7 +457,7 @@ Continuing the last scenario in section 6, where Lucía owes Carlos CLP 3.450 he
 
 ### How debts and payments are worked out
 
-- **Events are replayed in the order they were recorded.** An expense entered later cannot capture a payment recorded before it, even with an older date. An edited expense keeps its original position.
+- **Events are replayed in the order they were recorded.** An expense entered later cannot capture a payment recorded before it, even with an older transaction date. Debts are paid oldest entry date first, so an expense entered today for money spent in August is paid after the expenses entered before it. An edited expense keeps its original position, and correcting a transaction date moves no money.
 - **Rates are read from the event.** Group nets and closed debts are worked out when an expense or payment is recorded, with the rates in force at that moment. Entering new rates never closes or reopens a debt.
 - **A debt closes on a net of zero** when the group's net rounds to zero in the currency of the event being recorded.
 - **Amounts stay whole.** Each allocation rounds what it covers to the debt's minor unit, using exact decimal arithmetic. Halves round away from zero, so both sides of a debt see the same figure.

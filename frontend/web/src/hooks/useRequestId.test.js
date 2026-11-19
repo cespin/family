@@ -11,6 +11,18 @@ describe('useRequestId', () => {
     expect(retry.date).toBe('2026-11-18');
   });
 
+  it('treats a changed transaction date as a new save, which the API would refuse under the old id', () => {
+    const { result } = renderHook(() => useRequestId());
+    const first = result.current.prepare({ title: 'Pan', date: '2026-11-18', transactionDate: '2026-11-18' });
+    const corrected = result.current.prepare({
+      title: 'Pan',
+      date: '2026-11-18',
+      transactionDate: '2026-08-03',
+    });
+    expect(corrected.requestId).not.toBe(first.requestId);
+    expect(corrected.transactionDate).toBe('2026-08-03');
+  });
+
   it('treats changed content as a new save', () => {
     const { result } = renderHook(() => useRequestId());
     const first = result.current.prepare({ title: 'Pan' });
