@@ -3,6 +3,7 @@ import { DashboardScreen } from './screens/DashboardScreen.jsx';
 import { FailedScreen } from './screens/FailedScreen.jsx';
 import { LoadingScreen } from './screens/LoadingScreen.jsx';
 import { NotInvitedScreen } from './screens/NotInvitedScreen.jsx';
+import { ProfileSetupScreen } from './screens/ProfileSetupScreen.jsx';
 import { SignInScreen } from './screens/SignInScreen.jsx';
 
 const SCREENS = {
@@ -10,6 +11,7 @@ const SCREENS = {
   signedOut: SignInScreen,
   notInvited: NotInvitedScreen,
   failed: FailedScreen,
+  needsProfile: ProfileSetupScreen,
   signedIn: DashboardScreen,
 };
 

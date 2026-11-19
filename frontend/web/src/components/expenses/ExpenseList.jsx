@@ -1,13 +1,14 @@
 import { useTranslation } from 'react-i18next';
 import { Card, ExpenseRow } from '../ui';
 import { formatCalendarDate, formatMinor } from '../../i18n/format.js';
-import { expenseStanding, memberById } from '../../lib/ledger.js';
+import { memberById } from '../../lib/ledger.js';
 
-function shareLabel(t, settled, net) {
+/** What the expense means for me, from the `standing` the API sent with it. */
+function shareLabel(t, { involved, openMinor, settled }) {
+  if (!involved) return { label: t('expenses:row.notInvolved'), labelTone: 'neutral' };
   if (settled) return { label: t('expenses:row.settled'), labelTone: 'neutral' };
-  if (net == null) return { label: t('expenses:row.notInvolved'), labelTone: 'neutral' };
-  if (net < 0) return { label: t('expenses:row.youOwe'), labelTone: 'negative' };
-  if (net > 0) return { label: t('expenses:row.backToYou'), labelTone: 'positive' };
+  if (openMinor < 0) return { label: t('expenses:row.youOwe'), labelTone: 'negative' };
+  if (openMinor > 0) return { label: t('expenses:row.backToYou'), labelTone: 'positive' };
   return { label: t('expenses:row.even'), labelTone: 'neutral' };
 }
 
@@ -18,12 +19,13 @@ export function ExpenseList({ ledger, expenses, onOpen }) {
     <Card flush>
       {expenses.map((expense) => {
         const payer = memberById(ledger, expense.payerId);
-        const { netMinor: net, settled } = expenseStanding(ledger, expense);
+        const { standing } = expense;
         const details = {
           date: formatCalendarDate(expense.date, { day: 'numeric', month: 'short' }),
           total: formatMinor(expense.amountMinor, expense.currency),
         };
-        const hiddenFrom = expense.hiddenFromId && memberById(ledger, expense.hiddenFromId);
+        // A settled expense shows no amount: the API reports nothing left open on it.
+        const shownMinor = standing.involved && !standing.settled ? standing.openMinor : null;
 
         return (
           <ExpenseRow
@@ -35,13 +37,9 @@ export function ExpenseList({ ledger, expenses, onOpen }) {
                 ? t('expenses:row.metaYou', details)
                 : t('expenses:row.meta', { ...details, name: payer.name })
             }
-            hiddenLabel={
-              hiddenFrom ? t('expenses:row.hiddenFrom', { name: hiddenFrom.name }) : null
-            }
-            netMinor={net}
+            netMinor={shownMinor}
             currency={expense.currency}
-            amountTone={settled ? 'muted' : 'auto'}
-            {...shareLabel(t, settled, net)}
+            {...shareLabel(t, standing)}
             onClick={() => onOpen(expense.id)}
           />
         );

@@ -1,44 +1,61 @@
-// Sample ledger for `npm run dev`, taken from the design. It lives in memory and resets on reload.
+// A stand-in for the expenses API in `npm run dev`, with the family from the design. It answers in
+// the API's own shapes (backend/docs/api-contract.md), lives in memory and resets on reload.
 // Only src/lib/expenses.js may import this file, behind its dev-only condition.
+//
+// Balances come from src/lib/sampleEngine.js, which is not the API's allocation: payments recorded
+// here move the balances but do not appear in an expense's activity, and some edge cases differ.
 
-const TO_BASE = { CAD: 1, USD: 1.4, CLP: 1 / 670 };
-const ratesOn = (asOf) => ({ base: 'CAD', asOf, toBase: TO_BASE });
+import { ApiError } from './api.js';
+import { pairEntries, expenseNet, expenseStanding, pairCleared } from './sampleEngine.js';
+import { ratesFromEntry, splitByPercent, splitEqual } from './money.js';
 
+const ME = 'carlos';
 const USUAL_CARE = { carlos: 50, lucia: 25, diego: 25 };
 
 const state = {
-  me: 'carlos',
-  rates: ratesOn('2026-11-18'),
+  revision: 1,
+  nextSeq: 100,
+  requests: new Map(),
+  rateEntries: [{ id: 'rates-oct', usdCad: '1.40', cadClp: '670', date: '2026-10-01', enteredBy: 'lucia' }],
   members: [
-    { id: 'carlos', name: 'Carlos', tone: 'honey', currency: 'CAD' },
-    { id: 'lucia', name: 'Lucía', tone: 'clay', currency: 'CLP' },
-    { id: 'diego', name: 'Diego', tone: 'lagoon', currency: 'USD' },
-    { id: 'mama', name: 'Mamá', tone: 'sage', currency: 'CLP' },
-    { id: 'papa', name: 'Papá', tone: 'cocoa', currency: 'CLP' },
-    { id: 'beto', name: 'Tío Beto', currency: 'USD' },
+    { id: 'carlos', name: 'Carlos', tone: 'honey', currency: 'CAD', active: true },
+    { id: 'lucia', name: 'Lucía', tone: 'clay', currency: 'CLP', active: true },
+    { id: 'diego', name: 'Diego', tone: 'lagoon', currency: 'USD', active: true },
+    { id: 'mama', name: 'Mamá', tone: 'sage', currency: 'CLP', active: true },
+    { id: 'papa', name: 'Papá', tone: 'cocoa', currency: 'CLP', active: true },
+    { id: 'beto', name: 'Tío Beto', currency: 'USD', active: true },
   ],
   groups: [
     {
       id: 'family',
       name: 'Toda la familia',
+      createdBy: 'mama',
       memberIds: ['carlos', 'lucia', 'diego', 'mama', 'papa', 'beto'],
+      usual: null,
+      version: 1,
     },
     {
       id: 'meals',
       name: 'Comidas familiares',
+      createdBy: 'lucia',
       memberIds: ['carlos', 'lucia', 'diego', 'mama', 'papa'],
+      usual: null,
+      version: 1,
     },
     {
       id: 'care',
       name: 'Cuidado de Mamá y Papá',
+      createdBy: 'carlos',
       memberIds: ['carlos', 'lucia', 'diego'],
       usual: USUAL_CARE,
+      version: 2,
     },
   ],
   settlements: [],
   expenses: [
     {
       id: 'kinesiologia',
+      seq: 13,
       title: 'Kinesiología de Mamá',
       kind: 'parents',
       groupId: 'care',
@@ -51,21 +68,22 @@ const state = {
       splitMode: 'percent',
       percents: USUAL_CARE,
       shares: { carlos: 60000, lucia: 30000, diego: 30000 },
-      rates: ratesOn('2026-11-14'),
       payments: [
         {
           id: 'diego-kinesiologia',
           fromId: 'diego',
           toId: 'lucia',
-          amountMinor: 3200,
+          amountMinor: 3198,
           currency: 'USD',
           coversMinor: 30000,
+          method: 'transfer',
           date: '2026-11-15',
         },
       ],
     },
     {
       id: 'tablet',
+      seq: 12,
       title: 'Tablet para las videollamadas',
       kind: 'parents',
       groupId: 'care',
@@ -80,6 +98,7 @@ const state = {
     },
     {
       id: 'almuerzo',
+      seq: 10,
       title: 'Almuerzo familiar del domingo',
       kind: 'meal',
       groupId: 'meals',
@@ -93,6 +112,7 @@ const state = {
     },
     {
       id: 'flores',
+      seq: 9,
       title: 'Flores para el cumpleaños de Mamá',
       kind: 'gift',
       groupId: 'family',
@@ -102,11 +122,11 @@ const state = {
       currency: 'USD',
       date: '2026-11-06',
       splitMode: 'equal',
-      hiddenFromId: 'mama',
       shares: { carlos: 1200, lucia: 1200, diego: 1200, papa: 1200, beto: 1200 },
     },
     {
       id: 'pizzas',
+      seq: 7,
       title: 'Pizzas en casa de Mamá',
       kind: 'meal',
       groupId: 'meals',
@@ -121,6 +141,7 @@ const state = {
     },
     {
       id: 'cena',
+      seq: 4,
       title: 'Cena de cumpleaños de Papá',
       kind: 'meal',
       groupId: 'family',
@@ -135,6 +156,7 @@ const state = {
     },
     {
       id: 'calefon',
+      seq: 3,
       title: 'Arreglo del calefón',
       kind: 'parents',
       groupId: 'care',
@@ -151,25 +173,371 @@ const state = {
   ],
 };
 
-export function sampleLedger() {
-  return structuredClone(state);
+const fail = (status, code) => {
+  throw new ApiError(status, code);
+};
+
+const clone = (value) => structuredClone(value);
+
+function latestRates() {
+  return state.rateEntries[state.rateEntries.length - 1] ?? null;
 }
 
-export function saveSampleExpense({ saveUsual, ...expense }) {
-  const saved = { ...expense, id: expense.id ?? crypto.randomUUID() };
-  const index = state.expenses.findIndex((item) => item.id === saved.id);
-  if (index >= 0) state.expenses[index] = { ...state.expenses[index], ...saved };
-  else state.expenses.unshift({ ...saved, addedById: state.me });
+function ratesOn(date) {
+  return state.rateEntries.filter((entry) => entry.date <= date).pop() ?? null;
+}
 
-  if (saveUsual && saved.splitMode === 'percent') {
-    const group = state.groups.find((item) => item.id === saved.groupId);
-    group.usual = saved.percents;
+/** The engine's view of the ledger, from the caller's side. */
+function engineLedger() {
+  return {
+    me: ME,
+    members: state.members,
+    expenses: state.expenses,
+    settlements: state.settlements,
+    rates: ratesFromEntry(latestRates()),
+  };
+}
+
+function myGroups() {
+  return state.groups.filter((group) => group.memberIds.includes(ME));
+}
+
+function findGroup(id) {
+  return myGroups().find((group) => group.id === id) ?? fail(404, 'not_found');
+}
+
+function findExpense(id) {
+  const expense = state.expenses.find((item) => item.id === id);
+  if (!expense || !myGroups().some((group) => group.id === expense.groupId)) fail(404, 'not_found');
+  return expense;
+}
+
+function sumByCurrency(entries) {
+  const totals = new Map();
+  for (const { minor, currency } of entries) {
+    totals.set(currency, (totals.get(currency) ?? 0) + Math.round(minor));
   }
-  return structuredClone(saved);
+  return [...totals]
+    .filter(([, minor]) => minor !== 0)
+    .map(([currency, amountMinor]) => ({ amountMinor, currency }));
 }
 
-export function saveSampleSettlement(settlement) {
-  const saved = { ...settlement, id: crypto.randomUUID() };
-  state.settlements.push(saved);
-  return structuredClone(saved);
+function standingsJson() {
+  const ledger = engineLedger();
+  return state.members
+    .filter((member) => member.id !== ME)
+    .map((member) => {
+      const entries = pairEntries(ledger, member.id);
+      const groupIds = [...new Set(entries.map((entry) => entry.groupId ?? null))];
+      return {
+        memberId: member.id,
+        overall: sumByCurrency(entries),
+        groups: groupIds
+          .map((groupId) => ({
+            groupId,
+            amounts: sumByCurrency(entries.filter((entry) => (entry.groupId ?? null) === groupId)),
+          }))
+          .filter((group) => group.amounts.length > 0),
+      };
+    })
+    .filter((standing) => standing.overall.length > 0);
+}
+
+function ledgerJson() {
+  return {
+    revision: state.revision,
+    me: ME,
+    members: state.members.map((member) => ({
+      id: member.id,
+      displayName: member.name,
+      homeCurrency: member.currency,
+      tone: member.tone ?? null,
+      active: member.active,
+    })),
+    groups: myGroups().map(groupJson),
+    exchangeRates: [...state.rateEntries].reverse(),
+    standings: standingsJson(),
+  };
+}
+
+function groupJson(group) {
+  return {
+    id: group.id,
+    name: group.name,
+    createdBy: group.createdBy,
+    memberIds: group.memberIds,
+    usualSplit: group.usual,
+    version: group.version,
+  };
+}
+
+function standingJson(expense) {
+  const gross = expenseNet(expense, ME);
+  if (gross == null) return { involved: false, openMinor: null, settled: false };
+  const { netMinor, settled } = expenseStanding(engineLedger(), expense);
+  return { involved: true, openMinor: settled ? 0 : netMinor, settled };
+}
+
+function participantIds(expense) {
+  return Object.keys(expense.shares);
+}
+
+function listItemJson(expense) {
+  return {
+    id: expense.id,
+    title: expense.title,
+    kind: expense.kind,
+    groupId: expense.groupId,
+    payerId: expense.payerId,
+    addedBy: expense.addedById,
+    amountMinor: expense.amountMinor,
+    currency: expense.currency,
+    date: expense.date,
+    participantIds: participantIds(expense),
+    standing: standingJson(expense),
+  };
+}
+
+function participantStatus(expense, id, standing) {
+  if (expense.settled || id === expense.payerId) return 'paid';
+  if (id === ME) {
+    if (standing.settled) return 'paid';
+    return Math.abs(standing.openMinor) < expense.shares[id] ? 'partly_paid' : 'owes';
+  }
+  if (expense.payerId === ME) return pairCleared(engineLedger(), expense, id) ? 'paid' : 'owes';
+  return (expense.payments ?? []).some((payment) => payment.fromId === id) ? 'paid' : 'owes';
+}
+
+function detailJson(expense) {
+  const standing = standingJson(expense);
+  const other = expense.otherAmount;
+  const body = {
+    ...listItemJson(expense),
+    revision: state.revision,
+    splitMode: expense.splitMode,
+    note: expense.note ?? null,
+    ratesId: ratesOn(expense.date)?.id ?? null,
+    version: expense.version ?? 1,
+    participants: participantIds(expense).map((id) => {
+      const row = {
+        memberId: id,
+        shareMinor: expense.shares[id],
+        status: participantStatus(expense, id, standing),
+      };
+      if (expense.splitMode === 'percent') row.percent = expense.percents[id];
+      if (other) row.otherShareMinor = Math.round((expense.shares[id] * other.amountMinor) / expense.amountMinor);
+      return row;
+    }),
+    appliedPayments: (expense.payments ?? []).map((payment) => ({
+      paymentId: payment.id,
+      fromId: payment.fromId,
+      toId: payment.toId,
+      paidMinor: payment.amountMinor,
+      paidCurrency: payment.currency,
+      coveredMinor: payment.coversMinor ?? payment.amountMinor,
+      method: payment.method,
+      date: payment.date,
+    })),
+  };
+  delete body.participantIds;
+  if (other) {
+    body.otherAmount = clone(other);
+    body.chargedCurrency = expense.chargedCurrency;
+  }
+  return body;
+}
+
+function listExpenses(params) {
+  const groupId = params.get('groupId');
+  const kind = params.get('kind');
+  if (groupId) findGroup(groupId);
+  const limit = Number(params.get('limit') ?? 50);
+  const offset = Number(params.get('cursor') ?? 0);
+  const groupIds = myGroups().map((group) => group.id);
+  const matches = state.expenses
+    .filter((expense) => groupIds.includes(expense.groupId))
+    .filter((expense) => (!groupId || expense.groupId === groupId) && (!kind || expense.kind === kind))
+    .sort((a, b) => b.date.localeCompare(a.date) || b.seq - a.seq);
+  const page = matches.slice(offset, offset + limit);
+  return {
+    revision: state.revision,
+    expenses: page.map(listItemJson),
+    nextCursor: offset + limit < matches.length ? String(offset + limit) : null,
+  };
+}
+
+function shareOut(body, group) {
+  const ordered = group.memberIds.filter((id) => body.participantIds.includes(id));
+  return body.splitMode === 'percent'
+    ? splitByPercent(body.amountMinor, ordered, body.percents)
+    : splitEqual(body.amountMinor, ordered);
+}
+
+function expenseFields(body, group) {
+  return {
+    title: body.title.trim(),
+    kind: body.kind,
+    groupId: body.groupId,
+    payerId: body.payerId,
+    amountMinor: body.amountMinor,
+    currency: body.currency,
+    splitMode: body.splitMode,
+    percents: body.percents,
+    otherAmount: body.otherAmount,
+    chargedCurrency: body.otherAmount ? (body.chargedCurrency ?? body.currency) : undefined,
+    note: body.note,
+    shares: shareOut(body, group),
+  };
+}
+
+function saveUsual(body, group) {
+  if (!body.usualSplit) return;
+  group.usual = body.usualSplit;
+  group.version += 1;
+}
+
+function addExpense(body) {
+  const group = findGroup(body.groupId);
+  if (!body.title?.trim()) fail(400, 'validation_error');
+  const expense = {
+    id: body.requestId,
+    seq: state.nextSeq++,
+    addedById: ME,
+    date: body.date,
+    version: 1,
+    ...expenseFields(body, group),
+  };
+  state.expenses.push(expense);
+  saveUsual(body, group);
+  return detailJson(expense);
+}
+
+function editExpense(id, body) {
+  const expense = findExpense(id);
+  if (expense.addedById !== ME) fail(403, 'forbidden');
+  if (body.version !== (expense.version ?? 1)) fail(409, 'conflict');
+  const group = findGroup(body.groupId);
+  Object.assign(expense, expenseFields(body, group), { version: body.version + 1 });
+  saveUsual(body, group);
+  return detailJson(expense);
+}
+
+function addPayment(body) {
+  if (body.fromId !== ME && body.toId !== ME) fail(403, 'forbidden');
+  const counted = body.credited ?? body.paid;
+  const payment = {
+    id: body.requestId,
+    fromId: body.fromId,
+    toId: body.toId,
+    amountMinor: counted.amountMinor,
+    currency: counted.currency,
+    groupId: body.groupId,
+    method: body.method,
+    date: body.date,
+  };
+  state.settlements.push(payment);
+  return {
+    id: payment.id,
+    fromId: payment.fromId,
+    toId: payment.toId,
+    paid: clone(body.paid),
+    credited: clone(counted),
+    method: payment.method,
+    date: payment.date,
+    groupId: payment.groupId ?? null,
+  };
+}
+
+function addGroup(body) {
+  const group = {
+    id: body.requestId,
+    name: body.name.trim(),
+    createdBy: ME,
+    memberIds: body.memberIds,
+    usual: body.usualSplit ?? null,
+    version: 1,
+  };
+  state.groups.push(group);
+  return groupJson(group);
+}
+
+function editGroup(id, body) {
+  const group = findGroup(id);
+  if (group.createdBy !== ME) fail(403, 'forbidden');
+  if (body.version !== group.version) fail(409, 'conflict');
+  const removed = group.memberIds.some((memberId) => !body.memberIds.includes(memberId));
+  let usual = body.usualSplit ?? null;
+  if (!usual && group.usual && !removed) {
+    usual = Object.fromEntries(body.memberIds.map((memberId) => [memberId, group.usual[memberId] ?? 0]));
+  }
+  Object.assign(group, {
+    name: body.name.trim(),
+    memberIds: body.memberIds,
+    usual,
+    version: group.version + 1,
+  });
+  return groupJson(group);
+}
+
+function addRates(body) {
+  const latest = latestRates();
+  const entry = {
+    id: body.requestId,
+    usdCad: body.usdCad,
+    cadClp: body.cadClp,
+    date: latest && body.date < latest.date ? latest.date : body.date,
+    enteredBy: ME,
+  };
+  state.rateEntries.push(entry);
+  return clone(entry);
+}
+
+function saveProfile(body) {
+  const member = state.members.find((item) => item.id === ME);
+  member.currency = body.homeCurrency;
+  if (body.tone) member.tone = body.tone;
+  return {
+    sub: 'sample',
+    email: 'dev@example.test',
+    name: member.name,
+    memberId: member.id,
+    displayName: member.name,
+    homeCurrency: member.currency,
+  };
+}
+
+// Writes keyed by requestId, so a retried save answers the same way, as the API does.
+const WRITES = [
+  ['POST', /^\/expenses$/, (body) => addExpense(body)],
+  ['PUT', /^\/expenses\/([^/]+)$/, (body, id) => editExpense(id, body)],
+  ['POST', /^\/payments$/, (body) => addPayment(body)],
+  ['POST', /^\/groups$/, (body) => addGroup(body)],
+  ['PUT', /^\/groups\/([^/]+)$/, (body, id) => editGroup(id, body)],
+  ['POST', /^\/exchange-rates$/, (body) => addRates(body)],
+];
+
+export async function sampleApi(path, { method = 'GET', body } = {}) {
+  const url = new URL(path, 'http://sample.invalid');
+  const route = url.pathname;
+
+  if (method === 'GET' && route === '/ledger') return clone(ledgerJson());
+  if (method === 'GET' && route === '/expenses') return clone(listExpenses(url.searchParams));
+  const detail = route.match(/^\/expenses\/([^/]+)$/);
+  if (method === 'GET' && detail) {
+    return clone(detailJson(findExpense(decodeURIComponent(detail[1]))));
+  }
+  if (method === 'PUT' && route === '/me/profile') return saveProfile(body);
+
+  for (const [verb, pattern, write] of WRITES) {
+    const match = route.match(pattern);
+    if (verb === method && match) {
+      const key = `${method} ${route} ${body.requestId}`;
+      if (state.requests.has(key)) return clone(state.requests.get(key));
+      const saved = write(body, match[1] && decodeURIComponent(match[1]));
+      state.revision += 1;
+      state.requests.set(key, saved);
+      return clone(saved);
+    }
+  }
+  return fail(404, 'not_found');
 }

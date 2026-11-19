@@ -35,7 +35,10 @@
   },
   "rates": {
     "quote": "1 {{from}} = {{value}} {{to}}",
-    "today": "Cambio de hoy: {{rates}}"
+    "asOf": "Cambio del {{date}}: {{rates}}",
+    "none": "Todavía no hay tipo de cambio, así que no podemos convertir entre monedas.",
+    "open": "Tipo de cambio",
+    "add": "Agregar el cambio"
   },
   "balance": {
     "viewIn": "Ver en",
@@ -54,7 +57,6 @@
   "row": {
     "meta": "Pagó {{name}} · {{date}} · {{total}}",
     "metaYou": "Pagaste tú · {{date}} · {{total}}",
-    "hiddenFrom": "Oculto para {{name}}",
     "settled": "saldado",
     "youOwe": "le debes",
     "backToYou": "te devuelven",
@@ -68,7 +70,12 @@
     "seeLess": "Ver menos",
     "emptyTitle": "Todavía no hay gastos aquí",
     "emptyBody": "Nada que ver, oír ni decir aquí todavía. Prueba con otro tipo o grupo.",
-    "failedBadge": "Ups, no pudimos cargar las cuentas"
+    "failedBadge": "Ups, no pudimos cargar las cuentas",
+    "noGroupsTitle": "Todavía no hay grupos",
+    "noGroupsBody": "Crea un grupo con quienes comparten gastos, como las comidas familiares, y empieza a anotar.",
+    "loadMore": "Cargar más gastos",
+    "loadingMore": "Cargando…",
+    "stale": "No pudimos actualizar las cuentas, así que lo que ves puede estar desactualizado. {{reason}}"
   },
   "groups": {
     "title": "Grupos",
@@ -83,8 +90,9 @@
     "youOwe": "En este grupo, debes",
     "even": "En este grupo, están a mano",
     "incomplete": "En este grupo, el total está incompleto",
-    "hiddenOne": "1 oculto para {{name}}",
-    "hiddenMany": "{{hidden}} ocultos para {{name}}"
+    "new": "Nuevo grupo",
+    "edit": "Editar",
+    "editNamed": "Editar {{group}}"
   },
   "add": {
     "title": "Agregar gasto",
@@ -96,9 +104,18 @@
     "amountPlaceholder": "0",
     "currency": "¿En qué moneda?",
     "currencyHome": "Es tu moneda. Cada uno verá su parte también en la suya.",
-    "currencyConverted": "≈ {{amount}} para ti, al cambio de hoy ({{rate}}).",
-    "currencyRate": "Al cambio de hoy: {{rate}}.",
+    "currencyConverted": "≈ {{amount}} para ti, al cambio vigente ({{rate}}).",
+    "currencyRate": "Al cambio vigente: {{rate}}.",
     "currencyNoRate": "Todavía no tenemos el cambio de esta moneda.",
+    "chargedToggle": "Me cobraron en otra moneda, como con una tarjeta de otro país",
+    "chargedAmount": "¿Cuánto te cobraron?",
+    "chargedCurrency": "¿En qué moneda te cobraron?",
+    "purchaseRate": "La compra salió a {{rate}}. Ese cambio solo vale para este gasto.",
+    "debtIn": "¿En qué moneda queda la deuda?",
+    "debtCharged": "{{currency}}, lo cobrado",
+    "debtReceipt": "{{currency}}, la boleta",
+    "debtChargedHint": "Quien pagó recupera justo lo que le cobraron. Los pagos en otra moneda usan el cambio del día.",
+    "debtReceiptHint": "La deuda queda fija en la moneda de la boleta, y quien pagó asume la diferencia de cambio.",
     "kind": "¿Qué tipo de gasto?",
     "group": "¿De qué grupo?",
     "groupUsual": "Reparto de siempre aquí: {{split}}",
@@ -116,6 +133,8 @@
     "less": "Menos para {{name}}",
     "more": "Más para {{name}}",
     "saveUsual": "Usar este reparto la próxima vez en {{group}}",
+    "note": "Nota (opcional)",
+    "notePlaceholder": "Algo que convenga recordar",
     "status": {
       "needAmount": "Agrega un monto para ver cuánto pone cada uno.",
       "needPeople": "Marca al menos a una persona.",
@@ -124,7 +143,9 @@
       "evenAbout": "En partes iguales entre {{people}} personas: unos {{amount}} cada una.",
       "complete": "100 % asignado. Las partes suman {{amount}}.",
       "missing": "Falta asignar {{percent}}. Dáselo a alguien o reparte parejo.",
-      "over": "Te pasaste por {{percent}}. Quítale un poco a alguien."
+      "over": "Te pasaste por {{percent}}. Quítale un poco a alguien.",
+      "tooMuch": "Es más de lo que se puede anotar en un gasto. El máximo es {{amount}}.",
+      "needCharged": "Agrega también cuánto te cobraron."
     },
     "submit": {
       "ready": "Agregar gasto",
@@ -134,12 +155,15 @@
       "needAmount": "Primero agrega un monto",
       "needPeople": "Primero elige quiénes participan",
       "missing": "Asigna el {{percent}} que falta",
-      "over": "Quita {{percent}}"
+      "over": "Quita {{percent}}",
+      "needCharged": "Primero agrega lo que te cobraron",
+      "checkAmount": "Revisa el monto"
     },
     "saved": "¡Listo! Quedó en {{group}}. {{audience}}",
     "audienceNone": "Solo participas tú.",
     "audienceOne": "{{name}} lo verá en su moneda.",
-    "audienceMany": "{{names}} y {{last}} lo verán en su moneda."
+    "audienceMany": "{{names}} y {{last}} lo verán en su moneda.",
+    "conflict": "Alguien más cambió este gasto mientras lo editabas. Ya cargamos su versión: revisa tus cambios y vuelve a guardar."
   },
   "detail": {
     "back": "Volver a saldos",
@@ -166,18 +190,19 @@
       "settled": "Saldado",
       "paidAll": "Pagó los {{amount}}",
       "youPaidAll": "Pagaste los {{amount}}",
-      "paid": "Pagó {{amount}}",
       "youOwe": "Le debes a {{name}}",
       "owesYou": "Te debe",
-      "owes": "Le debe a {{name}}"
+      "owes": "Le debe a {{name}}",
+      "partlyPaid": "Pagó una parte"
     },
     "activity": "Actividad",
     "activityPaid": "{{from}} le pagó {{amount}} a {{to}}",
-    "activityPaidCovers": "{{from}} le pagó {{amount}} a {{to}} (≈ {{covers}})",
     "activityYouPaid": "Le pagaste {{amount}} a {{to}}",
     "activityPaidYou": "{{from}} te pagó {{amount}}",
     "activityAdded": "{{name}} agregó este gasto",
-    "activityAddedYou": "Agregaste este gasto"
+    "activityAddedYou": "Agregaste este gasto",
+    "amountCovers": "{{paid}} (≈ {{covered}})",
+    "twoAmounts": "En la boleta: {{receipt}} · Cobrado: {{charged}}"
   },
   "settle": {
     "back": "Volver a saldos",
@@ -191,7 +216,7 @@
     "currencyYouPay": "¿En qué moneda le pagas?",
     "currencyTheyPay": "¿En qué moneda te pagó?",
     "currencyTheirs": "Es la moneda de {{name}}, así le llega exacto.",
-    "currencyConverted": "{{name}} usa {{currency}}: lo convertimos al cambio de hoy ({{rate}}).",
+    "currencyConverted": "{{name}} usa {{currency}}: lo convertimos al cambio vigente ({{rate}}).",
     "amountYouPay": "¿Cuánto pagaste?",
     "amountTheyPay": "¿Cuánto te pagó?",
     "methodYouPay": "¿Cómo le pagaste?",
@@ -221,5 +246,53 @@
     "othersTitle": "Los demás",
     "evenTitle": "Están a mano",
     "evenBody": "No hay cuentas pendientes con nadie."
+  },
+  "settings": {
+    "open": "Ajustes",
+    "back": "Volver a saldos",
+    "title": "Ajustes",
+    "currencyTitle": "Tu moneda",
+    "currencyBody": "Verás tus saldos y gastos convertidos a esta moneda. Lo que se debe no cambia: cada deuda queda en su moneda.",
+    "save": "Guardar mi moneda",
+    "saving": "Guardando…",
+    "saved": "¡Listo! Ahora tu moneda es {{currency}}.",
+    "ratesTitle": "Tipo de cambio"
+  },
+  "ratesScreen": {
+    "back": "Volver a saldos",
+    "title": "Tipo de cambio",
+    "intro": "Lo anota la familia a mano. Cambia cómo se ven los saldos y los pagos que vienen, nunca los pagos ya anotados.",
+    "none": "Todavía no hay tipo de cambio. Mientras tanto, lo que está en una sola moneda funciona igual.",
+    "currentTitle": "Cambio vigente",
+    "enteredBy": "Lo anotó {{name}} el {{date}}.",
+    "enteredByYou": "Lo anotaste tú el {{date}}.",
+    "newTitle": "Anotar un cambio nuevo",
+    "usdCad": "¿Cuántos CAD vale 1 USD?",
+    "cadClp": "¿Cuántos CLP vale 1 CAD?",
+    "bigChange": "Esto es más de un 20 % distinto del cambio anterior. Revisa que esté bien escrito antes de guardarlo.",
+    "confirm": "Sí, guardar este cambio",
+    "save": "Guardar el cambio",
+    "saving": "Guardando…",
+    "needRates": "Escribe los dos valores",
+    "saved": "¡Listo! Quedó anotado el cambio nuevo."
+  },
+  "groupForm": {
+    "close": "Cerrar sin guardar",
+    "newTitle": "Nuevo grupo",
+    "editTitle": "Editar grupo",
+    "name": "¿Cómo se llama el grupo?",
+    "namePlaceholder": "Comidas familiares, viaje al sur…",
+    "members": "¿Quiénes están?",
+    "membersHint": "Al menos dos personas, contándote a ti. Se divide en partes iguales hasta que guarden un reparto.",
+    "membersEditHint": "Quien entra ve los gastos anteriores, pero no debe nada de lo que no participó. Solo puedes sacar a alguien que esté a mano con todos en el grupo.",
+    "creator": "{{currency}} · creó el grupo",
+    "removing": "Quien sale deja de ver el grupo, y sus gastos quedan en la historia.",
+    "removingUsual": "Quien sale deja de ver el grupo. El grupo vuelve a dividir en partes iguales hasta que guarden un reparto nuevo.",
+    "save": "Guardar cambios",
+    "create": "Crear grupo",
+    "saving": "Guardando…",
+    "needName": "Primero escribe un nombre",
+    "needPeople": "Elige al menos a una persona más",
+    "conflict": "Alguien más cambió este grupo mientras lo editabas. Ya cargamos su versión: revisa tus cambios y vuelve a guardar."
   }
 }

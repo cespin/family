@@ -24,3 +24,11 @@
   align-items: baseline;
   gap: var(--fa-space-1) var(--fa-space-2-5);
 }
+
+.fa-balance__rates {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--fa-space-2);
+}

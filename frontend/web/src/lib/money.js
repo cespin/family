@@ -3,6 +3,52 @@ import { currencyDigits } from '../i18n/format.js';
 // Money is always integer minor units plus its currency. Nothing here adds two currencies together
 // without converting through an explicit rate first.
 
+/** The supported currencies, offered whether or not any rates exist yet. */
+export const CURRENCIES = ['CAD', 'USD', 'CLP'];
+
+/** The largest expense the API accepts, in minor units: 10.000,00 CAD or USD, or CLP 10.000.000. */
+export const EXPENSE_MAX_MINOR = { CAD: 1_000_000, USD: 1_000_000, CLP: 10_000_000 };
+
+/** The largest payment a browser reads exactly, which is also the API's limit. */
+export const PAYMENT_MAX_MINOR = Number.MAX_SAFE_INTEGER;
+
+/**
+ * The conversion table for one exchange rate entry from the API, or null when there is none.
+ * The entry holds 1 USD in CAD and 1 CAD in CLP as decimal strings; CAD is the base.
+ */
+export function ratesFromEntry(entry) {
+  if (!entry) return null;
+  const usdCad = Number(entry.usdCad);
+  const cadClp = Number(entry.cadClp);
+  if (!(usdCad > 0) || !(cadClp > 0)) return null;
+  return {
+    id: entry.id,
+    base: 'CAD',
+    asOf: entry.date,
+    enteredBy: entry.enteredBy,
+    usdCad: entry.usdCad,
+    cadClp: entry.cadClp,
+    toBase: { CAD: 1, USD: usdCad, CLP: 1 / cadClp },
+  };
+}
+
+const RATE_MAX = 1_000_000;
+const RATE_MAX_CHARS = 20;
+
+/**
+ * Reads a typed exchange rate into the plain decimal the API takes, such as "1.40", or null.
+ * A comma is the decimal separator when there is one, so "1.234,5" reads as 1234.5. Without a
+ * comma, a single dot is decimal: rates are often below 10, so "1.400" means 1.4, not 1400.
+ */
+export function parseRate(text) {
+  let value = String(text ?? '').replace(/\s/g, '');
+  if (value.includes(',')) value = value.replaceAll('.', '').replace(',', '.');
+  else if ((value.match(/\./g) ?? []).length > 1) value = value.replaceAll('.', '');
+  if (!/^\d+(\.\d+)?$/.test(value) || value.length > RATE_MAX_CHARS) return null;
+  const number = Number(value);
+  return number > 0 && number <= RATE_MAX ? value : null;
+}
+
 /**
  * Reads what a person typed into integer minor units, or null when there is no number in it.
  * Accepts both "95.000" (thousands) and "320,00" (decimals), the way family members write amounts.

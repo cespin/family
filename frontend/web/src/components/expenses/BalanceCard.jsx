@@ -1,16 +1,10 @@
 import { useId, useState } from 'react';
-import { Wallet } from 'lucide-react';
+import { ArrowLeftRight, Wallet } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Amount, Button, Card, PersonRow, Segmented } from '../ui';
 import { formatMinor } from '../../i18n/format.js';
-import {
-  ALL_GROUPS,
-  balanceTotal,
-  balancesFor,
-  currenciesOf,
-  groupById,
-  memberById,
-} from '../../lib/ledger.js';
+import { ALL_GROUPS, balanceTotal, balancesFor, groupById, myself } from '../../lib/ledger.js';
+import { CURRENCIES } from '../../lib/money.js';
 import { currencyLabel, ratesLine } from './labels.js';
 import './BalanceCard.css';
 
@@ -28,10 +22,10 @@ function rowTitle(t, row) {
     : t('expenses:balance.theyOwe', { name });
 }
 
-export function BalanceCard({ ledger, groupId, onSettle }) {
+export function BalanceCard({ ledger, groupId, onSettle, onRates }) {
   const { t } = useTranslation();
   const labelId = useId();
-  const [currency, setCurrency] = useState(memberById(ledger, ledger.me).currency);
+  const [currency, setCurrency] = useState(myself(ledger).currency);
 
   const rows = balancesFor(ledger, { groupId, currency });
   const total = balanceTotal(ledger, { groupId, currency });
@@ -53,7 +47,7 @@ export function BalanceCard({ ledger, groupId, onSettle }) {
             labelledBy={labelId}
             value={currency}
             onChange={setCurrency}
-            options={currenciesOf(ledger).map((code) => ({
+            options={CURRENCIES.map((code) => ({
               value: code,
               label: currencyLabel(t, code),
             }))}
@@ -89,7 +83,12 @@ export function BalanceCard({ ledger, groupId, onSettle }) {
           </ul>
         )}
 
-        {rates && <p className="fa-text-caption fa-text-muted">{rates}</p>}
+        <div className="fa-balance__rates">
+          <p className="fa-text-caption fa-text-muted">{rates ?? t('expenses:rates.none')}</p>
+          <Button variant="quiet" size="small" icon={ArrowLeftRight} onClick={onRates}>
+            {rates ? t('expenses:rates.open') : t('expenses:rates.add')}
+          </Button>
+        </div>
 
         {rows.length > 0 && (
           <Button variant="secondary" block icon={Wallet} onClick={() => onSettle()}>

@@ -31,16 +31,19 @@ oxlint warns about a missing dependency through `react-hooks/exhaustive-deps`. F
 
 | Field | Meaning |
 |---|---|
-| `status` | `loading`, `signedOut`, `notInvited`, `failed` or `signedIn` |
-| `member` | The signed-in member from `GET /api/me`, when `status` is `signedIn` |
+| `status` | `loading`, `signedOut`, `notInvited`, `failed`, `needsProfile` or `signedIn` |
+| `member` | The account from `GET /api/me`, when `status` is `needsProfile` or `signedIn`. `memberId`, `displayName` and `homeCurrency` are null until the first sign-in step is done, which is what `needsProfile` means |
 | `errorCode` | The API error code, when `status` is `failed` |
 | `signIn()` | Starts the redirect to Google through Cognito |
 | `signOut()` | Ends the session on the server and at Cognito |
 | `retry()` | Resolves the session again after a failure |
 | `getToken()` | The current ID token, read from memory |
+| `renewToken()` | Replaces an ID token the API refused with 401, from the session cookie. Returns null, and signs out, when the session has ended |
+| `updateMember(member)` | Replaces `member` with the answer to `PUT /api/me/profile` |
 
 - **Call `getToken()` when you make the request.** Don't copy the token into state or keep it in a variable across renders, because the provider renews it before it expires.
-- **`member.name` is optional.** Handle a profile without one, as `src/screens/DashboardScreen.jsx` does.
+- **`member.name` is optional.** It is the Google account's name. Prefer `member.displayName`, and handle a profile with neither, as `src/screens/HomeScreen.jsx` does.
+- **Pass the session to `src/lib/expenses.js`.** Each call there reads `getToken()` when it is made, and renews once with `renewToken()` on a 401.
 - **`status` is a UI decision, not a security check.** See `security.md`.
 - **Keep the provider and the hook in separate files.** A component file exports only components, which is what `react/only-export-components` checks.
 - **In tests, mock `src/hooks/useSession.js`.** See `testing.md`.

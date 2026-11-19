@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Pencil, Plus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { BalanceCard } from '../components/expenses/BalanceCard.jsx';
 import { ExpenseList } from '../components/expenses/ExpenseList.jsx';
@@ -9,17 +10,17 @@ import {
   usualSplitLabel,
 } from '../components/expenses/labels.js';
 import { AvatarStack, Button, Card, Chip, EmptyState, MonkeyBadge } from '../components/ui';
+import { useExpenses } from '../hooks/useExpenses.js';
 import { useSession } from '../hooks/useSession.js';
 import { errorMessage } from '../i18n/errors.js';
 import { formatCalendarDate, formatDate } from '../i18n/format.js';
-import { UNAVAILABLE } from '../lib/expenses.js';
-import { ALL_GROUPS, expensesByMonth, filterExpenses, sortedExpenses } from '../lib/ledger.js';
+import { ALL_GROUPS, expensesByMonth } from '../lib/ledger.js';
 import './HomeScreen.css';
 
 const RECENT_COUNT = 4;
 const KIND_FILTERS = ['all', 'meal', 'parents', 'gift', 'other'];
 
-function GroupsCard({ ledger }) {
+function GroupsCard({ ledger, nav }) {
   const { t } = useTranslation();
 
   function splitText(group) {
@@ -39,25 +40,28 @@ function GroupsCard({ ledger }) {
                 <span className="fa-text-caption fa-text-muted">{splitText(group)}</span>
               </span>
               <AvatarStack people={groupPeople(ledger, group)} />
+              {group.createdBy === ledger.me && (
+                <Button
+                  variant="plain"
+                  iconOnly
+                  icon={Pencil}
+                  aria-label={t('expenses:groups.editNamed', { group: group.name })}
+                  onClick={() => nav.editGroup(group.id)}
+                />
+              )}
             </li>
           ))}
         </ul>
+        <Button variant="secondary" block icon={Plus} onClick={nav.newGroup}>
+          {t('expenses:groups.new')}
+        </Button>
       </Card>
     </div>
   );
 }
 
-function LedgerFailed({ errorCode, onRetry }) {
+function LoadFailed({ errorCode, onRetry }) {
   const { t } = useTranslation();
-  if (errorCode === UNAVAILABLE) {
-    return (
-      <Card>
-        <p className="fa-text-body" role="status">
-          {errorMessage(errorCode)}
-        </p>
-      </Card>
-    );
-  }
   return (
     <Card>
       <div className="fa-home__failed" role="alert">
@@ -71,13 +75,34 @@ function LedgerFailed({ errorCode, onRetry }) {
   );
 }
 
-function ExpensesSection({ ledger, groupId, isWide, onOpen }) {
+function FirstGroup({ onCreate }) {
+  const { t } = useTranslation();
+  return (
+    <Card>
+      <EmptyState title={t('expenses:home.noGroupsTitle')}>
+        {t('expenses:home.noGroupsBody')}
+      </EmptyState>
+      <Button block icon={Plus} onClick={onCreate}>
+        {t('expenses:groups.new')}
+      </Button>
+    </Card>
+  );
+}
+
+function ExpensesSection({ ledger, groupId, isWide, dataVersion, onOpen }) {
   const { t } = useTranslation();
   const [kind, setKind] = useState('all');
   const [showAll, setShowAll] = useState(false);
+  const page = useExpenses({
+    groupId: groupId === ALL_GROUPS ? null : groupId,
+    kind: kind === 'all' ? null : kind,
+    version: dataVersion,
+  });
 
-  const expenses = sortedExpenses(filterExpenses(ledger.expenses, { groupId, kind }));
-  const visible = isWide || showAll ? expenses : expenses.slice(0, RECENT_COUNT);
+  const expenses = page.status === 'ready' ? page.expenses : [];
+  const showsEverything = isWide || showAll;
+  const visible = showsEverything ? expenses : expenses.slice(0, RECENT_COUNT);
+  const hasMore = expenses.length > RECENT_COUNT || Boolean(page.nextCursor);
 
   const kindChips = (
     <div className="fa-home__chips" role="group" aria-label={t('expenses:filters.kindLabel')}>
@@ -96,7 +121,7 @@ function ExpensesSection({ ledger, groupId, isWide, onOpen }) {
           {isWide ? t('expenses:home.allTitle') : t('expenses:home.recentTitle')}
         </h2>
         {isWide && kindChips}
-        {!isWide && expenses.length > RECENT_COUNT && (
+        {!isWide && hasMore && (
           <Button variant="quiet" size="small" onClick={() => setShowAll((current) => !current)}>
             {showAll ? t('expenses:home.seeLess') : t('expenses:home.seeAll')}
           </Button>
@@ -104,7 +129,13 @@ function ExpensesSection({ ledger, groupId, isWide, onOpen }) {
       </div>
       {!isWide && kindChips}
 
-      {visible.length === 0 && (
+      {page.status === 'loading' && (
+        <p className="fa-text-body fa-text-muted" role="status">
+          {t('common:status.loading')}
+        </p>
+      )}
+      {page.status === 'failed' && <LoadFailed errorCode={page.errorCode} onRetry={page.retry} />}
+      {page.status === 'ready' && visible.length === 0 && (
         <Card>
           <EmptyState title={t('expenses:home.emptyTitle')}>{t('expenses:home.emptyBody')}</EmptyState>
         </Card>
@@ -122,25 +153,35 @@ function ExpensesSection({ ledger, groupId, isWide, onOpen }) {
             <ExpenseList ledger={ledger} expenses={month.expenses} onOpen={onOpen} />
           </div>
         ))}
+      {page.moreErrorCode && (
+        <p className="fa-text-body" role="alert">
+          {errorMessage(page.moreErrorCode)}
+        </p>
+      )}
+      {showsEverything && page.nextCursor && (
+        <Button variant="secondary" block disabled={page.loadingMore} onClick={page.loadMore}>
+          {page.loadingMore ? t('expenses:home.loadingMore') : t('expenses:home.loadMore')}
+        </Button>
+      )}
     </section>
   );
 }
 
-export function HomeScreen({ ledgerState, isWide, nav }) {
+export function HomeScreen({ ledgerState, isWide, nav, dataVersion }) {
   const { t } = useTranslation();
   const { member } = useSession();
   const [groupId, setGroupId] = useState(ALL_GROUPS);
   const [now] = useState(() => new Date());
   const { status, ledger, errorCode, retry } = ledgerState;
 
-  const firstName = member?.name?.split(' ')[0];
-  const groupOptions =
-    status === 'ready'
-      ? [
-          { id: ALL_GROUPS, name: t('expenses:filters.allGroups') },
-          ...ledger.groups.map(({ id, name }) => ({ id, name })),
-        ]
-      : [];
+  const firstName = (member?.displayName ?? member?.name)?.split(' ')[0];
+  const hasGroups = status === 'ready' && ledger.groups.length > 0;
+  const groupOptions = hasGroups
+    ? [
+        { id: ALL_GROUPS, name: t('expenses:filters.allGroups') },
+        ...ledger.groups.map(({ id, name }) => ({ id, name })),
+      ]
+    : [];
 
   return (
     <main className={`fa-home${isWide ? ' fa-home--wide' : ''}`}>
@@ -158,7 +199,7 @@ export function HomeScreen({ ledgerState, isWide, nav }) {
             })}
           </p>
         </div>
-        {status === 'ready' && (
+        {hasGroups && (
           <div
             className="fa-home__chips fa-home__chips--scroll"
             role="group"
@@ -182,19 +223,29 @@ export function HomeScreen({ ledgerState, isWide, nav }) {
           {t('common:status.loading')}
         </p>
       )}
-      {status === 'failed' && <LedgerFailed errorCode={errorCode} onRetry={retry} />}
+      {status === 'failed' && <LoadFailed errorCode={errorCode} onRetry={retry} />}
       {status === 'ready' && (
         <div className="fa-home__columns">
           <div className="fa-home__rail">
-            <BalanceCard ledger={ledger} groupId={groupId} onSettle={nav.settle} />
-            {isWide && <GroupsCard ledger={ledger} />}
+            <BalanceCard
+              ledger={ledger}
+              groupId={groupId}
+              onSettle={nav.settle}
+              onRates={nav.rates}
+            />
+            {isWide && hasGroups && <GroupsCard ledger={ledger} nav={nav} />}
           </div>
-          <ExpensesSection
-            ledger={ledger}
-            groupId={groupId}
-            isWide={isWide}
-            onOpen={nav.expense}
-          />
+          {hasGroups ? (
+            <ExpensesSection
+              ledger={ledger}
+              groupId={groupId}
+              isWide={isWide}
+              dataVersion={dataVersion}
+              onOpen={nav.expense}
+            />
+          ) : (
+            <FirstGroup onCreate={nav.newGroup} />
+          )}
         </div>
       )}
     </main>

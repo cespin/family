@@ -15,11 +15,20 @@ import {
   StatusNote,
   TextField,
 } from '../components/ui';
+import { useRequestId } from '../hooks/useRequestId.js';
+import { useSession } from '../hooks/useSession.js';
 import { errorMessage } from '../i18n/errors.js';
 import { formatAmountInput, formatMinor } from '../i18n/format.js';
-import { saveSettlement } from '../lib/expenses.js';
-import { balancesFor, currenciesOf, memberById, todayIso } from '../lib/ledger.js';
-import { conversionTolerance, convertMinor, parseAmount, quoteBetween } from '../lib/money.js';
+import { recordPayment } from '../lib/expenses.js';
+import { balancesFor, myself, todayIso } from '../lib/ledger.js';
+import {
+  CURRENCIES,
+  PAYMENT_MAX_MINOR,
+  conversionTolerance,
+  convertMinor,
+  parseAmount,
+  quoteBetween,
+} from '../lib/money.js';
 import { scrollToTop } from '../lib/scroll.js';
 import './SettleUpScreen.css';
 
@@ -67,12 +76,14 @@ function othersTitle(t, row) {
 
 function SettleForm({ ledger, row, onRecorded }) {
   const { t } = useTranslation();
+  const session = useSession();
+  const { prepare, done } = useRequestId();
   const currencyLabelId = useId();
   const methodLabelId = useId();
   const groupLabelId = useId();
   const { me, rates } = ledger;
   const other = row.member;
-  const myself = memberById(ledger, me);
+  const caller = myself(ledger);
 
   const [currency, setCurrency] = useState(other.currency);
   const [amountText, setAmountText] = useState(null);
@@ -96,7 +107,8 @@ function SettleForm({ ledger, row, onRecorded }) {
     amountText ?? (suggested == null ? '' : formatAmountInput(suggested, currency));
   const paidMinor = parseAmount(shownAmount, currency);
   const received = paidMinor == null ? null : convertMinor(paidMinor, currency, other.currency, rates);
-  const hasAmount = paidMinor != null && paidMinor > 0 && received != null;
+  const hasAmount =
+    paidMinor != null && paidMinor > 0 && paidMinor <= PAYMENT_MAX_MINOR && received != null;
 
   const left = hasAmount ? owedMinor - received : null;
   let outcome = 'partial';
@@ -137,22 +149,22 @@ function SettleForm({ ledger, row, onRecorded }) {
     setErrorCode(null);
     const paidText = formatMinor(paidMinor, currency);
     try {
-      // A payment that clears the debt is recorded at the debt's exact value, so that conversion
-      // rounding does not leave a few cents owing in one direction or the other.
-      const settledAmount =
-        outcome === 'even'
-          ? { amountMinor: owedMinor, currency: other.currency }
-          : { amountMinor: paidMinor, currency };
-      await saveSettlement({
-        ...settledAmount,
+      const body = {
         fromId: youPay ? me : other.id,
         toId: youPay ? other.id : me,
-        paidMinor,
-        paidCurrency: currency,
-        groupId: chosenGroup?.id,
+        paid: { amountMinor: paidMinor, currency },
         method,
         date: todayIso(),
-      });
+      };
+      if (chosenGroup) body.groupId = chosenGroup.id;
+      // A payment that clears the debt also sends the debt's exact value, so conversion rounding
+      // does not leave a few cents owing either way. The API accepts it only within one minor unit
+      // of the paying currency, and otherwise credits what was paid.
+      if (outcome === 'even' && (currency !== other.currency || paidMinor !== owedMinor)) {
+        body.credited = { amountMinor: owedMinor, currency: other.currency };
+      }
+      await recordPayment(session, prepare(body));
+      done();
       onRecorded(
         other.id,
         youPay
@@ -174,16 +186,16 @@ function SettleForm({ ledger, row, onRecorded }) {
       <form className="fa-settle" onSubmit={handleSubmit}>
         <div className="fa-settle__people">
           <Avatar
-            name={youPay ? myself.name : other.name}
-            tone={youPay ? myself.tone : other.tone}
+            name={youPay ? caller.name : other.name}
+            tone={youPay ? caller.tone : other.tone}
             size="large"
           />
           <span className="fa-settle__arrow">
             <ArrowRight aria-hidden="true" size={24} strokeWidth={1.75} />
           </span>
           <Avatar
-            name={youPay ? other.name : myself.name}
-            tone={youPay ? other.tone : myself.tone}
+            name={youPay ? other.name : caller.name}
+            tone={youPay ? other.tone : caller.tone}
             size="large"
           />
         </div>
@@ -195,10 +207,10 @@ function SettleForm({ ledger, row, onRecorded }) {
               : t('expenses:settle.theyOwe', { name: other.name })}
           </h2>
           <Amount minor={row.homeMinor} currency={other.currency} />
-          {other.currency !== myself.currency && row.netMinor != null && (
+          {other.currency !== caller.currency && row.netMinor != null && (
             <p className="fa-text-caption fa-text-muted">
               {t('expenses:settle.inYourCurrency', {
-                amount: formatMinor(row.netMinor, myself.currency),
+                amount: formatMinor(row.netMinor, caller.currency),
               })}
             </p>
           )}
@@ -220,7 +232,7 @@ function SettleForm({ ledger, row, onRecorded }) {
             labelledBy={currencyLabelId}
             value={currency}
             onChange={handleCurrency}
-            options={currenciesOf(ledger).map((code) => ({
+            options={CURRENCIES.map((code) => ({
               value: code,
               label: currencyLabel(t, code),
             }))}
@@ -314,7 +326,7 @@ export function SettleUpScreen({ ledger, ledgerState, view, nav }) {
   const { t } = useTranslation();
   const [selectedId, setSelectedId] = useState(view.memberId);
   const [doneNote, setDoneNote] = useState(null);
-  const myCurrency = memberById(ledger, ledger.me).currency;
+  const myCurrency = myself(ledger).currency;
 
   const rows = balancesFor(ledger, { currency: myCurrency });
   const chosen = rows.find((row) => row.member.id === selectedId);

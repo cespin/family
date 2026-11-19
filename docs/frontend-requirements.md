@@ -4,16 +4,15 @@ What the Tres Monos web app needs from the backend, described by what family mem
 
 ## 1. Where things stand
 
-The expense screens are built and deployed, but they are not connected to the expenses API yet. A deployed build shows signed-in members a notice that the accounts are not available yet. Under `npm run dev` the screens run on an in-memory sample ledger.
+The expense screens are connected to the expenses API described in `backend/docs/api-contract.md`. Under `npm run dev` they run on an in-memory stand-in for the API instead.
 
-| File in `frontend/web/src/` | Why it matters to the API work |
+| File in `frontend/web/src/` | What it does |
 |---|---|
-| `lib/expenses.js` | The seam. Its three functions (read the ledger, save an expense, record a payment) are what the API replaces |
-| `lib/expenses.sample.js` | A complete example of the data the screens consume |
-| `lib/ledger.js` and `lib/ledger.test.js` | The working reference for balances and payment allocation |
-| `lib/money.js` and `lib/money.test.js` | The working reference for splits, parsing and conversion |
-
-The API must also support choosing a home currency, managing groups and entering exchange rates. Those screens do not exist yet (section 11).
+| `lib/expenses.js` | The seam: one function per route, and the API's field names mapped to the screens' |
+| `lib/expenses.sample.js` | The dev-only stand-in, answering in the API's shapes |
+| `lib/sampleEngine.js` | The stand-in's balance engine. It is not the source of truth, and differs from section 12 in places |
+| `lib/ledger.js` | Reads the API's standings and converts them to the currency on screen |
+| `lib/money.js` and `lib/money.test.js` | Splits, parsing and conversion |
 
 The frontend's internal data shape is not binding. It can adapt to the API, as long as the information and behaviour below are available.
 
@@ -398,9 +397,9 @@ The current screens have no use for these:
 - Debt simplification across several people.
 - Exporting data.
 
-## 11. Frontend changes when the API lands
+## 11. Frontend changes made for the API
 
-Listed so the API work can plan around them:
+Done when the frontend connected to the API, and listed here so the reasons stay with them:
 
 - Replace the three functions in `lib/expenses.js` with `apiFetch` calls, using `getToken()` from `useSession`.
 - Remove the `expenses_unavailable` state.
@@ -461,4 +460,4 @@ A member's display name is set in the first sign-in step. The form starts from t
 
 ### Sample data
 
-In `lib/expenses.sample.js`, Diego's USD 32,00 payment converts to CLP 30.016, which is more than one minor unit away from the CLP 30.000 it covers. The rules above win, and the sample is corrected when the frontend connects to the API.
+In `lib/expenses.sample.js`, Diego's payment was USD 32,00, which converts to CLP 30.016: more than one minor unit away from the CLP 30.000 it covers. The rules above win, so the sample now records USD 31,98, as the backend's test data does.

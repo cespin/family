@@ -4,8 +4,10 @@ import {
   convertMinor,
   evenPercents,
   parseAmount,
+  parseRate,
   percentTotal,
   quoteBetween,
+  ratesFromEntry,
   splitByPercent,
   splitEqual,
   sumConverted,
@@ -122,5 +124,32 @@ describe('quoteBetween', () => {
 
   it('has no quote for a currency without a rate', () => {
     expect(quoteBetween('EUR', 'CAD', RATES)).toBeNull();
+  });
+});
+
+describe('parseRate', () => {
+  it.each([
+    ['1.40', '1.40'],
+    ['1,40', '1.40'],
+    [' 670 ', '670'],
+    ['1.234,5', '1234.5'],
+    ['1.000.000', '1000000'],
+  ])('reads %j as the plain decimal %j', (text, expected) => {
+    expect(parseRate(text)).toBe(expected);
+  });
+
+  it.each(['', '0', '-1', 'abc', '1e3', '1.', '1000001'])('refuses %j', (text) => {
+    expect(parseRate(text)).toBeNull();
+  });
+});
+
+describe('ratesFromEntry', () => {
+  it('converts through CAD, from the two rates the family enters', () => {
+    const rates = ratesFromEntry({ id: 'r', usdCad: '1.40', cadClp: '670', date: '2026-11-18' });
+    expect(convertMinor(1000, 'USD', 'CLP', rates)).toBe(9380);
+  });
+
+  it('is absent when there is no entry', () => {
+    expect(ratesFromEntry(undefined)).toBeNull();
   });
 });

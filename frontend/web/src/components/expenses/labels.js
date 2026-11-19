@@ -1,4 +1,4 @@
-import { formatNumber } from '../../i18n/format.js';
+import { formatCalendarDate, formatNumber } from '../../i18n/format.js';
 import { memberById } from '../../lib/ledger.js';
 import { quoteBetween } from '../../lib/money.js';
 
@@ -55,15 +55,20 @@ export function quoteLabel(t, quote) {
   });
 }
 
-/** Every rate against the base currency, or null when the ledger has none. */
+/** The two rates the family enters, such as "1 USD = 1,40 CAD · 1 CAD = 670 CLP". */
+export function ratesQuotes(t, rates) {
+  return [quoteBetween('USD', 'CAD', rates), quoteBetween('CAD', 'CLP', rates)]
+    .filter(Boolean)
+    .map((quote) => quoteLabel(t, quote))
+    .join(' · ');
+}
+
+/** The rates in use and the day they were entered, or null when the family has entered none. */
 export function ratesLine(t, ledger) {
-  const { base, toBase } = ledger.rates ?? {};
-  const quotes = Object.keys(toBase ?? {})
-    .map((code) => quoteBetween(code, base, ledger.rates))
-    .filter(Boolean);
-  if (quotes.length === 0) return null;
-  return t('expenses:rates.today', {
-    rates: quotes.map((quote) => quoteLabel(t, quote)).join(' · '),
+  if (!ledger.rates) return null;
+  return t('expenses:rates.asOf', {
+    date: formatCalendarDate(ledger.rates.asOf, { day: 'numeric', month: 'short' }),
+    rates: ratesQuotes(t, ledger.rates),
   });
 }
 

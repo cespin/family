@@ -185,7 +185,7 @@ function useThing(id) {
 }
 ```
 
-`getToken` changes identity whenever the session value changes, so this effect also re-runs after a session renewal.
+`getToken` is stable, so a session renewal does not re-run the effect. To reload after a save, pass a version number the effect depends on, as `useLedger` in `src/hooks/useLedger.js` does. For the expenses API, call the functions in `src/lib/expenses.js` with the session instead of `apiFetch`: they renew an expired token once on a 401.
 
 Keep `loading`, `failed` and empty as distinct states. A failed read must never render as an empty list or a zero. See "Absent is not zero" in `.claude/rules/patterns.md`.
 

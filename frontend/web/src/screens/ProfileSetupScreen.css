@@ -1,0 +1,11 @@
+.fa-profile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fa-space-4);
+}
+
+.fa-profile__question {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fa-space-2);
+}

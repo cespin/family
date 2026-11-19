@@ -1,16 +1,20 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Plus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { AppHeader } from '../components/expenses/AppHeader.jsx';
 import { AppNav } from '../components/expenses/AppNav.jsx';
-import { Button } from '../components/ui';
+import { Button, StatusNote } from '../components/ui';
 import { useIsWide } from '../hooks/useIsWide.js';
 import { useLedger } from '../hooks/useLedger.js';
+import { errorMessage } from '../i18n/errors.js';
 import { scrollToTop } from '../lib/scroll.js';
 import { AddExpenseScreen } from './AddExpenseScreen.jsx';
+import { ExchangeRatesScreen } from './ExchangeRatesScreen.jsx';
 import { ExpenseDetailScreen } from './ExpenseDetailScreen.jsx';
+import { GroupFormScreen } from './GroupFormScreen.jsx';
 import { GroupsScreen } from './GroupsScreen.jsx';
 import { HomeScreen } from './HomeScreen.jsx';
+import { SettingsScreen } from './SettingsScreen.jsx';
 import { SettleUpScreen } from './SettleUpScreen.jsx';
 import './DashboardScreen.css';
 
@@ -20,12 +24,19 @@ const VIEWS = {
   add: AddExpenseScreen,
   detail: ExpenseDetailScreen,
   settle: SettleUpScreen,
+  group: GroupFormScreen,
+  rates: ExchangeRatesScreen,
+  settings: SettingsScreen,
 };
 
 /** The signed-in app. The app has no router, so the current view is plain state. */
 export function DashboardScreen() {
   const { t } = useTranslation();
-  const ledgerState = useLedger();
+  // Bumped after every save, so the balances and the expenses on screen reload together.
+  const [dataVersion, setDataVersion] = useState(0);
+  const ledgerQuery = useLedger(dataVersion);
+  const reload = useCallback(() => setDataVersion((current) => current + 1), []);
+  const ledgerState = { ...ledgerQuery, reload };
   const isWide = useIsWide();
   const [view, setView] = useState({ name: 'home', tab: 'balances' });
   const contentRef = useRef(null);
@@ -53,6 +64,14 @@ export function DashboardScreen() {
     edit: (expenseId) => setView({ name: 'add', expenseId }),
     expense: (expenseId) => setView({ name: 'detail', expenseId }),
     settle: (memberId) => setView({ name: 'settle', memberId }),
+    groups: () =>
+      isWide
+        ? setView({ name: 'home', tab: 'groups', section: 'fa-groups' })
+        : setView({ name: 'groups', tab: 'groups' }),
+    newGroup: () => setView({ name: 'group' }),
+    editGroup: (groupId) => setView({ name: 'group', groupId }),
+    rates: () => setView({ name: 'rates' }),
+    settings: () => setView({ name: 'settings' }),
   };
 
   function handleSelectTab(tab) {
@@ -71,6 +90,7 @@ export function DashboardScreen() {
           activeTab={view.tab}
           onSelectTab={handleSelectTab}
           onAdd={nav.add}
+          onSettings={ready ? nav.settings : undefined}
         />
       )}
       <div
@@ -78,10 +98,21 @@ export function DashboardScreen() {
         tabIndex={-1}
         className={`fa-shell__content${isWide && name === 'home' ? ' fa-shell__content--wide' : ''}`}
       >
+        {ledgerState.refreshErrorCode && (
+          <div className="fa-shell__stale">
+            <StatusNote tone="warning">
+              {t('expenses:home.stale', { reason: errorMessage(ledgerState.refreshErrorCode) })}
+            </StatusNote>
+            <Button variant="quiet" size="small" onClick={reload}>
+              {t('common:actions.retry')}
+            </Button>
+          </div>
+        )}
         <Screen
-          key={`${name}:${view.expenseId ?? view.memberId ?? ''}`}
+          key={`${name}:${view.expenseId ?? view.memberId ?? view.groupId ?? ''}`}
           ledger={ledgerState.ledger}
           ledgerState={ledgerState}
+          dataVersion={dataVersion}
           view={view}
           isWide={isWide}
           nav={nav}

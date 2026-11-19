@@ -9,28 +9,21 @@ import {
 } from '../components/expenses/labels.js';
 import { SubHeader } from '../components/expenses/SubHeader.jsx';
 import { Amount, Avatar, Button, Card, PersonRow, SplitBar, StatusNote } from '../components/ui';
+import { useExpense } from '../hooks/useExpense.js';
 import { errorMessage } from '../i18n/errors.js';
 import { formatCalendarDate, formatMinor } from '../i18n/format.js';
-import {
-  expenseById,
-  expenseNet,
-  expenseStanding,
-  groupById,
-  memberById,
-  pairCleared,
-  sharePercent,
-} from '../lib/ledger.js';
+import { groupById, memberById, myself, ratesById, sharePercent } from '../lib/ledger.js';
 import { convertMinor, quoteBetween } from '../lib/money.js';
 import './ExpenseDetailScreen.css';
 
 const SHORT_DATE = { day: 'numeric', month: 'short' };
 
-function participantStatus(t, ledger, expense, standing, id) {
+/** Each participant's status comes from the API: `owes`, `partly_paid` or `paid`. */
+function participantStatus(t, ledger, expense, participant) {
+  const { memberId: id, status } = participant;
   const payer = memberById(ledger, expense.payerId);
   const total = formatMinor(expense.amountMinor, expense.currency);
-  const payment = expense.payments?.find((item) => item.fromId === id);
 
-  if (expense.settled) return { text: t('expenses:detail.status.settled'), tone: 'muted' };
   if (id === expense.payerId) {
     const text =
       id === ledger.me
@@ -38,13 +31,9 @@ function participantStatus(t, ledger, expense, standing, id) {
         : t('expenses:detail.status.paidAll', { amount: total });
     return { text, tone: 'muted' };
   }
-  const paidOff =
-    (id === ledger.me && standing.settled) ||
-    (expense.payerId === ledger.me && pairCleared(ledger, expense, id));
-  if (paidOff) return { text: t('expenses:detail.status.settled'), tone: 'muted' };
-  if (payment) {
-    const amount = formatMinor(payment.amountMinor, payment.currency);
-    return { text: t('expenses:detail.status.paid', { amount }), tone: 'positive' };
+  if (status === 'paid') return { text: t('expenses:detail.status.settled'), tone: 'muted' };
+  if (status === 'partly_paid') {
+    return { text: t('expenses:detail.status.partlyPaid'), tone: 'positive' };
   }
   if (id === ledger.me) {
     return { text: t('expenses:detail.status.youOwe', { name: payer.name }), tone: 'negative' };
@@ -57,25 +46,28 @@ function participantStatus(t, ledger, expense, standing, id) {
 
 function activityOf(t, ledger, expense) {
   const { me } = ledger;
-  const payments = (expense.payments ?? []).map((payment) => {
-    const amount = formatMinor(payment.amountMinor, payment.currency);
+  const payments = expense.appliedPayments.map((payment, index) => {
+    const paid = formatMinor(payment.paidMinor, payment.paidCurrency);
+    const amount =
+      payment.paidCurrency === expense.currency
+        ? paid
+        : t('expenses:detail.amountCovers', {
+            paid,
+            covered: formatMinor(payment.coveredMinor, expense.currency),
+          });
     const from = memberById(ledger, payment.fromId);
     const to = memberById(ledger, payment.toId);
     let text;
     if (payment.fromId === me) text = t('expenses:detail.activityYouPaid', { amount, to: to.name });
-    else if (payment.toId === me) text = t('expenses:detail.activityPaidYou', { amount, from: from.name });
-    else if (payment.coversMinor != null) {
-      text = t('expenses:detail.activityPaidCovers', {
-        amount,
-        from: from.name,
-        to: to.name,
-        covers: formatMinor(payment.coversMinor, expense.currency),
-      });
+    else if (payment.toId === me) {
+      text = t('expenses:detail.activityPaidYou', { amount, from: from.name });
     } else text = t('expenses:detail.activityPaid', { amount, from: from.name, to: to.name });
-    return { id: payment.id, person: from, text, date: payment.date };
+    // Credit from one payment can reach the same expense more than once, so the id alone is not
+    // unique. The list never reorders.
+    return { id: `${payment.paymentId}:${index}`, person: from, text, date: payment.date };
   });
 
-  const adder = memberById(ledger, expense.addedById ?? expense.payerId);
+  const adder = memberById(ledger, expense.addedBy);
   const added = {
     id: 'added',
     person: adder,
@@ -91,36 +83,66 @@ function activityOf(t, ledger, expense) {
 function splitSubtitle(t, expense, group) {
   if (expense.splitMode !== 'percent') return t('expenses:detail.splitEqual');
   const isUsual =
-    group.usual && group.memberIds.every((id) => group.usual[id] === expense.percents?.[id]);
+    group.usual &&
+    group.memberIds.every(
+      (id) =>
+        (group.usual[id] ?? 0) ===
+        (expense.participants.find((item) => item.memberId === id)?.percent ?? 0),
+    );
   return isUsual ? t('expenses:detail.splitUsual') : t('expenses:detail.splitPercent');
 }
 
-export function ExpenseDetailScreen({ ledger, view, nav }) {
-  const { t } = useTranslation();
-  const expense = expenseById(ledger, view.expenseId);
+/** What the caller's side of the expense came to before any payment. */
+function grossFor(expense, me) {
+  const mine = expense.participants.find((participant) => participant.memberId === me);
+  if (expense.payerId === me) return expense.amountMinor - (mine?.shareMinor ?? 0);
+  return mine ? -mine.shareMinor : null;
+}
 
-  if (!expense) {
+export function ExpenseDetailScreen({ ledger, view, nav, dataVersion }) {
+  const { t } = useTranslation();
+  const query = useExpense(view.expenseId, dataVersion);
+
+  if (query.status !== 'ready') {
     return (
       <main>
         <SubHeader backLabel={t('expenses:detail.back')} onBack={nav.home} />
         <div className="fa-screen">
-          <p className="fa-text-body" role="alert">
-            {errorMessage('not_found')}
-          </p>
+          {query.status === 'loading' ? (
+            <p className="fa-text-body fa-text-muted" role="status">
+              {t('common:status.loading')}
+            </p>
+          ) : (
+            <>
+              <p className="fa-text-body" role="alert">
+                {errorMessage(query.errorCode)}
+              </p>
+              {query.errorCode !== 'not_found' && (
+                <Button variant="secondary" onClick={query.retry}>
+                  {t('common:actions.retry')}
+                </Button>
+              )}
+            </>
+          )}
         </div>
       </main>
     );
   }
+  return <ExpenseDetail ledger={ledger} expense={query.expense} nav={nav} />;
+}
 
+function ExpenseDetail({ ledger, expense, nav }) {
+  const { t } = useTranslation();
   const { me } = ledger;
   const group = groupById(ledger, expense.groupId);
   const payer = memberById(ledger, expense.payerId);
-  const myCurrency = memberById(ledger, me).currency;
-  const rates = expense.rates ?? ledger.rates;
-  const standing = expenseStanding(ledger, expense);
-  const net = standing.netMinor;
-  const gross = expenseNet(expense, me);
-  const participants = group.memberIds.filter((id) => expense.shares[id] != null);
+  const caller = myself(ledger);
+  const myCurrency = caller.currency;
+  const rates = ratesById(ledger, expense.ratesId);
+  const { standing } = expense;
+  const net = standing.involved ? standing.openMinor : null;
+  const gross = grossFor(expense, me);
+  const mine = expense.participants.find((participant) => participant.memberId === me);
   const longDate = formatCalendarDate(expense.date, {
     weekday: 'long',
     day: 'numeric',
@@ -129,12 +151,22 @@ export function ExpenseDetailScreen({ ledger, view, nav }) {
 
   const converted = convertMinor(expense.amountMinor, expense.currency, myCurrency, rates);
   const quote = quoteBetween(expense.currency, myCurrency, rates);
-  const myPercent = expense.shares[me] != null ? percentLabel(t, sharePercent(expense, me)) : null;
+  const myPercent = mine ? percentLabel(t, sharePercent(expense, mine)) : null;
   const myNetConverted =
     net == null ? null : convertMinor(net, expense.currency, myCurrency, rates);
   const showsConversion = expense.currency !== myCurrency && myNetConverted != null;
   const isOpen = !standing.settled && net != null && net !== 0;
   const paidSoFar = isOpen && gross != null ? Math.abs(gross) - Math.abs(net) : 0;
+  const charged = expense.otherAmount
+    ? expense.chargedCurrency === expense.currency
+      ? { minor: expense.amountMinor, currency: expense.currency }
+      : { minor: expense.otherAmount.amountMinor, currency: expense.otherAmount.currency }
+    : null;
+  const receipt = expense.otherAmount
+    ? expense.chargedCurrency === expense.currency
+      ? { minor: expense.otherAmount.amountMinor, currency: expense.otherAmount.currency }
+      : { minor: expense.amountMinor, currency: expense.currency }
+    : null;
 
   return (
     <main>
@@ -142,9 +174,11 @@ export function ExpenseDetailScreen({ ledger, view, nav }) {
         backLabel={t('expenses:detail.back')}
         onBack={nav.home}
         action={
-          <Button variant="quiet" size="small" onClick={() => nav.edit(expense.id)}>
-            {t('expenses:detail.edit')}
-          </Button>
+          expense.addedBy === me && (
+            <Button variant="quiet" size="small" onClick={() => nav.edit(expense.id)}>
+              {t('expenses:detail.edit')}
+            </Button>
+          )
         }
       />
       <div className="fa-screen">
@@ -167,8 +201,16 @@ export function ExpenseDetailScreen({ ledger, view, nav }) {
             <p className="fa-text-caption fa-text-muted">
               {t('expenses:detail.converted', {
                 amount: formatMinor(converted, myCurrency),
-                date: formatCalendarDate(rates.asOf ?? expense.date, SHORT_DATE),
+                date: formatCalendarDate(rates.asOf, SHORT_DATE),
                 rate: quoteLabel(t, quote),
+              })}
+            </p>
+          )}
+          {charged && (
+            <p className="fa-text-caption fa-text-muted">
+              {t('expenses:detail.twoAmounts', {
+                receipt: formatMinor(receipt.minor, receipt.currency),
+                charged: formatMinor(charged.minor, charged.currency),
               })}
             </p>
           )}
@@ -191,8 +233,8 @@ export function ExpenseDetailScreen({ ledger, view, nav }) {
             <div className="fa-detail__owed">
               <div className="fa-detail__owed-row">
                 <Avatar
-                  name={net < 0 ? payer.name : memberById(ledger, me).name}
-                  tone={net < 0 ? payer.tone : memberById(ledger, me).tone}
+                  name={net < 0 ? payer.name : caller.name}
+                  tone={net < 0 ? payer.tone : caller.tone}
                 />
                 <div className="fa-detail__owed-text">
                   <span className="fa-text-body-strong">
@@ -239,28 +281,32 @@ export function ExpenseDetailScreen({ ledger, view, nav }) {
         <Card title={t('expenses:detail.splitTitle')} subtitle={splitSubtitle(t, expense, group)}>
           <div className="fa-detail__split">
             <SplitBar
-              label={participants
+              label={expense.participants
                 .map(
-                  (id) =>
-                    `${memberLabel(t, ledger, id)} ${percentLabel(t, sharePercent(expense, id))}`,
+                  (participant) =>
+                    `${memberLabel(t, ledger, participant.memberId)} ${percentLabel(
+                      t,
+                      sharePercent(expense, participant),
+                    )}`,
                 )
                 .join(', ')}
-              parts={participants.map((id) => {
-                const person = memberById(ledger, id);
+              parts={expense.participants.map((participant) => {
+                const person = memberById(ledger, participant.memberId);
                 return {
-                  id,
+                  id: participant.memberId,
                   name: person.name,
                   tone: person.tone,
-                  percent: sharePercent(expense, id),
+                  percent: sharePercent(expense, participant),
                 };
               })}
             />
             <ul className="fa-person-list">
-              {participants.map((id) => {
+              {expense.participants.map((participant) => {
+                const id = participant.memberId;
                 const person = memberById(ledger, id);
-                const status = participantStatus(t, ledger, expense, standing, id);
+                const status = participantStatus(t, ledger, expense, participant);
                 const details = {
-                  percent: percentLabel(t, sharePercent(expense, id)),
+                  percent: percentLabel(t, sharePercent(expense, participant)),
                   currency: currencyLabel(t, person.currency),
                 };
                 return (
@@ -278,11 +324,21 @@ export function ExpenseDetailScreen({ ledger, view, nav }) {
                     trailing={
                       <span className="fa-detail__share">
                         <Amount
-                          minor={expense.shares[id]}
+                          minor={participant.shareMinor}
                           currency={expense.currency}
                           size="small"
                           tone="neutral"
                         />
+                        {participant.otherShareMinor != null && (
+                          <span className="fa-text-caption fa-text-muted">
+                            {t('expenses:approx', {
+                              amount: formatMinor(
+                                participant.otherShareMinor,
+                                expense.otherAmount.currency,
+                              ),
+                            })}
+                          </span>
+                        )}
                         <span className={`fa-text-caption fa-detail__status--${status.tone}`}>
                           {status.text}
                         </span>

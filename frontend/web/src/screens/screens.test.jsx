@@ -3,16 +3,34 @@ import userEvent from '@testing-library/user-event';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import i18n, { DEFAULT_LOCALE, catalogs } from '../i18n/index.js';
 import App from '../App.jsx';
+import { ApiError } from '../lib/api.js';
 import { useSession } from '../hooks/useSession.js';
+import { saveProfile } from '../lib/expenses.js';
 
 vi.mock('../hooks/useSession.js', () => ({ useSession: vi.fn() }));
+// The signed-in screen stays on its loading state: these tests are about the session screens.
+vi.mock('../lib/expenses.js', () => ({
+  fetchLedger: vi.fn(() => new Promise(() => {})),
+  saveProfile: vi.fn(),
+}));
+
+const MEMBER = {
+  email: 'ana@example.test',
+  name: 'Ana Pérez',
+  memberId: 'ana',
+  displayName: 'Ana Pérez',
+  homeCurrency: 'CAD',
+};
 
 const STATES = {
   loading: {},
   signedOut: {},
   notInvited: {},
   failed: { errorCode: 'internal_error' },
-  signedIn: { member: { name: 'Ana Pérez', email: 'ana@example.test' } },
+  needsProfile: {
+    member: { ...MEMBER, memberId: null, displayName: null, homeCurrency: null },
+  },
+  signedIn: { member: MEMBER },
 };
 
 function session(status, overrides = {}) {
@@ -22,6 +40,9 @@ function session(status, overrides = {}) {
     signIn: vi.fn(),
     signOut: vi.fn(),
     retry: vi.fn(),
+    getToken: () => 'token',
+    renewToken: vi.fn(),
+    updateMember: vi.fn(),
     ...overrides,
   };
 }
@@ -51,9 +72,55 @@ describe('screens', () => {
   });
 
   it('greets without a name when the profile has none', () => {
-    vi.mocked(useSession).mockReturnValue(session('signedIn', { member: { email: 'a@b.test' } }));
+    vi.mocked(useSession).mockReturnValue(
+      session('signedIn', { member: { ...MEMBER, name: null, displayName: '' } }),
+    );
     render(<App />);
     expect(screen.getByRole('heading', { name: i18n.t('dashboard:greetingFallback') })).toBeTruthy();
+  });
+
+  describe('the first sign-in step', () => {
+    beforeEach(() => {
+      vi.mocked(saveProfile).mockReset();
+    });
+
+    it('starts from the account name and waits for a currency', () => {
+      vi.mocked(useSession).mockReturnValue(session('needsProfile'));
+      render(<App />);
+      expect(screen.getByLabelText(i18n.t('auth:profile.name')).value).toBe('Ana Pérez');
+      expect(screen.getByRole('button', { name: i18n.t('auth:profile.submit') }).disabled).toBe(true);
+    });
+
+    it('saves the name and currency, then becomes a member', async () => {
+      const value = session('needsProfile');
+      vi.mocked(useSession).mockReturnValue(value);
+      vi.mocked(saveProfile).mockResolvedValue(MEMBER);
+      render(<App />);
+
+      const name = screen.getByLabelText(i18n.t('auth:profile.name'));
+      await userEvent.clear(name);
+      await userEvent.type(name, '  Anita ');
+      await userEvent.click(screen.getByRole('button', { name: i18n.t('expenses:currencies.CLP') }));
+      await userEvent.click(screen.getByRole('button', { name: i18n.t('auth:profile.submit') }));
+
+      expect(vi.mocked(saveProfile).mock.calls[0][1]).toEqual({
+        displayName: 'Anita',
+        homeCurrency: 'CLP',
+      });
+      expect(value.updateMember).toHaveBeenCalledWith(MEMBER);
+    });
+
+    it('keeps the step open and explains when saving fails', async () => {
+      const value = session('needsProfile');
+      vi.mocked(useSession).mockReturnValue(value);
+      vi.mocked(saveProfile).mockRejectedValue(new ApiError(400, 'validation_error'));
+      render(<App />);
+
+      await userEvent.click(screen.getByRole('button', { name: i18n.t('expenses:currencies.CAD') }));
+      await userEvent.click(screen.getByRole('button', { name: i18n.t('auth:profile.submit') }));
+      expect(await screen.findByText(i18n.t('common:errors.validation_error'))).toBeTruthy();
+      expect(value.updateMember).not.toHaveBeenCalled();
+    });
   });
 
   it('explains the refusal to someone who is not invited', () => {

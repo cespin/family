@@ -19,11 +19,16 @@ import {
   StatusNote,
   TextField,
 } from '../components/ui';
+import { useExpense } from '../hooks/useExpense.js';
+import { useRequestId } from '../hooks/useRequestId.js';
+import { useSession } from '../hooks/useSession.js';
 import { errorMessage } from '../i18n/errors.js';
-import { formatAmountInput, formatMinor } from '../i18n/format.js';
+import { currencyDigits, formatAmountInput, formatMinor, formatNumber } from '../i18n/format.js';
 import { saveExpense } from '../lib/expenses.js';
-import { currenciesOf, expenseById, groupById, memberById, todayIso } from '../lib/ledger.js';
+import { groupById, memberById, myself, todayIso } from '../lib/ledger.js';
 import {
+  CURRENCIES,
+  EXPENSE_MAX_MINOR,
   convertMinor,
   evenPercents,
   parseAmount,
@@ -37,10 +42,31 @@ import './AddExpenseScreen.css';
 
 const KINDS = ['meal', 'parents', 'gift', 'other'];
 const PERCENT_STEP = 5;
+const TITLE_MAX = 40;
+const NOTE_MAX = 200;
+
+/**
+ * Who can pay for or share an expense in this group: its active members, plus anyone already on
+ * the expense being edited, who may stay on it after leaving the group or losing access.
+ */
+function peopleFor(ledger, group, expense) {
+  const onExpense =
+    expense && expense.groupId === group.id
+      ? [expense.payerId, ...expense.participants.map((participant) => participant.memberId)]
+      : [];
+  const current = group.memberIds.filter(
+    (id) => memberById(ledger, id)?.active || onExpense.includes(id),
+  );
+  const former = onExpense.filter(
+    (id, index) => !group.memberIds.includes(id) && onExpense.indexOf(id) === index,
+  );
+  return [...current, ...former];
+}
 
 function formForGroup(ledger, group, base) {
-  const keepsPayer = group.memberIds.includes(base.payerId);
-  const fallbackPayer = group.memberIds.includes(ledger.me) ? ledger.me : group.memberIds[0];
+  const ids = peopleFor(ledger, group, null);
+  const keepsPayer = ids.includes(base.payerId);
+  const fallbackPayer = ids.includes(ledger.me) ? ledger.me : ids[0];
   const payerId = keepsPayer ? base.payerId : fallbackPayer;
   return {
     ...base,
@@ -48,18 +74,23 @@ function formForGroup(ledger, group, base) {
     payerId,
     currency:
       keepsPayer || base.currencyTouched ? base.currency : memberById(ledger, payerId).currency,
-    included: Object.fromEntries(group.memberIds.map((id) => [id, true])),
+    included: Object.fromEntries(ids.map((id) => [id, true])),
     mode: group.usual ? 'percent' : 'equal',
-    percents: group.usual ? { ...group.usual } : evenPercents(group.memberIds, group.memberIds),
+    percents: group.usual ? { ...group.usual } : evenPercents(ids, ids),
   };
 }
 
 function blankForm(ledger) {
   return formForGroup(ledger, ledger.groups[0], {
     title: '',
+    note: '',
     amount: '',
-    currency: memberById(ledger, ledger.me).currency,
+    currency: myself(ledger).currency,
     currencyTouched: false,
+    charged: false,
+    chargedAmount: '',
+    chargedCurrency: null,
+    debtIn: 'charged',
     kind: 'meal',
     payerId: ledger.me,
     saveUsual: true,
@@ -67,31 +98,72 @@ function blankForm(ledger) {
 }
 
 function formFromExpense(ledger, expense) {
-  const { memberIds } = groupById(ledger, expense.groupId);
-  const includedIds = memberIds.filter((id) => expense.shares[id] != null);
+  const group = groupById(ledger, expense.groupId);
+  const ids = peopleFor(ledger, group, expense);
+  const includedIds = expense.participants.map((participant) => participant.memberId);
+  const percents = Object.fromEntries(
+    expense.participants.map((participant) => [participant.memberId, participant.percent ?? 0]),
+  );
+  // The form asks for the receipt first. The API holds the debt amount first, and the purchase's
+  // other amount next to it when it was charged in a different currency.
+  const own = { amountMinor: expense.amountMinor, currency: expense.currency };
+  const charged = expense.otherAmount != null;
+  const debtIsCharged = expense.chargedCurrency === expense.currency;
+  const receipt = charged && debtIsCharged ? expense.otherAmount : own;
+  const chargedMoney = charged && debtIsCharged ? own : expense.otherAmount;
   return {
     title: expense.title,
-    amount: formatAmountInput(expense.amountMinor, expense.currency),
-    currency: expense.currency,
+    note: expense.note ?? '',
+    amount: formatAmountInput(receipt.amountMinor, receipt.currency),
+    currency: receipt.currency,
     currencyTouched: true,
+    charged,
+    chargedAmount: charged
+      ? formatAmountInput(chargedMoney.amountMinor, chargedMoney.currency)
+      : '',
+    chargedCurrency: charged ? chargedMoney.currency : null,
+    debtIn: !charged || debtIsCharged ? 'charged' : 'receipt',
     kind: expense.kind,
     payerId: expense.payerId,
     saveUsual: false,
     groupId: expense.groupId,
-    included: Object.fromEntries(memberIds.map((id) => [id, includedIds.includes(id)])),
+    included: Object.fromEntries(ids.map((id) => [id, includedIds.includes(id)])),
     mode: expense.splitMode,
-    percents: expense.percents ? { ...expense.percents } : evenPercents(memberIds, includedIds),
+    percents: expense.splitMode === 'percent' ? percents : evenPercents(ids, includedIds),
   };
 }
 
+/** Whether an amount typed into the form can be saved, or what is wrong with it. */
+function amountProblem(t, minor, currency) {
+  if (minor == null || minor <= 0) return 'missing';
+  if (minor > EXPENSE_MAX_MINOR[currency]) {
+    return t('expenses:add.status.tooMuch', {
+      amount: formatMinor(EXPENSE_MAX_MINOR[currency], currency),
+    });
+  }
+  return null;
+}
+
 /** Whether the split can be saved, and what to tell the person about it. */
-function describeSplit(t, { amountMinor, currency, mode, includedIds, percents }) {
-  if (amountMinor == null || amountMinor <= 0) {
+function describeSplit(t, { amountMinor, currency, mode, includedIds, percents, chargedProblem }) {
+  const problem = amountProblem(t, amountMinor, currency);
+  if (problem === 'missing') {
     return {
       ok: false,
       note: t('expenses:add.status.needAmount'),
       submit: t('expenses:add.submit.needAmount'),
     };
+  }
+  if (problem) return { ok: false, note: problem, submit: t('expenses:add.submit.checkAmount') };
+  if (chargedProblem === 'missing') {
+    return {
+      ok: false,
+      note: t('expenses:add.status.needCharged'),
+      submit: t('expenses:add.submit.needCharged'),
+    };
+  }
+  if (chargedProblem) {
+    return { ok: false, note: chargedProblem, submit: t('expenses:add.submit.checkAmount') };
   }
   const people = includedIds.length;
   if (people === 0) {
@@ -130,7 +202,7 @@ function describeSplit(t, { amountMinor, currency, mode, includedIds, percents }
 }
 
 function currencyHint(t, ledger, currency, amountMinor) {
-  const myCurrency = memberById(ledger, ledger.me).currency;
+  const myCurrency = myself(ledger).currency;
   if (currency === myCurrency) return t('expenses:add.currencyHome');
   const quote = quoteBetween(currency, myCurrency, ledger.rates);
   if (!quote) return t('expenses:add.currencyNoRate');
@@ -138,6 +210,23 @@ function currencyHint(t, ledger, currency, amountMinor) {
   if (amountMinor == null || amountMinor <= 0) return t('expenses:add.currencyRate', { rate });
   const amount = formatMinor(convertMinor(amountMinor, currency, myCurrency, ledger.rates), myCurrency);
   return t('expenses:add.currencyConverted', { amount, rate });
+}
+
+/** The rate the card company applied, worked out from the two amounts. Nobody types it. */
+function purchaseRateHint(t, receipt, charged) {
+  if (!(receipt.minor > 0) || !(charged.minor > 0)) return null;
+  const receiptMajor = receipt.minor / 10 ** currencyDigits(receipt.currency);
+  const chargedMajor = charged.minor / 10 ** currencyDigits(charged.currency);
+  const rates = { toBase: { [receipt.currency]: 1, [charged.currency]: receiptMajor / chargedMajor } };
+  const quote = quoteBetween(charged.currency, receipt.currency, rates);
+  if (!quote) return null;
+  // Shown exactly, such as 1 CAD = 647,25 CLP: this rate is the expense's own, not a rounded quote.
+  const rate = t('expenses:rates.quote', {
+    from: currencyLabel(t, quote.from),
+    to: currencyLabel(t, quote.to),
+    value: formatNumber(quote.value, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+  });
+  return t('expenses:add.purchaseRate', { rate });
 }
 
 function audienceNote(t, ledger, includedIds) {
@@ -152,25 +241,79 @@ function audienceNote(t, ledger, includedIds) {
   });
 }
 
-function participantSubtitle(t, ledger, { id, included, form, share, hasAmount, amountMinor }) {
+function participantSubtitle(t, ledger, { id, included, form, share, hasAmount, debt }) {
   if (!included) return t('expenses:add.notParticipating');
-  if (form.mode === 'percent') return hasAmount ? formatMinor(share, form.currency) : null;
+  if (form.mode === 'percent') return hasAmount ? formatMinor(share, debt.currency) : null;
   if (id === form.payerId) {
     return hasAmount
-      ? t('expenses:add.paid', { amount: formatMinor(amountMinor, form.currency) })
+      ? t('expenses:add.paid', { amount: formatMinor(debt.minor, debt.currency) })
       : null;
   }
   const home = memberById(ledger, id).currency;
-  if (!hasAmount || home === form.currency) return null;
-  const converted = convertMinor(share, form.currency, home, ledger.rates);
+  if (!hasAmount || home === debt.currency) return null;
+  const converted = convertMinor(share, debt.currency, home, ledger.rates);
   return converted == null
     ? null
     : t('expenses:approx', { amount: formatMinor(converted, home) });
 }
 
+/** Adds an expense, or edits one after loading it in full. */
 export function AddExpenseScreen({ ledger, ledgerState, view, nav }) {
   const { t } = useTranslation();
+  // Bumped when an edit loses to someone else's, to read the expense's new `version`.
+  const [refetch, setRefetch] = useState(0);
+  const query = useExpense(view.expenseId, refetch);
+  const onClose = view.expenseId ? () => nav.expense(view.expenseId) : nav.home;
+
+  if (query.status !== 'ready') {
+    return (
+      <main className="fa-add">
+        <SubHeader
+          icon={X}
+          backLabel={t('expenses:add.close')}
+          onBack={onClose}
+          title={t('expenses:add.editTitle')}
+        />
+        <div className="fa-screen">
+          {query.status === 'loading' ? (
+            <p className="fa-text-body fa-text-muted" role="status">
+              {t('common:status.loading')}
+            </p>
+          ) : (
+            <>
+              <p className="fa-text-body" role="alert">
+                {errorMessage(query.errorCode)}
+              </p>
+              <Button variant="secondary" onClick={query.retry}>
+                {t('common:actions.retry')}
+              </Button>
+            </>
+          )}
+        </div>
+      </main>
+    );
+  }
+  return (
+    // No key on purpose: after a conflict the expense reloads with a new `version` while the form
+    // keeps what the person typed.
+    <ExpenseForm
+      ledger={ledger}
+      ledgerState={ledgerState}
+      expense={query.expense}
+      nav={nav}
+      onConflict={() => setRefetch((current) => current + 1)}
+    />
+  );
+}
+
+function ExpenseForm({ ledger, ledgerState, expense, nav, onConflict }) {
+  const { t } = useTranslation();
+  const session = useSession();
+  const { prepare, done } = useRequestId();
   const currencyId = useId();
+  const chargedCurrencyId = useId();
+  const debtId = useId();
+  const chargedId = useId();
   const kindId = useId();
   const groupId = useId();
   const payerId = useId();
@@ -178,7 +321,6 @@ export function AddExpenseScreen({ ledger, ledgerState, view, nav }) {
   const participantsId = useId();
   const usualId = useId();
 
-  const expense = view.expenseId ? expenseById(ledger, view.expenseId) : null;
   const [form, setForm] = useState(() =>
     expense ? formFromExpense(ledger, expense) : blankForm(ledger),
   );
@@ -187,28 +329,43 @@ export function AddExpenseScreen({ ledger, ledgerState, view, nav }) {
   const [errorCode, setErrorCode] = useState(null);
 
   const group = groupById(ledger, form.groupId);
-  const ids = group.memberIds;
+  const ids = peopleFor(ledger, group, expense);
   const includedIds = ids.filter((id) => form.included[id]);
   const isPercent = form.mode === 'percent';
-  const amountMinor = parseAmount(form.amount, form.currency);
-  const hasAmount = amountMinor != null && amountMinor > 0;
+
+  // The purchase's amounts. Without a second amount, the receipt amount is the debt.
+  const chargedOptions = CURRENCIES.filter((code) => code !== form.currency);
+  const chargedCurrency = chargedOptions.includes(form.chargedCurrency)
+    ? form.chargedCurrency
+    : chargedOptions[0];
+  const receipt = { minor: parseAmount(form.amount, form.currency), currency: form.currency };
+  const charged = form.charged
+    ? { minor: parseAmount(form.chargedAmount, chargedCurrency), currency: chargedCurrency }
+    : null;
+  const debtIsCharged = charged && form.debtIn === 'charged';
+  const debt = debtIsCharged ? charged : receipt;
+  const other = charged && (debtIsCharged ? receipt : charged);
+  const hasAmount = debt.minor != null && debt.minor > 0;
 
   let shares = {};
   if (hasAmount) {
     shares = isPercent
-      ? splitByPercent(amountMinor, includedIds, form.percents)
-      : splitEqual(amountMinor, includedIds);
+      ? splitByPercent(debt.minor, includedIds, form.percents)
+      : splitEqual(debt.minor, includedIds);
   }
 
   const split = describeSplit(t, {
-    amountMinor,
-    currency: form.currency,
+    amountMinor: debt.minor,
+    currency: debt.currency,
     mode: form.mode,
     includedIds,
     percents: form.percents,
+    chargedProblem: other ? amountProblem(t, other.minor, other.currency) : null,
   });
   const hasTitle = form.title.trim().length > 0;
   const canSave = split.ok && hasTitle && !saving;
+  // A usual split names every current member of the group, so it cannot include someone who left.
+  const canKeepUsual = isPercent && includedIds.every((id) => group.memberIds.includes(id));
 
   function submitLabel() {
     if (saving) return t('expenses:add.submit.saving');
@@ -267,28 +424,44 @@ export function AddExpenseScreen({ ledger, ledgerState, view, nav }) {
     update({ percents: { ...form.percents, [id]: next } });
   }
 
+  function requestBody() {
+    const note = form.note.trim();
+    const body = {
+      title: form.title.trim(),
+      kind: form.kind,
+      groupId: form.groupId,
+      payerId: form.payerId,
+      amountMinor: debt.minor,
+      currency: debt.currency,
+      splitMode: form.mode,
+      participantIds: includedIds,
+    };
+    if (isPercent) {
+      body.percents = Object.fromEntries(includedIds.map((id) => [id, form.percents[id] ?? 0]));
+    }
+    if (other) {
+      body.otherAmount = { amountMinor: other.minor, currency: other.currency };
+      body.chargedCurrency = charged.currency;
+    }
+    if (note) body.note = note;
+    if (canKeepUsual && form.saveUsual) {
+      body.usualSplit = Object.fromEntries(
+        group.memberIds.map((id) => [id, form.included[id] ? (form.percents[id] ?? 0) : 0]),
+      );
+    }
+    if (expense) body.version = expense.version;
+    else body.date = todayIso();
+    return prepare(body);
+  }
+
   async function handleSubmit(event) {
     event.preventDefault();
     if (!canSave) return;
     setSaving(true);
     setErrorCode(null);
     try {
-      await saveExpense({
-        id: expense?.id,
-        title: form.title.trim(),
-        kind: form.kind,
-        groupId: form.groupId,
-        payerId: form.payerId,
-        amountMinor,
-        currency: form.currency,
-        date: expense?.date ?? todayIso(),
-        splitMode: form.mode,
-        percents: isPercent
-          ? Object.fromEntries(includedIds.map((id) => [id, form.percents[id]]))
-          : undefined,
-        shares,
-        saveUsual: isPercent && form.saveUsual,
-      });
+      await saveExpense(session, requestBody(), expense?.id);
+      done();
       ledgerState.reload();
       if (expense) {
         nav.expense(expense.id);
@@ -304,6 +477,10 @@ export function AddExpenseScreen({ ledger, ledgerState, view, nav }) {
       scrollToTop();
     } catch (error) {
       setErrorCode(error?.code ?? 'generic');
+      if (error?.code === 'conflict' && expense) {
+        onConflict();
+        ledgerState.reload();
+      }
     } finally {
       setSaving(false);
     }
@@ -329,6 +506,7 @@ export function AddExpenseScreen({ ledger, ledgerState, view, nav }) {
           <TextField
             label={t('expenses:add.what')}
             placeholder={t('expenses:add.whatPlaceholder')}
+            maxLength={TITLE_MAX}
             value={form.title}
             onChange={(event) => update({ title: event.target.value })}
           />
@@ -350,15 +528,87 @@ export function AddExpenseScreen({ ledger, ledgerState, view, nav }) {
                 labelledBy={currencyId}
                 value={form.currency}
                 onChange={(currency) => update({ currency, currencyTouched: true })}
-                options={currenciesOf(ledger).map((code) => ({
+                options={CURRENCIES.map((code) => ({
                   value: code,
                   label: currencyLabel(t, code),
                 }))}
               />
               <p className="fa-text-caption fa-text-muted">
-                {currencyHint(t, ledger, form.currency, amountMinor)}
+                {currencyHint(t, ledger, form.currency, receipt.minor)}
               </p>
             </div>
+            <div className="fa-add__usual">
+              <input
+                id={chargedId}
+                type="checkbox"
+                className="fa-add__check"
+                checked={form.charged}
+                onChange={() => update({ charged: !form.charged })}
+              />
+              <label htmlFor={chargedId} className="fa-text-body">
+                {t('expenses:add.chargedToggle')}
+              </label>
+            </div>
+            {charged && (
+              <>
+                <TextField
+                  label={t('expenses:add.chargedAmount')}
+                  prefix={currencyLabel(t, chargedCurrency)}
+                  inputMode="decimal"
+                  placeholder={t('expenses:add.amountPlaceholder')}
+                  value={form.chargedAmount}
+                  onChange={(event) => update({ chargedAmount: event.target.value })}
+                />
+                <div className="fa-add__question">
+                  <p id={chargedCurrencyId} className="fa-text-label">
+                    {t('expenses:add.chargedCurrency')}
+                  </p>
+                  <Segmented
+                    labelledBy={chargedCurrencyId}
+                    value={chargedCurrency}
+                    onChange={(code) => update({ chargedCurrency: code })}
+                    options={chargedOptions.map((code) => ({
+                      value: code,
+                      label: currencyLabel(t, code),
+                    }))}
+                  />
+                  {purchaseRateHint(t, receipt, charged) && (
+                    <p className="fa-text-caption fa-text-muted">
+                      {purchaseRateHint(t, receipt, charged)}
+                    </p>
+                  )}
+                </div>
+                <div className="fa-add__question">
+                  <p id={debtId} className="fa-text-label">
+                    {t('expenses:add.debtIn')}
+                  </p>
+                  <Segmented
+                    labelledBy={debtId}
+                    value={form.debtIn}
+                    onChange={(debtIn) => update({ debtIn })}
+                    options={[
+                      {
+                        value: 'charged',
+                        label: t('expenses:add.debtCharged', {
+                          currency: currencyLabel(t, chargedCurrency),
+                        }),
+                      },
+                      {
+                        value: 'receipt',
+                        label: t('expenses:add.debtReceipt', {
+                          currency: currencyLabel(t, form.currency),
+                        }),
+                      },
+                    ]}
+                  />
+                  <p className="fa-text-caption fa-text-muted">
+                    {debtIsCharged
+                      ? t('expenses:add.debtChargedHint')
+                      : t('expenses:add.debtReceiptHint')}
+                  </p>
+                </div>
+              </>
+            )}
           </div>
 
           <div className="fa-add__question">
@@ -460,7 +710,7 @@ export function AddExpenseScreen({ ledger, ledgerState, view, nav }) {
                     form,
                     share: shares[id],
                     hasAmount,
-                    amountMinor,
+                    debt,
                   });
                   return (
                     <li key={id} className="fa-add__participant">
@@ -482,7 +732,7 @@ export function AddExpenseScreen({ ledger, ledgerState, view, nav }) {
                       </label>
                       {included && !isPercent && hasAmount && (
                         <span className="fa-add__share">
-                          {formatMinor(shares[id], form.currency)}
+                          {formatMinor(shares[id], debt.currency)}
                         </span>
                       )}
                       {included && isPercent && (
@@ -517,7 +767,7 @@ export function AddExpenseScreen({ ledger, ledgerState, view, nav }) {
             {split.note}
           </StatusNote>
 
-          {isPercent && (
+          {canKeepUsual && (
             <div className="fa-add__usual">
               <input
                 id={usualId}
@@ -532,9 +782,19 @@ export function AddExpenseScreen({ ledger, ledgerState, view, nav }) {
             </div>
           )}
 
+          <TextField
+            label={t('expenses:add.note')}
+            placeholder={t('expenses:add.notePlaceholder')}
+            maxLength={NOTE_MAX}
+            value={form.note}
+            onChange={(event) => update({ note: event.target.value })}
+          />
+
           {errorCode && (
             <p className="fa-text-body" role="alert">
-              {errorMessage(errorCode)}
+              {errorCode === 'conflict' && expense
+                ? t('expenses:add.conflict')
+                : errorMessage(errorCode)}
             </p>
           )}
         </div>

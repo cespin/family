@@ -1,3 +1,4 @@
+import { Plus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import {
   currencyLabel,
@@ -6,8 +7,8 @@ import {
   memberLabel,
   percentLabel,
 } from '../components/expenses/labels.js';
-import { Amount, AvatarStack, Card, MonkeyBadge, PersonRow, SplitBar } from '../components/ui';
-import { balanceTotal, memberById } from '../lib/ledger.js';
+import { Amount, AvatarStack, Button, Card, PersonRow, SplitBar } from '../components/ui';
+import { balanceTotal, myself } from '../lib/ledger.js';
 import './GroupsScreen.css';
 
 const ALL_FACES_UP_TO = 5;
@@ -18,20 +19,10 @@ function balanceText(t, total) {
   return total < 0 ? t('expenses:groups.youOwe') : t('expenses:groups.even');
 }
 
-function hiddenCounts(ledger, group) {
-  const counts = new Map();
-  for (const expense of ledger.expenses) {
-    if (expense.groupId === group.id && expense.hiddenFromId) {
-      counts.set(expense.hiddenFromId, (counts.get(expense.hiddenFromId) ?? 0) + 1);
-    }
-  }
-  return [...counts.entries()];
-}
-
-function GroupCard({ ledger, group }) {
+function GroupCard({ ledger, group, onEdit }) {
   const { t } = useTranslation();
   const people = groupPeople(ledger, group);
-  const currency = memberById(ledger, ledger.me).currency;
+  const { currency } = myself(ledger);
   const total = balanceTotal(ledger, { groupId: group.id, currency });
   const currencies = new Set(people.map((person) => person.currency)).size;
   const split = group.usual ? t('expenses:groups.byPercent') : t('expenses:groups.equalParts');
@@ -39,7 +30,6 @@ function GroupCard({ ledger, group }) {
     currencies === 1
       ? t('expenses:groups.summaryOneCurrency', { people: people.length, split })
       : t('expenses:groups.summary', { people: people.length, currencies, split });
-  const hidden = hiddenCounts(ledger, group);
 
   return (
     <Card title={group.name} subtitle={summary}>
@@ -89,28 +79,28 @@ function GroupCard({ ledger, group }) {
               size="medium"
               max={people.length <= ALL_FACES_UP_TO ? ALL_FACES_UP_TO : undefined}
             />
-            {hidden.map(([memberId, hiddenCount]) => {
-              const { name } = memberById(ledger, memberId);
-              return (
-                <MonkeyBadge key={memberId} kind="hidden">
-                  {hiddenCount === 1
-                    ? t('expenses:groups.hiddenOne', { name })
-                    : t('expenses:groups.hiddenMany', { name, hidden: hiddenCount })}
-                </MonkeyBadge>
-              );
-            })}
           </div>
         )}
         <div className="fa-group__balance">
           <span className="fa-text-body">{balanceText(t, total)}</span>
           <Amount minor={total} currency={currency} size="small" />
         </div>
+        {group.createdBy === ledger.me && (
+          <Button
+            variant="quiet"
+            size="small"
+            aria-label={t('expenses:groups.editNamed', { group: group.name })}
+            onClick={() => onEdit(group.id)}
+          >
+            {t('expenses:groups.edit')}
+          </Button>
+        )}
       </div>
     </Card>
   );
 }
 
-export function GroupsScreen({ ledger }) {
+export function GroupsScreen({ ledger, nav }) {
   const { t } = useTranslation();
   return (
     <main className="fa-screen fa-groups">
@@ -118,8 +108,11 @@ export function GroupsScreen({ ledger }) {
         <h1 className="fa-text-title">{t('expenses:groups.title')}</h1>
         <p className="fa-text-body fa-text-muted">{t('expenses:groups.intro')}</p>
       </div>
+      <Button variant="secondary" block icon={Plus} onClick={nav.newGroup}>
+        {t('expenses:groups.new')}
+      </Button>
       {groupsBySize(ledger).map((group) => (
-        <GroupCard key={group.id} ledger={ledger} group={group} />
+        <GroupCard key={group.id} ledger={ledger} group={group} onEdit={nav.editGroup} />
       ))}
     </main>
   );

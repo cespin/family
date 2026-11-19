@@ -15,7 +15,23 @@ const RENEW_AFTER_MS = 55 * 60 * 1000;
 
 // Only the exact value 1 in a dev build skips real sign-in.
 const MOCK_SESSION = import.meta.env.DEV && import.meta.env.VITE_MOCK_SESSION === '1';
-const MOCK_STATE = { status: 'signedIn', member: { name: 'Familia', email: 'dev@example.test' } };
+// The sample ledger's caller, as GET /api/me would describe them. See src/lib/expenses.sample.js.
+const MOCK_STATE = {
+  status: 'signedIn',
+  member: {
+    email: 'dev@example.test',
+    name: 'Carlos',
+    memberId: 'carlos',
+    displayName: 'Carlos',
+    homeCurrency: 'CAD',
+  },
+};
+
+// Someone who has not finished the first sign-in step has no member profile yet.
+const signedInAs = (member) => ({
+  status: member?.memberId == null ? 'needsProfile' : 'signedIn',
+  member,
+});
 
 export function SessionProvider({ children }) {
   const [state, setState] = useState(MOCK_SESSION ? MOCK_STATE : { status: 'loading' });
@@ -25,7 +41,7 @@ export function SessionProvider({ children }) {
   const establish = useCallback(async (idToken) => {
     tokenRef.current = idToken;
     const member = await apiFetch('/me', { token: idToken });
-    return { status: 'signedIn', member };
+    return signedInAs(member);
   }, []);
 
   // Works out the session state without touching React state, so callers decide when to apply it.
@@ -50,7 +66,9 @@ export function SessionProvider({ children }) {
   }, [resolveSession]);
 
   useEffect(() => {
-    if (MOCK_SESSION || state.status !== 'signedIn') return undefined;
+    if (MOCK_SESSION || (state.status !== 'signedIn' && state.status !== 'needsProfile')) {
+      return undefined;
+    }
     const timer = setTimeout(() => {
       resolveSession().then((next) =>
         setState(next.status === 'failed' ? { status: 'signedOut' } : next),
@@ -64,9 +82,42 @@ export function SessionProvider({ children }) {
     resolveSession().then(setState);
   }, [resolveSession]);
 
+  // For a data call refused with 401: the token expired before the scheduled renewal. Returns the
+  // new token, or null when the session has ended, in which case the sign-in screen takes over.
+  // Calls refused at the same time share one renewal.
+  const renewalRef = useRef(null);
+  const renewToken = useCallback(() => {
+    if (MOCK_SESSION) return Promise.resolve(null);
+    renewalRef.current ??= restoreSession()
+      .then((idToken) => {
+        tokenRef.current = idToken;
+        if (!idToken) setState({ status: 'signedOut' });
+        return idToken;
+      })
+      .catch(() => null)
+      .finally(() => {
+        renewalRef.current = null;
+      });
+    return renewalRef.current;
+  }, []);
+
+  // Stable, so data hooks that depend on it do not reload when the session state changes.
+  const getToken = useCallback(() => tokenRef.current, []);
+
+  // Replaces the member with the answer to PUT /api/me/profile.
+  const updateMember = useCallback((member) => setState(signedInAs(member)), []);
+
   const value = useMemo(
-    () => ({ ...state, signIn: startSignIn, signOut, retry, getToken: () => tokenRef.current }),
-    [state, retry],
+    () => ({
+      ...state,
+      signIn: startSignIn,
+      signOut,
+      retry,
+      renewToken,
+      updateMember,
+      getToken,
+    }),
+    [state, retry, renewToken, updateMember, getToken],
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
