@@ -74,6 +74,7 @@ The frontend's internal data shape is not binding. It can adapt to the API, as l
 - Record a purchase charged in a different currency, such as a Canadian credit card used in Chile, by entering both the receipt amount and the charged amount.
 - For those purchases, keep the debt in the charged currency, which is the default, or choose the receipt currency instead.
 - Split equally, or by percentage in whole numbers.
+- Choose "I pay all" or "I pay nothing", from the caller's side, not the payer's. Both are sent as an equal split: with only the caller as participant, or with everyone else. When someone else paid, "I pay all" makes the caller owe them the whole amount, so an advance the caller gave them covers it (section 12).
 - Choose to keep a percentage split as the group's usual split.
 - Edit an expense they added, through the same form.
 

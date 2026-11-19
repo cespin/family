@@ -444,6 +444,81 @@ describe('DashboardScreen', () => {
       });
     });
 
+    const choose = (key) => userEvent.click(screen.getByRole('button', { name: i18n.t(key) }));
+    const pressed = (key) =>
+      screen.getByRole('button', { name: i18n.t(key) }).getAttribute('aria-pressed');
+
+    it('sends "I pay nothing" as an equal split among everyone else', async () => {
+      vi.mocked(saveExpense).mockResolvedValue({});
+      await openForm();
+      await fillIn('Farmacia', '100');
+      await choose('expenses:add.modeTheirs');
+      await submit();
+
+      const body = vi.mocked(saveExpense).mock.calls[0][1];
+      expect(body).toMatchObject({ payerId: 'ana', splitMode: 'equal', participantIds: ['leo'] });
+      expect(body).not.toHaveProperty('percents');
+      expect(body).not.toHaveProperty('usualSplit');
+    });
+
+    it('sends "I pay all" as a debt to whoever paid, which an advance can cover', async () => {
+      vi.mocked(saveExpense).mockResolvedValue({});
+      await openForm();
+      await fillIn('Farmacia', '100');
+      await userEvent.selectOptions(screen.getByLabelText(i18n.t('expenses:add.payer')), 'leo');
+      await choose('expenses:add.modeMine');
+      expect(
+        screen.getByText(i18n.t('expenses:add.modeMineHint', { name: 'Leo' })),
+      ).toBeTruthy();
+      await submit();
+
+      const body = vi.mocked(saveExpense).mock.calls[0][1];
+      expect(body).toMatchObject({ payerId: 'leo', splitMode: 'equal', participantIds: ['ana'] });
+      expect(body).not.toHaveProperty('percents');
+    });
+
+    it('reads "I" as me, not the payer, when someone else paid', async () => {
+      vi.mocked(saveExpense).mockResolvedValue({});
+      const base = ledger();
+      await openForm(
+        ledger({
+          members: [
+            ...base.members,
+            { id: 'mama', name: 'Mamá', tone: 'sage', currency: 'CLP', active: true },
+          ],
+          groups: [{ ...base.groups[0], memberIds: ['ana', 'leo', 'mama'] }],
+        }),
+      );
+      const payer = () =>
+        userEvent.selectOptions(screen.getByLabelText(i18n.t('expenses:add.payer')), 'leo');
+      await fillIn('Farmacia', '100');
+      await payer();
+      await choose('expenses:add.modeTheirs');
+      await submit();
+      // The form starts over after a save, with me as the payer again.
+      await waitFor(() =>
+        expect(screen.getByLabelText(i18n.t('expenses:add.what')).value).toBe(''),
+      );
+      await fillIn('Farmacia', '100');
+      await payer();
+      await choose('expenses:add.modeMine');
+      await submit();
+
+      const [nothing, all] = vi.mocked(saveExpense).mock.calls.map((call) => call[1]);
+      expect(nothing).toMatchObject({ payerId: 'leo', participantIds: ['leo', 'mama'] });
+      expect(all).toMatchObject({ payerId: 'leo', participantIds: ['ana'] });
+    });
+
+    it('shows who is ticked as the choice, and ticks everyone again on an equal split', async () => {
+      await openForm();
+      await userEvent.click(screen.getByRole('checkbox', { name: /Leo/ }));
+      expect(pressed('expenses:add.modeMine')).toBe('true');
+
+      await choose('expenses:add.modeEqual');
+      expect(pressed('expenses:add.modeEqual')).toBe('true');
+      expect(screen.getByRole('checkbox', { name: /Leo/ }).checked).toBe(true);
+    });
+
     it('keeps the form and explains when saving fails', async () => {
       vi.mocked(saveExpense).mockRejectedValue(new ApiError(403, 'forbidden'));
       await openForm();
@@ -468,6 +543,13 @@ describe('DashboardScreen', () => {
       await openLunch();
       expect(vi.mocked(fetchExpense).mock.calls[0][1]).toBe('lunch');
       expect(screen.getByRole('heading', { name: i18n.t('expenses:detail.splitTitle') })).toBeTruthy();
+    });
+
+    it('names who covers it all when only one person shares it', async () => {
+      await openLunch(
+        detail({ participants: [{ memberId: 'ana', shareMinor: 67000, status: 'owes' }] }),
+      );
+      expect(screen.getByText(i18n.t('expenses:detail.splitSingleYou'))).toBeTruthy();
     });
 
     it('shows a failure to load it, not an empty expense', async () => {

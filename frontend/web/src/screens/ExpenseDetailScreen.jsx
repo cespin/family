@@ -80,8 +80,14 @@ function activityOf(t, ledger, expense) {
   return [...payments, added].sort((a, b) => b.date.localeCompare(a.date));
 }
 
-function splitSubtitle(t, expense, group) {
-  if (expense.splitMode !== 'percent') return t('expenses:detail.splitEqual');
+function splitSubtitle(t, ledger, expense, group) {
+  if (expense.splitMode !== 'percent') {
+    // One participant is how "I pay all" is stored: an equal split among one person.
+    const only = expense.participants.length === 1 ? expense.participants[0].memberId : null;
+    if (only === ledger.me) return t('expenses:detail.splitSingleYou');
+    const name = only && memberById(ledger, only)?.name;
+    return name ? t('expenses:detail.splitSingle', { name }) : t('expenses:detail.splitEqual');
+  }
   const isUsual =
     group.usual &&
     group.memberIds.every(
@@ -278,7 +284,7 @@ function ExpenseDetail({ ledger, expense, nav }) {
           </Card>
         )}
 
-        <Card title={t('expenses:detail.splitTitle')} subtitle={splitSubtitle(t, expense, group)}>
+        <Card title={t('expenses:detail.splitTitle')} subtitle={splitSubtitle(t, ledger, expense, group)}>
           <div className="fa-detail__split">
             <SplitBar
               label={expense.participants

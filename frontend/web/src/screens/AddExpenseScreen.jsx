@@ -133,6 +133,37 @@ function formFromExpense(ledger, expense) {
   };
 }
 
+/**
+ * Whether the reader can pick "I pay all" or "I pay nothing": they are on the form with someone
+ * else, and nobody on it has left the group, whose share an edit could not change.
+ */
+function offersOwnChoices(ledger, group, ids) {
+  return ids.length > 1 && ids.includes(ledger.me) && ids.every((id) => group.memberIds.includes(id));
+}
+
+/**
+ * The split option shown as chosen. "I pay all" and "I pay nothing" are equal splits the API
+ * stores like any other, so they are read from who is ticked rather than kept as a mode.
+ */
+function splitChoice(ledger, form, includedIds, ownChoices) {
+  if (form.mode === 'percent') return 'percent';
+  if (!ownChoices || includedIds.length === 0) return 'equal';
+  if (includedIds.length === 1 && includedIds[0] === ledger.me) return 'mine';
+  if (!includedIds.includes(ledger.me)) return 'theirs';
+  return 'equal';
+}
+
+function splitHint(t, ledger, choice, payerId) {
+  if (choice === 'percent') return t('expenses:add.modePercentHint');
+  if (choice === 'theirs') return t('expenses:add.modeTheirsHint');
+  if (choice === 'mine') {
+    return payerId === ledger.me
+      ? t('expenses:add.modeMineHintPaid')
+      : t('expenses:add.modeMineHint', { name: memberById(ledger, payerId).name });
+  }
+  return t('expenses:add.modeEqualHint');
+}
+
 /** Whether an amount typed into the form can be saved, or what is wrong with it. */
 function amountProblem(t, minor, currency) {
   if (minor == null || minor <= 0) return 'missing';
@@ -332,6 +363,8 @@ function ExpenseForm({ ledger, ledgerState, expense, nav, onConflict }) {
   const ids = peopleFor(ledger, group, expense);
   const includedIds = ids.filter((id) => form.included[id]);
   const isPercent = form.mode === 'percent';
+  const ownChoices = offersOwnChoices(ledger, group, ids);
+  const choice = splitChoice(ledger, form, includedIds, ownChoices);
 
   // The purchase's amounts. Without a second amount, the receipt amount is the debt.
   const chargedOptions = CURRENCIES.filter((code) => code !== form.currency);
@@ -394,15 +427,29 @@ function ExpenseForm({ ledger, ledgerState, expense, nav, onConflict }) {
     );
   }
 
-  function handleMode(mode) {
-    if (mode === form.mode) return;
-    if (mode === 'equal') {
-      update({ mode });
+  function tick(isIncluded) {
+    return Object.fromEntries(ids.map((id) => [id, isIncluded(id)]));
+  }
+
+  function handleChoice(next) {
+    if (next === choice) return;
+    if (next === 'mine') {
+      update({ mode: 'equal', included: tick((id) => id === ledger.me) });
+      return;
+    }
+    if (next === 'theirs') {
+      update({ mode: 'equal', included: tick((id) => id !== ledger.me) });
+      return;
+    }
+    if (next === 'equal') {
+      // Leaving "I pay all" or "I pay nothing" ticks everyone, or the tap would change nothing.
+      const stays = splitChoice(ledger, { mode: 'equal' }, includedIds, ownChoices) === 'equal';
+      update(stays ? { mode: 'equal' } : { mode: 'equal', included: tick(() => true) });
       return;
     }
     const everyone = includedIds.length === ids.length;
     update({
-      mode,
+      mode: 'percent',
       percents: group.usual && everyone ? { ...group.usual } : evenPercents(ids, includedIds),
     });
   }
@@ -670,15 +717,22 @@ function ExpenseForm({ ledger, ledgerState, expense, nav, onConflict }) {
             </p>
             <Segmented
               labelledBy={splitId}
-              value={form.mode}
-              onChange={handleMode}
+              value={choice}
+              onChange={handleChoice}
+              wrap={ownChoices}
               options={[
                 { value: 'equal', label: t('expenses:add.modeEqual') },
                 { value: 'percent', label: t('expenses:add.modePercent') },
+                ...(ownChoices
+                  ? [
+                      { value: 'mine', label: t('expenses:add.modeMine') },
+                      { value: 'theirs', label: t('expenses:add.modeTheirs') },
+                    ]
+                  : []),
               ]}
             />
             <p className="fa-text-caption fa-text-muted">
-              {isPercent ? t('expenses:add.modePercentHint') : t('expenses:add.modeEqualHint')}
+              {splitHint(t, ledger, choice, form.payerId)}
             </p>
           </div>
 
