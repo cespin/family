@@ -12,6 +12,7 @@ import { AddExpenseScreen } from './AddExpenseScreen.jsx';
 import { ExchangeRatesScreen } from './ExchangeRatesScreen.jsx';
 import { ExpenseDetailScreen } from './ExpenseDetailScreen.jsx';
 import { GroupFormScreen } from './GroupFormScreen.jsx';
+import { AdvanceScreen } from './AdvanceScreen.jsx';
 import { GroupsScreen } from './GroupsScreen.jsx';
 import { HomeScreen } from './HomeScreen.jsx';
 import { SettingsScreen } from './SettingsScreen.jsx';
@@ -24,6 +25,7 @@ const VIEWS = {
   add: AddExpenseScreen,
   detail: ExpenseDetailScreen,
   settle: SettleUpScreen,
+  advance: AdvanceScreen,
   group: GroupFormScreen,
   rates: ExchangeRatesScreen,
   settings: SettingsScreen,
@@ -64,6 +66,7 @@ export function DashboardScreen() {
     edit: (expenseId) => setView({ name: 'add', expenseId }),
     expense: (expenseId) => setView({ name: 'detail', expenseId }),
     settle: (memberId) => setView({ name: 'settle', memberId }),
+    advance: () => setView({ name: 'advance' }),
     groups: () =>
       isWide
         ? setView({ name: 'home', tab: 'groups', section: 'fa-groups' })

@@ -2,7 +2,13 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { ALL_GROUPS, balanceTotal, balancesFor, expensesByMonth } from './ledger.js';
+import {
+  ALL_GROUPS,
+  advanceCandidates,
+  balanceTotal,
+  balancesFor,
+  expensesByMonth,
+} from './ledger.js';
 import { ratesFromEntry } from './money.js';
 
 const RATES = ratesFromEntry({ id: 'r', usdCad: '1.40', cadClp: '670', date: '2026-11-18' });
@@ -88,6 +94,45 @@ describe('balances from the API standings', () => {
   it('shows nobody for a group they have nothing open in', () => {
     const rows = balancesFor(carlosLedger(), { groupId: 'meals', currency: 'CAD' });
     expect(rows.map((row) => row.member.id)).toEqual(['lucia']);
+  });
+});
+
+describe('advanceCandidates', () => {
+  const withMembers = (ledger) => ({
+    ...ledger,
+    members: [
+      ...MEMBERS,
+      { id: 'mama', name: 'Mamá', currency: 'USD', active: true },
+      { id: 'rosa', name: 'Rosa', currency: 'CLP', active: false },
+    ],
+  });
+
+  it('offers everyone else who is active, in the API order, even when nothing is open', () => {
+    const rows = advanceCandidates(withMembers(carlosLedger()), 'CAD');
+    expect(rows.map((row) => row.member.id)).toEqual(['lucia', 'diego', 'beto', 'mama']);
+  });
+
+  it('keeps the balance with someone who has one, in both currencies', () => {
+    const lucia = advanceCandidates(withMembers(carlosLedger()), 'CAD').find(
+      (row) => row.member.id === 'lucia',
+    );
+    expect(lucia.netMinor).toBe(-3963);
+    expect(lucia.homeMinor).toBe(-26550);
+  });
+
+  it('is a real zero for someone with no standing', () => {
+    const mama = advanceCandidates(withMembers(carlosLedger()), 'CAD').find(
+      (row) => row.member.id === 'mama',
+    );
+    expect(mama.entries).toEqual([]);
+    expect(mama.netMinor).toBe(0);
+    expect(mama.homeMinor).toBe(0);
+  });
+
+  it('is absent, not zero, when a balance cannot be converted', () => {
+    const ledger = { ...withMembers(carlosLedger()), rates: null };
+    const diego = advanceCandidates(ledger, 'CAD').find((row) => row.member.id === 'diego');
+    expect(diego.homeMinor).toBeNull();
   });
 });
 

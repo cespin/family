@@ -14576,6 +14576,638 @@
       ]
     },
     {
+      "name": "advance-against-open-debt",
+      "requirement": "Section 3, record an advance",
+      "description": "Lucía gives Carlos CLP 10.000 while he owes her: his debts stay open and it all becomes her credit",
+      "file": "scenarios/advance-against-open-debt.jsonl",
+      "head": {
+        "rev": 55
+      },
+      "ids": {
+        "member": {
+          "carlos": "a0000000-0000-4000-8000-000000000001",
+          "lucia": "a0000000-0000-4000-8000-000000000002",
+          "diego": "a0000000-0000-4000-8000-000000000003",
+          "mama": "a0000000-0000-4000-8000-000000000004",
+          "papa": "a0000000-0000-4000-8000-000000000005",
+          "beto": "a0000000-0000-4000-8000-000000000006",
+          "rosa": "a0000000-0000-4000-8000-000000000007"
+        },
+        "group": {
+          "family": "b0000000-0000-4000-8000-000000000001",
+          "meals": "b0000000-0000-4000-8000-000000000002",
+          "care": "b0000000-0000-4000-8000-000000000003",
+          "club": "b0000000-0000-4000-8000-000000000004",
+          "trip": "b0000000-0000-4000-8000-000000000005"
+        },
+        "expense": {
+          "te": "c0000000-0000-4000-8000-000000000001",
+          "pan": "c0000000-0000-4000-8000-000000000002",
+          "calefon": "c0000000-0000-4000-8000-000000000003",
+          "cena": "c0000000-0000-4000-8000-000000000004",
+          "cabana": "c0000000-0000-4000-8000-000000000005",
+          "gasolina": "c0000000-0000-4000-8000-000000000006",
+          "pizzas": "c0000000-0000-4000-8000-000000000007",
+          "libro": "c0000000-0000-4000-8000-000000000008",
+          "flores": "c0000000-0000-4000-8000-000000000009",
+          "almuerzo": "c0000000-0000-4000-8000-000000000010",
+          "remedios": "c0000000-0000-4000-8000-000000000011",
+          "tablet": "c0000000-0000-4000-8000-000000000012",
+          "kinesiologia": "c0000000-0000-4000-8000-000000000013",
+          "compra-cad": "c0000000-0000-4000-8000-000000000014",
+          "compra-clp": "c0000000-0000-4000-8000-000000000015",
+          "taxi": "c0000000-0000-4000-8000-000000000016",
+          "farmacia": "c0000000-0000-4000-8000-000000000017",
+          "peaje": "c0000000-0000-4000-8000-000000000018"
+        },
+        "payment": {
+          "papa-beto": "d0000000-0000-4000-8000-000000000001",
+          "lucia-calefon": "d0000000-0000-4000-8000-000000000002",
+          "diego-calefon": "d0000000-0000-4000-8000-000000000003",
+          "carlos-cena": "d0000000-0000-4000-8000-000000000004",
+          "lucia-cena": "d0000000-0000-4000-8000-000000000005",
+          "diego-cena": "d0000000-0000-4000-8000-000000000006",
+          "beto-cena": "d0000000-0000-4000-8000-000000000007",
+          "papa-cena": "d0000000-0000-4000-8000-000000000008",
+          "papa-rosa": "d0000000-0000-4000-8000-000000000009",
+          "lucia-cabana": "d0000000-0000-4000-8000-000000000010",
+          "lucia-gasolina": "d0000000-0000-4000-8000-000000000011",
+          "diego-cabana": "d0000000-0000-4000-8000-000000000012",
+          "carlos-pizzas": "d0000000-0000-4000-8000-000000000013",
+          "lucia-pizzas": "d0000000-0000-4000-8000-000000000014",
+          "diego-pizzas": "d0000000-0000-4000-8000-000000000015",
+          "mama-pizzas": "d0000000-0000-4000-8000-000000000016",
+          "mama-almuerzo": "d0000000-0000-4000-8000-000000000017",
+          "diego-kinesiologia": "d0000000-0000-4000-8000-000000000018",
+          "lucia-carlos": "d0000000-0000-4000-8000-000000000019"
+        },
+        "rate": {
+          "october": "e0000000-0000-4000-8000-000000000001",
+          "november-first": "e0000000-0000-4000-8000-000000000002",
+          "november": "e0000000-0000-4000-8000-000000000003"
+        }
+      },
+      "carlos": {
+        "access": "allowed",
+        "memberId": "a0000000-0000-4000-8000-000000000001",
+        "groups": [
+          "family",
+          "meals",
+          "care"
+        ],
+        "payments": [
+          "lucia-carlos",
+          "carlos-pizzas",
+          "carlos-cena",
+          "diego-calefon",
+          "lucia-calefon"
+        ],
+        "standings": [
+          {
+            "member": "beto",
+            "overall": [
+              {
+                "amountMinor": -1200,
+                "currency": "USD"
+              }
+            ],
+            "groups": [
+              {
+                "group": "family",
+                "amounts": [
+                  {
+                    "amountMinor": -1200,
+                    "currency": "USD"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "member": "diego",
+            "overall": [
+              {
+                "amountMinor": 7500,
+                "currency": "CAD"
+              }
+            ],
+            "groups": [
+              {
+                "group": "care",
+                "amounts": [
+                  {
+                    "amountMinor": 7500,
+                    "currency": "CAD"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "member": "lucia",
+            "overall": [
+              {
+                "amountMinor": -86800,
+                "currency": "CLP"
+              },
+              {
+                "amountMinor": 7500,
+                "currency": "CAD"
+              }
+            ],
+            "groups": [
+              {
+                "group": "meals",
+                "amounts": [
+                  {
+                    "amountMinor": -16800,
+                    "currency": "CLP"
+                  }
+                ]
+              },
+              {
+                "group": "care",
+                "amounts": [
+                  {
+                    "amountMinor": 7500,
+                    "currency": "CAD"
+                  },
+                  {
+                    "amountMinor": -70000,
+                    "currency": "CLP"
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "lists": {
+          "all": [
+            "kinesiologia",
+            "tablet",
+            "remedios",
+            "almuerzo",
+            "flores",
+            "pizzas",
+            "cena",
+            "calefon",
+            "pan",
+            "te"
+          ],
+          "byGroup": {
+            "family": [
+              "flores",
+              "cena",
+              "pan",
+              "te"
+            ],
+            "meals": [
+              "remedios",
+              "almuerzo",
+              "pizzas"
+            ],
+            "care": [
+              "kinesiologia",
+              "tablet",
+              "calefon"
+            ]
+          },
+          "byKind": {
+            "meal": [
+              "almuerzo",
+              "pizzas",
+              "cena",
+              "pan",
+              "te"
+            ],
+            "parents": [
+              "kinesiologia",
+              "tablet",
+              "remedios",
+              "calefon"
+            ],
+            "gift": [
+              "flores"
+            ],
+            "other": []
+          }
+        },
+        "expenses": [
+          {
+            "expense": "kinesiologia",
+            "ratesEntry": "november",
+            "standing": {
+              "involved": true,
+              "openMinor": -60000,
+              "settled": false
+            },
+            "participants": {
+              "carlos": "owes",
+              "lucia": "paid",
+              "diego": "paid"
+            },
+            "shares": {
+              "carlos": 60000,
+              "lucia": 30000,
+              "diego": 30000
+            },
+            "appliedPayments": [
+              {
+                "payment": "diego-kinesiologia",
+                "from": "diego",
+                "to": "lucia",
+                "paidMinor": 3198,
+                "paidCurrency": "USD",
+                "coveredMinor": 30000,
+                "method": "transfer",
+                "date": "2026-11-15"
+              }
+            ]
+          },
+          {
+            "expense": "tablet",
+            "ratesEntry": "november",
+            "standing": {
+              "involved": true,
+              "openMinor": 15000,
+              "settled": false
+            },
+            "participants": {
+              "carlos": "paid",
+              "lucia": "owes",
+              "diego": "owes"
+            },
+            "shares": {
+              "carlos": 15000,
+              "lucia": 7500,
+              "diego": 7500
+            },
+            "appliedPayments": []
+          },
+          {
+            "expense": "remedios",
+            "ratesEntry": "november",
+            "standing": {
+              "involved": false,
+              "openMinor": null,
+              "settled": false
+            },
+            "participants": {
+              "lucia": "paid",
+              "mama": "partly_paid"
+            },
+            "shares": {
+              "lucia": 5000,
+              "mama": 5000
+            },
+            "appliedPayments": [
+              {
+                "payment": "mama-almuerzo",
+                "from": "mama",
+                "to": "lucia",
+                "paidMinor": 3200,
+                "paidCurrency": "CLP",
+                "coveredMinor": 3200,
+                "method": "cash",
+                "date": "2026-11-09"
+              }
+            ]
+          },
+          {
+            "expense": "almuerzo",
+            "ratesEntry": "november",
+            "standing": {
+              "involved": true,
+              "openMinor": -16800,
+              "settled": false
+            },
+            "participants": {
+              "carlos": "owes",
+              "lucia": "paid",
+              "diego": "owes",
+              "mama": "paid",
+              "papa": "owes"
+            },
+            "shares": {
+              "carlos": 16800,
+              "lucia": 16800,
+              "diego": 16800,
+              "mama": 16800,
+              "papa": 16800
+            },
+            "appliedPayments": [
+              {
+                "payment": "mama-almuerzo",
+                "from": "mama",
+                "to": "lucia",
+                "paidMinor": 16800,
+                "paidCurrency": "CLP",
+                "coveredMinor": 16800,
+                "method": "cash",
+                "date": "2026-11-09"
+              }
+            ]
+          },
+          {
+            "expense": "flores",
+            "ratesEntry": "november",
+            "standing": {
+              "involved": true,
+              "openMinor": -1200,
+              "settled": false
+            },
+            "participants": {
+              "carlos": "owes",
+              "lucia": "owes",
+              "diego": "owes",
+              "papa": "partly_paid",
+              "beto": "paid"
+            },
+            "shares": {
+              "carlos": 1200,
+              "lucia": 1200,
+              "diego": 1200,
+              "papa": 1200,
+              "beto": 1200
+            },
+            "appliedPayments": [
+              {
+                "payment": "papa-beto",
+                "from": "papa",
+                "to": "beto",
+                "paidMinor": 500,
+                "paidCurrency": "USD",
+                "coveredMinor": 500,
+                "method": "cash",
+                "date": "2026-09-21"
+              }
+            ]
+          },
+          {
+            "expense": "pizzas",
+            "ratesEntry": "november",
+            "standing": {
+              "involved": true,
+              "openMinor": 0,
+              "settled": true
+            },
+            "participants": {
+              "carlos": "paid",
+              "lucia": "paid",
+              "diego": "paid",
+              "mama": "paid",
+              "papa": "paid"
+            },
+            "shares": {
+              "carlos": 9000,
+              "lucia": 9000,
+              "diego": 9000,
+              "mama": 9000,
+              "papa": 9000
+            },
+            "appliedPayments": [
+              {
+                "payment": "carlos-pizzas",
+                "from": "carlos",
+                "to": "papa",
+                "paidMinor": 9000,
+                "paidCurrency": "CLP",
+                "coveredMinor": 9000,
+                "method": "transfer",
+                "date": "2026-11-02"
+              },
+              {
+                "payment": "lucia-pizzas",
+                "from": "lucia",
+                "to": "papa",
+                "paidMinor": 9000,
+                "paidCurrency": "CLP",
+                "coveredMinor": 9000,
+                "method": "transfer",
+                "date": "2026-11-02"
+              },
+              {
+                "payment": "diego-pizzas",
+                "from": "diego",
+                "to": "papa",
+                "paidMinor": 9000,
+                "paidCurrency": "CLP",
+                "coveredMinor": 9000,
+                "method": "transfer",
+                "date": "2026-11-02"
+              },
+              {
+                "payment": "mama-pizzas",
+                "from": "mama",
+                "to": "papa",
+                "paidMinor": 9000,
+                "paidCurrency": "CLP",
+                "coveredMinor": 9000,
+                "method": "transfer",
+                "date": "2026-11-02"
+              }
+            ]
+          },
+          {
+            "expense": "cena",
+            "ratesEntry": "october",
+            "standing": {
+              "involved": true,
+              "openMinor": 0,
+              "settled": true
+            },
+            "participants": {
+              "carlos": "paid",
+              "lucia": "paid",
+              "diego": "paid",
+              "mama": "paid",
+              "papa": "partly_paid",
+              "beto": "paid"
+            },
+            "shares": {
+              "carlos": 25000,
+              "lucia": 25000,
+              "diego": 25000,
+              "mama": 25000,
+              "papa": 25000,
+              "beto": 25000
+            },
+            "appliedPayments": [
+              {
+                "payment": "carlos-cena",
+                "from": "carlos",
+                "to": "mama",
+                "paidMinor": 25000,
+                "paidCurrency": "CLP",
+                "coveredMinor": 25000,
+                "method": "transfer",
+                "date": "2026-10-12"
+              },
+              {
+                "payment": "lucia-cena",
+                "from": "lucia",
+                "to": "mama",
+                "paidMinor": 25000,
+                "paidCurrency": "CLP",
+                "coveredMinor": 25000,
+                "method": "cash",
+                "date": "2026-10-12"
+              },
+              {
+                "payment": "diego-cena",
+                "from": "diego",
+                "to": "mama",
+                "paidMinor": 25000,
+                "paidCurrency": "CLP",
+                "coveredMinor": 25000,
+                "method": "other",
+                "date": "2026-10-12"
+              },
+              {
+                "payment": "papa-cena",
+                "from": "papa",
+                "to": "mama",
+                "paidMinor": 20000,
+                "paidCurrency": "CLP",
+                "coveredMinor": 20000,
+                "method": "cash",
+                "date": "2026-10-13"
+              },
+              {
+                "payment": "beto-cena",
+                "from": "beto",
+                "to": "mama",
+                "paidMinor": 25000,
+                "paidCurrency": "CLP",
+                "coveredMinor": 25000,
+                "method": "cash",
+                "date": "2026-10-12"
+              }
+            ]
+          },
+          {
+            "expense": "calefon",
+            "ratesEntry": "october",
+            "standing": {
+              "involved": true,
+              "openMinor": 0,
+              "settled": true
+            },
+            "participants": {
+              "carlos": "paid",
+              "lucia": "paid",
+              "diego": "paid"
+            },
+            "shares": {
+              "carlos": 105000,
+              "lucia": 52500,
+              "diego": 52500
+            },
+            "appliedPayments": [
+              {
+                "payment": "lucia-calefon",
+                "from": "lucia",
+                "to": "carlos",
+                "paidMinor": 52500,
+                "paidCurrency": "CLP",
+                "coveredMinor": 52500,
+                "method": "transfer",
+                "date": "2026-10-05"
+              },
+              {
+                "payment": "diego-calefon",
+                "from": "diego",
+                "to": "carlos",
+                "paidMinor": 5764,
+                "paidCurrency": "USD",
+                "coveredMinor": 52500,
+                "method": "transfer",
+                "date": "2026-10-06"
+              }
+            ]
+          },
+          {
+            "expense": "pan",
+            "ratesEntry": null,
+            "standing": {
+              "involved": false,
+              "openMinor": null,
+              "settled": false
+            },
+            "participants": {
+              "papa": "owes",
+              "beto": "paid"
+            },
+            "shares": {
+              "papa": 2000,
+              "beto": 2000
+            },
+            "appliedPayments": []
+          },
+          {
+            "expense": "te",
+            "ratesEntry": null,
+            "standing": {
+              "involved": false,
+              "openMinor": null,
+              "settled": false
+            },
+            "participants": {
+              "mama": "paid",
+              "papa": "paid"
+            },
+            "shares": {
+              "mama": 5000,
+              "papa": 5000
+            },
+            "appliedPayments": [
+              {
+                "payment": "papa-cena",
+                "from": "papa",
+                "to": "mama",
+                "paidMinor": 5000,
+                "paidCurrency": "CLP",
+                "coveredMinor": 5000,
+                "method": "cash",
+                "date": "2026-10-13"
+              }
+            ]
+          }
+        ]
+      },
+      "otherCallers": {},
+      "creditWithLucia": [
+        {
+          "minor": -10000,
+          "currency": "CLP",
+          "group": "care"
+        }
+      ],
+      "groupBalancesInCad": {
+        "meals": -2507,
+        "care": 4552,
+        "family": -1680
+      },
+      "writes": [
+        {
+          "caller": "lucia",
+          "method": "POST",
+          "path": "/api/payments",
+          "body": {
+            "requestId": "d0000000-0000-4000-8000-000000000019",
+            "fromId": "a0000000-0000-4000-8000-000000000002",
+            "toId": "a0000000-0000-4000-8000-000000000001",
+            "paid": {
+              "amountMinor": 10000,
+              "currency": "CLP"
+            },
+            "method": "transfer",
+            "date": "2026-11-19"
+          }
+        }
+      ]
+    },
+    {
       "name": "backdated-expense",
       "requirement": "Section 12, events are replayed in the order they were recorded",
       "description": "An expense with an older date does not capture a payment recorded before it",

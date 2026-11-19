@@ -672,4 +672,235 @@ describe('DashboardScreen', () => {
       expect(recordPayment).toHaveBeenCalledOnce();
     });
   });
+
+  describe('recording an advance', () => {
+    const PAPA = { id: 'papa', name: 'Papá', tone: 'sage', currency: 'USD', active: true };
+    const ROSA = { id: 'rosa', name: 'Rosa', tone: 'clay', currency: 'CLP', active: false };
+
+    // Everyone is even, and Papá shares no expense with Ana, so he has no standing at all.
+    function evenLedger(overrides = {}) {
+      const data = ledger({ standings: [], ...overrides });
+      data.members = [...data.members, PAPA, ROSA];
+      return data;
+    }
+
+    async function openAdvance(data = evenLedger()) {
+      renderWith(data);
+      await userEvent.click(await button(i18n.t('expenses:balance.advance')));
+      await screen.findByRole('heading', { name: i18n.t('expenses:advance.title') });
+    }
+
+    const pick = (name) => userEvent.click(screen.getByRole('button', { name }));
+
+    async function fill({ person = 'Papá', direction = 'theyGave', amount = '2.000', currency }) {
+      await pick(person);
+      await pick(i18n.t(`expenses:advance.${direction}`, { name: person }));
+      if (currency) await pick(i18n.t(`expenses:currencies.${currency}`));
+      const label =
+        direction === 'theyGave'
+          ? i18n.t('expenses:advance.amountTheyGave')
+          : i18n.t('expenses:advance.amountIGave');
+      await userEvent.type(screen.getByLabelText(label), amount);
+    }
+
+    const submit = (minor, currency) =>
+      userEvent.click(
+        screen.getByRole('button', {
+          name: i18n.t('expenses:advance.submit', { amount: formatMinor(minor, currency) }),
+        }),
+      );
+
+    it('is offered when every balance is even, where settling up is not', async () => {
+      renderWith(evenLedger());
+      expect(await button(i18n.t('expenses:balance.advance'))).toBeTruthy();
+      expect(screen.queryByRole('button', { name: i18n.t('expenses:balance.settle') })).toBeNull();
+    });
+
+    it('offers only other active members', async () => {
+      await openAdvance();
+      expect(screen.getByRole('button', { name: 'Leo' })).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'Papá' })).toBeTruthy();
+      expect(screen.queryByRole('button', { name: 'Rosa' })).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Ana Pérez' })).toBeNull();
+    });
+
+    it('cannot be saved until the person, who gave the money and the amount are all chosen', async () => {
+      await openAdvance();
+      const disabled = (key) => screen.getByRole('button', { name: i18n.t(key) }).disabled;
+      expect(disabled('expenses:advance.submitNeedPerson')).toBe(true);
+
+      await pick('Papá');
+      expect(disabled('expenses:advance.submitNeedDirection')).toBe(true);
+      // Nothing is chosen for them: money recorded the wrong way would flip the balance.
+      for (const option of ['theyGave', 'iGave']) {
+        const choice = screen.getByRole('button', {
+          name: i18n.t(`expenses:advance.${option}`, { name: 'Papá' }),
+        });
+        expect(choice.getAttribute('aria-pressed')).toBe('false');
+      }
+
+      await pick(i18n.t('expenses:advance.theyGave', { name: 'Papá' }));
+      expect(disabled('expenses:advance.submitNeedAmount')).toBe(true);
+      expect(recordPayment).not.toHaveBeenCalled();
+    });
+
+    it('records money they gave me, in their currency, with nothing else', async () => {
+      vi.mocked(recordPayment).mockResolvedValue({});
+      await openAdvance();
+      await fill({});
+      await submit(200000, 'USD');
+
+      expect(recordPayment).toHaveBeenCalledOnce();
+      expect(vi.mocked(recordPayment).mock.calls[0][1]).toEqual({
+        requestId: expect.stringMatching(/^[0-9a-f-]{36}$/),
+        fromId: 'papa',
+        toId: 'ana',
+        paid: { amountMinor: 200000, currency: 'USD' },
+        method: 'transfer',
+        date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+      });
+    });
+
+    it('records money I gave them the other way round', async () => {
+      vi.mocked(recordPayment).mockResolvedValue({});
+      await openAdvance();
+      await fill({ direction: 'iGave', amount: '500' });
+      await submit(50000, 'CAD');
+
+      const body = vi.mocked(recordPayment).mock.calls[0][1];
+      expect(body.fromId).toBe('ana');
+      expect(body.toId).toBe('papa');
+      expect(body.paid).toEqual({ amountMinor: 50000, currency: 'CAD' });
+    });
+
+    it('says the whole advance becomes credit, exactly as given, when nothing is owed', async () => {
+      await openAdvance();
+      // Papá uses USD: the credit is kept in CAD, so it must not show as a conversion.
+      await fill({ currency: 'CAD', amount: '100' });
+      const amount = formatMinor(10000, 'CAD');
+      expect(
+        screen.getByText(
+          shown(
+            i18n.t('expenses:advance.status.creditTheyGave', {
+              name: 'Papá',
+              amount,
+              credit: amount,
+            }),
+          ),
+        ),
+      ).toBeTruthy();
+    });
+
+    it('says it first covers what the giver owes, and how much is left as credit', async () => {
+      // Ana owes Leo CLP 33.500, and gives him CLP 50.000.
+      await openAdvance(evenLedger({ standings: [{ memberId: 'leo', ...debt(-33500, 'CLP') }] }));
+      await fill({ person: 'Leo', direction: 'iGave', amount: '50.000', currency: 'CLP' });
+      expect(
+        screen.getByText(
+          shown(
+            i18n.t('expenses:advance.status.coversIGave', {
+              name: 'Leo',
+              amount: formatMinor(50000, 'CLP'),
+              covered: formatMinor(33500, 'CLP'),
+              credit: formatMinor(16500, 'CLP'),
+            }),
+          ),
+        ),
+      ).toBeTruthy();
+    });
+
+    it('says the debt grows when the person already owed gives money the other way', async () => {
+      // Ana owes Leo CLP 33.500, and Leo gives her CLP 10.000 more.
+      await openAdvance(evenLedger({ standings: [{ memberId: 'leo', ...debt(-33500, 'CLP') }] }));
+      await fill({ person: 'Leo', amount: '10.000', currency: 'CLP' });
+      expect(
+        screen.getByText(
+          shown(
+            i18n.t('expenses:advance.status.growsTheyGave', {
+              name: 'Leo',
+              amount: formatMinor(10000, 'CLP'),
+              owed: formatMinor(33500, 'CLP'),
+              total: formatMinor(43500, 'CLP'),
+            }),
+          ),
+        ),
+      ).toBeTruthy();
+    });
+
+    it('is offered from settling up once the last debt is cleared', async () => {
+      vi.mocked(fetchLedger).mockResolvedValueOnce(ledger()).mockResolvedValue(evenLedger());
+      vi.mocked(fetchExpenses).mockResolvedValue(page());
+      vi.mocked(recordPayment).mockResolvedValue({});
+      render(<DashboardScreen />);
+
+      await userEvent.click(await button(i18n.t('expenses:balance.settle')));
+      await userEvent.click(
+        screen.getByRole('button', {
+          name: i18n.t('expenses:settle.submit', { amount: formatMinor(33500, 'CLP') }),
+        }),
+      );
+      await screen.findByText(i18n.t('expenses:settle.evenTitle'));
+      await userEvent.click(screen.getByRole('button', { name: i18n.t('expenses:balance.advance') }));
+      expect(
+        await screen.findByRole('heading', { name: i18n.t('expenses:advance.title') }),
+      ).toBeTruthy();
+    });
+
+    it('can be saved without exchange rates, and then gives no figure it cannot work out', async () => {
+      vi.mocked(recordPayment).mockResolvedValue({});
+      await openAdvance(evenLedger({ rates: null, rateEntries: [] }));
+      await fill({ currency: 'CAD', amount: '100' });
+
+      const amount = formatMinor(10000, 'CAD');
+      expect(
+        screen.getByText(
+          shown(i18n.t('expenses:advance.status.plainTheyGave', { name: 'Papá', amount })),
+        ),
+      ).toBeTruthy();
+      await submit(10000, 'CAD');
+      expect(vi.mocked(recordPayment).mock.calls[0][1].paid).toEqual({
+        amountMinor: 10000,
+        currency: 'CAD',
+      });
+    });
+
+    it('empties the form after saving, so a second tap cannot record it twice', async () => {
+      vi.mocked(recordPayment).mockResolvedValue({});
+      await openAdvance();
+      await fill({});
+      await submit(200000, 'USD');
+
+      expect(
+        await screen.findByText(
+          shown(
+            i18n.t('expenses:advance.doneTheyGave', {
+              name: 'Papá',
+              amount: formatMinor(200000, 'USD'),
+            }),
+          ),
+        ),
+      ).toBeTruthy();
+      const papa = await screen.findByRole('button', { name: 'Papá' });
+      expect(papa.getAttribute('aria-pressed')).toBe('false');
+      expect(screen.queryByLabelText(i18n.t('expenses:advance.amountTheyGave'))).toBeNull();
+      expect(
+        screen.getByRole('button', { name: i18n.t('expenses:advance.submitNeedPerson') }).disabled,
+      ).toBe(true);
+      expect(recordPayment).toHaveBeenCalledOnce();
+    });
+
+    it('sends the same requestId when retrying a save that failed', async () => {
+      vi.mocked(recordPayment)
+        .mockRejectedValueOnce(new ApiError(0, 'generic'))
+        .mockResolvedValue({});
+      await openAdvance();
+      await fill({});
+      await submit(200000, 'USD');
+      await screen.findByRole('alert');
+      await submit(200000, 'USD');
+
+      const [first, second] = vi.mocked(recordPayment).mock.calls.map((call) => call[1]);
+      expect(second.requestId).toBe(first.requestId);
+    });
+  });
 });

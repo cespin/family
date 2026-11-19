@@ -1,0 +1,29 @@
+.fa-advance {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fa-space-4);
+}
+
+.fa-advance__question {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fa-space-2);
+}
+
+.fa-advance__choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--fa-space-2);
+}
+
+.fa-advance__people {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--fa-space-4);
+}
+
+.fa-advance__arrow {
+  display: inline-flex;
+  color: var(--fa-color-text-muted);
+}

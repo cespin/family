@@ -76,6 +76,27 @@ export function balancesFor(ledger, { groupId = ALL_GROUPS, currency }) {
 }
 
 /**
+ * Everyone an advance can be recorded with: every other active member, in the API's order, even
+ * when nothing is open with them. `homeMinor` and `netMinor` are as in `balancesFor`, and a member
+ * with no standing is truly even, so their balance is 0. A former member is left out, because an
+ * advance is new money; settling up still clears an old debt with them.
+ */
+export function advanceCandidates(ledger, currency) {
+  return ledger.members
+    .filter((member) => member.active && member.id !== ledger.me)
+    .map((member) => {
+      const standing = ledger.standings.find((item) => item.memberId === member.id);
+      const entries = standing ? entriesOf(standing, ALL_GROUPS) : [];
+      return {
+        member,
+        entries,
+        netMinor: sumConverted(entries, currency, ledger.rates),
+        homeMinor: sumConverted(entries, member.currency, ledger.rates),
+      };
+    });
+}
+
+/**
  * The sum of every balance in `currency`, or null when any of them cannot be converted. It adds
  * the original amounts and rounds once, so it can differ by a minor unit from the rounded rows.
  */

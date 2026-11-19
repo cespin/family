@@ -32,6 +32,7 @@ The frontend's internal data shape is not binding. It can adapt to the API, as l
 | **Charged amount** | What the payer was actually billed, such as on a credit card statement |
 | **Debt currency** | The currency an expense's shares and debts are owed in |
 | **Payment** | Money one member gave another to reduce what is owed. The screens also call this settling up |
+| **Advance** | Money one member gives another ahead of future expenses. It is recorded as a payment, and what it does not pay off becomes credit |
 | **Allocation** | How a payment is applied to specific open debts |
 | **Open debt** | What is still unpaid on one expense between two members |
 | **Balance** | The net of all open debts between the caller and one other member |
@@ -89,6 +90,12 @@ The frontend's internal data shape is not binding. It can adapt to the API, as l
 - See who they owe and who owes them, one person at a time.
 - Record a payment in either direction, full or partial, in any supported currency, with the method used.
 - Optionally choose which group the payment goes to.
+
+### Record an advance
+
+- Record an advance with any other active member, even when nothing is owed between them: who gave the money, the amount in any supported currency, and the method used.
+- See before saving what it will do: it pays any debt the giver owes first, and the rest is credit that later debts draw on (section 12).
+- It is sent as a payment with no group and no credited value, and needs no exchange rates to be saved.
 
 ## 4. Information the frontend needs
 

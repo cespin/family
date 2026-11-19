@@ -1,9 +1,16 @@
 import { useId, useState } from 'react';
-import { ArrowLeftRight, Wallet } from 'lucide-react';
+import { ArrowLeftRight, HandCoins, Wallet } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Amount, Button, Card, PersonRow, Segmented } from '../ui';
 import { formatMinor } from '../../i18n/format.js';
-import { ALL_GROUPS, balanceTotal, balancesFor, groupById, myself } from '../../lib/ledger.js';
+import {
+  ALL_GROUPS,
+  advanceCandidates,
+  balanceTotal,
+  balancesFor,
+  groupById,
+  myself,
+} from '../../lib/ledger.js';
 import { CURRENCIES } from '../../lib/money.js';
 import { currencyLabel, ratesLine } from './labels.js';
 import './BalanceCard.css';
@@ -22,10 +29,11 @@ function rowTitle(t, row) {
     : t('expenses:balance.theyOwe', { name });
 }
 
-export function BalanceCard({ ledger, groupId, onSettle, onRates }) {
+export function BalanceCard({ ledger, groupId, onSettle, onAdvance, onRates }) {
   const { t } = useTranslation();
   const labelId = useId();
   const [currency, setCurrency] = useState(myself(ledger).currency);
+  const canAdvance = advanceCandidates(ledger, currency).length > 0;
 
   const rows = balancesFor(ledger, { groupId, currency });
   const total = balanceTotal(ledger, { groupId, currency });
@@ -93,6 +101,12 @@ export function BalanceCard({ ledger, groupId, onSettle, onRates }) {
         {rows.length > 0 && (
           <Button variant="secondary" block icon={Wallet} onClick={() => onSettle()}>
             {t('expenses:balance.settle')}
+          </Button>
+        )}
+        {/* An advance is recorded even with nothing open, so it does not depend on the rows. */}
+        {canAdvance && (
+          <Button variant="quiet" block icon={HandCoins} onClick={onAdvance}>
+            {t('expenses:balance.advance')}
           </Button>
         )}
       </div>

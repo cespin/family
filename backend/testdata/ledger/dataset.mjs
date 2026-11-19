@@ -1086,6 +1086,30 @@ export const SCENARIOS = [
     expect: { credit: { minor: 1450, currency: 'CLP', group: 'care' } },
   },
   {
+    name: 'advance-against-open-debt',
+    requirement: 'Section 3, record an advance',
+    description:
+      'Lucía gives Carlos CLP 10.000 while he owes her: his debts stay open and it all becomes her credit',
+    apply: (l) => {
+      l.pay('lucia-carlos', {
+        from: 'lucia',
+        to: 'carlos',
+        amountMinor: 10000,
+        currency: 'CLP',
+        method: 'transfer',
+        date: '2026-11-19',
+      });
+    },
+    // In Cuidado Carlos owes Lucía more than the tablet she owes him, so the group has no room for
+    // her payment, and even the tablet debt is left as it was.
+    expect: {
+      almuerzo: 16800,
+      kinesiologia: 60000,
+      tablet: 7500,
+      credit: { minor: -10000, currency: 'CLP', group: 'care' },
+    },
+  },
+  {
     name: 'backdated-expense',
     requirement: 'Section 12, events are replayed in the order they were recorded',
     description: 'An expense with an older date does not capture a payment recorded before it',
@@ -1466,6 +1490,7 @@ export const COVERAGE = [
   ['6', 'Credit after every debt has closed goes to the newest expense\'s group', 'scenario `credit-after-debts-closed`'],
   ['12', 'Credit in another currency waits while there are no rates', 'payment `papa-beto`, expense `pan`'],
   ['12', 'A reverse payment reduces credit', 'scenario `reverse-payment-reduces-credit`'],
+  ['3, 12', 'An advance against the giver\'s own open debts becomes credit and pays nothing', 'scenario `advance-against-open-debt`'],
   ['12', 'A backdated expense cannot capture an earlier payment', 'scenario `backdated-expense`'],
   ['12', 'Credit between two people with no shared group', 'payment `papa-rosa`'],
   ['9', 'Expenses load in pages, and filters run on the server', '`requests.json`, `lists` in `expected.json`'],

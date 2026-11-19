@@ -52,7 +52,8 @@
     "youOweThem": "Le debes a {{name}}",
     "unknown": "Cuentas con {{name}}",
     "theirCurrency": "En su moneda: {{amount}}",
-    "settle": "Saldar cuentas"
+    "settle": "Saldar cuentas",
+    "advance": "Anotar un adelanto"
   },
   "row": {
     "meta": "Pagó {{name}} · {{date}} · {{total}}",
@@ -246,6 +247,43 @@
     "othersTitle": "Los demás",
     "evenTitle": "Están a mano",
     "evenBody": "No hay cuentas pendientes con nadie."
+  },
+  "advance": {
+    "back": "Volver a saldos",
+    "title": "Anotar un adelanto",
+    "intro": "Dinero que alguien da por adelantado. Primero cubre lo que se deba hoy, y el resto se descuenta solo de los gastos que vengan.",
+    "who": "¿Con quién?",
+    "direction": "¿Quién dio el dinero?",
+    "theyGave": "{{name}} me dio",
+    "iGave": "Le di a {{name}}",
+    "currencyTheyGave": "¿En qué moneda te dio?",
+    "currencyIGave": "¿En qué moneda le diste?",
+    "amountTheyGave": "¿Cuánto te dio?",
+    "amountIGave": "¿Cuánto le diste?",
+    "methodTheyGave": "¿Cómo te lo dio?",
+    "methodIGave": "¿Cómo se lo diste?",
+    "status": {
+      "plainTheyGave": "Recibes {{amount}}. Primero cubre lo que {{name}} te deba hoy, y el resto se descuenta de lo que te deba en gastos futuros.",
+      "plainIGave": "{{name}} recibe {{amount}}. Primero cubre lo que le debas hoy, y el resto se descuenta de lo que le debas en gastos futuros.",
+      "evenTheyGave": "Recibes {{amount}}. Con esto quedan a mano.",
+      "evenIGave": "{{name}} recibe {{amount}}. Con esto quedan a mano.",
+      "partialTheyGave": "Recibes {{amount}}. Cubre parte de lo que te debe, y seguiría debiéndote {{left}}.",
+      "partialIGave": "{{name}} recibe {{amount}}. Cubre parte de lo que le debes, y seguirías debiéndole {{left}}.",
+      "coversTheyGave": "Recibes {{amount}}. Primero cubre los {{covered}} que te debe, y los {{credit}} que sobran se descuentan de lo que te deba en gastos futuros.",
+      "coversIGave": "{{name}} recibe {{amount}}. Primero cubre los {{covered}} que le debes, y los {{credit}} que sobran se descuentan de lo que le debas en gastos futuros.",
+      "creditTheyGave": "Recibes {{amount}}. Quedarías debiéndole {{credit}} a {{name}}, que se descuentan de lo que te deba en gastos futuros.",
+      "creditIGave": "{{name}} recibe {{amount}}. Quedaría debiéndote {{credit}}, que se descuentan de lo que le debas en gastos futuros.",
+      "growsTheyGave": "Recibes {{amount}}. Ya le debías {{owed}} a {{name}}, así que quedarías debiéndole {{total}}.",
+      "growsIGave": "{{name}} recibe {{amount}}. Ya te debía {{owed}}, así que quedaría debiéndote {{total}}."
+    },
+    "submit": "Anotar adelanto de {{amount}}",
+    "submitNeedPerson": "Primero elige con quién",
+    "submitNeedDirection": "Primero elige quién dio el dinero",
+    "submitNeedAmount": "Primero escribe un monto",
+    "doneTheyGave": "¡Listo! Anotamos que {{name}} te dio {{amount}}.",
+    "doneIGave": "¡Listo! Anotamos que le diste {{amount}} a {{name}}.",
+    "nobodyTitle": "Todavía no hay nadie más",
+    "nobodyBody": "Cuando otra persona de la familia entre, podrás anotar adelantos con ella."
   },
   "settings": {
     "open": "Ajustes",

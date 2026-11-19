@@ -1,7 +1,8 @@
 import { useId, useState } from 'react';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, HandCoins } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { currencyLabel, quoteLabel } from '../components/expenses/labels.js';
+import { MethodChoice } from '../components/expenses/MethodChoice.jsx';
 import { SubHeader } from '../components/expenses/SubHeader.jsx';
 import {
   Amount,
@@ -31,8 +32,6 @@ import {
 } from '../lib/money.js';
 import { scrollToTop } from '../lib/scroll.js';
 import './SettleUpScreen.css';
-
-const METHODS = ['transfer', 'cash', 'other'];
 
 function sumByCurrency(entries) {
   const totals = new Map();
@@ -79,7 +78,6 @@ function SettleForm({ ledger, row, onRecorded }) {
   const session = useSession();
   const { prepare, done } = useRequestId();
   const currencyLabelId = useId();
-  const methodLabelId = useId();
   const groupLabelId = useId();
   const { me, rates } = ledger;
   const other = row.member;
@@ -130,12 +128,6 @@ function SettleForm({ ledger, row, onRecorded }) {
 
   const owedEntries = row.entries.filter((entry) => entry.minor < 0);
   const creditEntries = row.entries.filter((entry) => entry.minor > 0);
-
-  const methodLabels = {
-    transfer: t('expenses:settle.methods.transfer'),
-    cash: t('expenses:settle.methods.cash'),
-    other: t('expenses:settle.methods.other'),
-  };
 
   function handleCurrency(next) {
     setCurrency(next);
@@ -293,18 +285,11 @@ function SettleForm({ ledger, row, onRecorded }) {
           </div>
         )}
 
-        <div className="fa-settle__question">
-          <p id={methodLabelId} className="fa-text-label">
-            {youPay ? t('expenses:settle.methodYouPay') : t('expenses:settle.methodTheyPay')}
-          </p>
-          <div className="fa-settle__methods" role="group" aria-labelledby={methodLabelId}>
-            {METHODS.map((option) => (
-              <Chip key={option} pressed={method === option} onClick={() => setMethod(option)}>
-                {methodLabels[option]}
-              </Chip>
-            ))}
-          </div>
-        </div>
+        <MethodChoice
+          label={youPay ? t('expenses:settle.methodYouPay') : t('expenses:settle.methodTheyPay')}
+          value={method}
+          onChange={setMethod}
+        />
 
         {errorCode && (
           <p className="fa-text-body" role="alert">
@@ -363,9 +348,14 @@ export function SettleUpScreen({ ledger, ledgerState, view, nav }) {
 
         {rows.length === 0 && (
           <Card>
-            <EmptyState title={t('expenses:settle.evenTitle')}>
-              {t('expenses:settle.evenBody')}
-            </EmptyState>
+            <div className="fa-settle">
+              <EmptyState title={t('expenses:settle.evenTitle')}>
+                {t('expenses:settle.evenBody')}
+              </EmptyState>
+              <Button variant="secondary" block icon={HandCoins} onClick={nav.advance}>
+                {t('expenses:balance.advance')}
+              </Button>
+            </div>
           </Card>
         )}
         {selected && !canSettle && (
