@@ -40,6 +40,12 @@
   white-space: nowrap;
 }
 
+.fa-expense-row--column .fa-expense-row__meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .fa-expense-row__extra {
   margin-top: var(--fa-space-1);
 }
@@ -61,4 +67,49 @@
 
 .fa-expense-row__label--neutral {
   color: var(--fa-color-text-muted);
+}
+
+/* The reader's part, on a line under the row, from the start of the text to the right edge. */
+.fa-expense-row--mine {
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--fa-space-2);
+}
+
+.fa-expense-row__line {
+  display: flex;
+  align-items: center;
+  gap: var(--fa-space-3);
+}
+
+.fa-expense-row__split {
+  display: flex;
+  align-items: center;
+  gap: var(--fa-space-2-5);
+  padding-inline-start: calc(var(--fa-avatar-medium) + var(--fa-space-3));
+}
+
+.fa-expense-row__bar {
+  flex: 1;
+  min-width: 0;
+}
+
+.fa-expense-row__caption {
+  flex: none;
+  color: var(--fa-color-text-muted);
+}
+
+/* Everyone's part, in a column of its own before the amount, when the row is wide. */
+.fa-expense-row--column {
+  gap: var(--fa-space-4);
+}
+
+.fa-expense-row__split-column {
+  flex: none;
+  width: var(--fa-split-column-width);
+}
+
+/* Amounts line up from row to row, and a longer one widens its column rather than overlap. */
+.fa-expense-row__share--column {
+  min-width: var(--fa-amount-column-width);
 }

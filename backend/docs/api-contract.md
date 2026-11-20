@@ -143,6 +143,8 @@ Balances come from `GET /api/ledger` and never depend on how many expenses have 
       "date": "2026-11-08",
       "transactionDate": "2026-11-08",
       "participantIds": ["<memberId>"],
+      "splitMode": "equal",
+      "participants": [{ "memberId": "<memberId>", "shareMinor": 16800 }],
       "standing": { "involved": true, "openMinor": -16800, "settled": false }
     }
   ],
@@ -150,7 +152,9 @@ Balances come from `GET /api/ledger` and never depend on how many expenses have 
 }
 ```
 
-**`standing.openMinor`** is in the expense's currency. Positive comes back to the caller, negative is owed by the caller, and it is null when the caller is not part of the expense.
+**`standing.openMinor`** is in the expense's currency. Positive comes back to the caller, negative is owed by the caller, and it is null when the caller is not part of the expense. It is what is still open after payments, not the caller's share.
+
+**`splitMode`** and **`participants`** are the split, as in the detail but without each participant's `status` or `otherShareMinor`. `percent` is present only when `splitMode` is `percent`. Both fields are absent on an expense whose list entries were saved before they carried the split, until `scripts/backfill-list-entries.sh` runs. A client draws no split for such an expense rather than guess one.
 
 ### `GET /api/expenses/{expenseId}`
 

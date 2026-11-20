@@ -293,6 +293,16 @@ pub struct ExpenseEntry {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub transaction_date: Option<String>,
     pub participant_ids: Vec<String>,
+    /// How the expense is split, copied from it. Absent on entries saved before entries carried
+    /// shares, until `backfill-list-entries` runs.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub split_mode: Option<SplitMode>,
+    /// Each participant's share in minor units, copied from the expense. Absent like `split_mode`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shares: Option<BTreeMap<String, i64>>,
+    /// The percentages of a percent split, copied from the expense.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub percents: Option<BTreeMap<String, i64>>,
     pub seq: u64,
 }
 
@@ -316,6 +326,9 @@ impl From<&Expense> for ExpenseEntry {
             date: expense.date.clone(),
             transaction_date: expense.transaction_date.clone(),
             participant_ids: expense.participant_ids.clone(),
+            split_mode: Some(expense.split_mode),
+            shares: Some(expense.shares.clone()),
+            percents: expense.percents.clone(),
             seq: expense.seq,
         }
     }

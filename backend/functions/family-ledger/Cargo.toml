@@ -22,7 +22,7 @@ uuid.workspace = true
 tokio = { workspace = true, optional = true }
 
 [features]
-# Builds the one-time transaction date backfill. Lambda builds leave it out.
+# Builds the operator's backfills. Lambda builds leave them out.
 backfill = ["dep:aws-config", "dep:tokio"]
 # Runs tests/ddb_local.rs, which needs DynamoDB Local. Use scripts/test-ddb-local.sh.
 ddb-local-tests = []
@@ -30,6 +30,11 @@ ddb-local-tests = []
 [[bin]]
 name = "backfill-transaction-date"
 path = "src/bin/backfill_transaction_date.rs"
+required-features = ["backfill"]
+
+[[bin]]
+name = "backfill-list-entries"
+path = "src/bin/backfill_list_entries.rs"
 required-features = ["backfill"]
 
 [[test]]

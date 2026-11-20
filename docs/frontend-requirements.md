@@ -60,6 +60,7 @@ The frontend's internal data shape is not binding. It can adapt to the API, as l
 - See the exchange rates being used.
 - Browse expenses newest first, filter them by kind, and see them grouped by month on wide screens.
 - See on each expense who paid, when, the total, and what it means for them: they owe, they get money back, it is settled, or they are not part of it.
+- See how each expense is split. On a phone, their part comes first against everyone else's, with "your part" as a percentage or as one of so many people. On wide screens, everyone's part is shown in their colour with their initials, and their own marked "Tú". An expense the API sends no split for shows none rather than a guessed one.
 
 ### Groups
 

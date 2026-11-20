@@ -63,7 +63,10 @@
     "youOwe": "le debes",
     "backToYou": "te devuelven",
     "even": "a mano",
-    "notInvolved": "no participas"
+    "notInvolved": "no participas",
+    "yourSharePercent": "tu parte: {{percent}}",
+    "yourShareEqual": "tu parte: 1 de {{total}}",
+    "splitLabel": "Reparto: {{parts}}"
   },
   "home": {
     "recentTitle": "Recientes",

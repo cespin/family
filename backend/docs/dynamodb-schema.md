@@ -56,14 +56,15 @@ Every `LEDGER#main` item except the head also carries `rev`, the revision of its
 
 **Payment:** `fromId`, `toId`, `paidMinor`, `paidCurrency`, `creditedMinor`, `creditedCurrency`, `method`, `date`, `transactionDate`, `groupId`, `recordedRates`, `recordedBy`, `recordedAt`, `version`, `seq`. The credited value is what the replay allocates. It equals the paid value unless a full payment was accepted within tolerance.
 
-**Group expense entry:** `expenseId`, `title`, `kind`, `groupId`, `payerId`, `addedBy`, `amountMinor`, `currency`, `date`, `transactionDate`, `participantIds`, `seq`, `rev`.
+**Group expense entry:** `expenseId`, `title`, `kind`, `groupId`, `payerId`, `addedBy`, `amountMinor`, `currency`, `date`, `transactionDate`, `participantIds`, `splitMode`, `shares`, `percents`, `seq`, `rev`.
 
-**Group kind entry:** `expenseId`, `title`, `kind`, `groupId`, `payerId`, `addedBy`, `amountMinor`, `currency`, `date`, `transactionDate`, `participantIds`, `seq`, `rev`.
+**Group kind entry:** `expenseId`, `title`, `kind`, `groupId`, `payerId`, `addedBy`, `amountMinor`, `currency`, `date`, `transactionDate`, `participantIds`, `splitMode`, `shares`, `percents`, `seq`, `rev`.
 
 **Pair payment entry:** `paymentId`, `fromId`, `toId`, `paidMinor`, `paidCurrency`, `creditedMinor`, `creditedCurrency`, `method`, `date`, `transactionDate`, `groupId`, `version`, `seq`, `rev`.
 
 - **An expense and a payment carry two dates.** `date` is the day it was entered, which the browser supplies. It orders the debts a payment pays, names the allocation item, and picks the rates shown on the detail, so it never changes. `transactionDate` is the day the money was spent or given, which the member chooses and can correct later. It orders the lists and is what every screen shows. Correcting it moves list entries and no money.
 - **An item saved before `transactionDate` existed reads it as `date`**, so its list entries sit at `<date>#<seq>` until the backfill below moves them.
+- **An expense entry saved before entries carried `splitMode`, `shares` and `percents`** lists with no split until the list entry backfill below fills them in. Absent is not zero: it is never read as an empty or equal split.
 - **`seq`** is the head revision that created the item. It never changes, so an edited expense keeps its place in the replay. In a sort key it is zero-padded to eight digits, as in `2026-11-14#00000017`.
 - **`version`** counts the changes to an expense, payment or group, for detecting concurrent edits. A payment saved before it could be edited reads as version 1.
 - **`memberIds` and `participantIds` are ordered.** Equal splits depend on the order, and an expense keeps its own copy so a participant who left the group still has a position.
@@ -132,6 +133,10 @@ AWS documents `Query` as read-committed against transactions, so a read can see 
 ### Backfilling transaction dates
 
 Expenses and payments saved before `transactionDate` existed get one from `scripts/backfill-transaction-date.sh`, run once after the API that reads both kinds is deployed, at a quiet moment because each record moves the head. It writes one transaction per item through the write protocol, with no allowlist check because an operator rather than a member runs it. Each transaction sets `transactionDate`, retires the list entries at `<date>#<seq>` and writes them at `<transactionDate>#<seq>`. It skips items that already have one, so running it again changes nothing. `--dry-run` only counts them.
+
+### Backfilling list entries
+
+List entries saved before they carried `splitMode`, `shares` and `percents` get them from `scripts/backfill-list-entries.sh`, run after the API that writes them is deployed, at a quiet moment because each expense moves the head. For every expense it compares the live entries at its current keys with the ones it would write today, and rewrites them in place when they differ, one transaction per expense through the write protocol, with no allowlist check because an operator runs it. Entries that already match are left alone, so running it again changes nothing. `--dry-run` only counts. If an expense has no live entry at one of its keys, it stops before writing anything and names the expense, because that is a broken ledger to look at rather than something to fill in.
 
 ### Test data set
 

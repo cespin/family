@@ -141,7 +141,7 @@ function ExpensesSection({ ledger, groupId, isWide, dataVersion, onOpen }) {
         </Card>
       )}
       {visible.length > 0 && !isWide && (
-        <ExpenseList ledger={ledger} expenses={visible} onOpen={onOpen} />
+        <ExpenseList ledger={ledger} expenses={visible} isWide={isWide} onOpen={onOpen} />
       )}
       {visible.length > 0 &&
         isWide &&
@@ -150,7 +150,7 @@ function ExpensesSection({ ledger, groupId, isWide, dataVersion, onOpen }) {
             <h3 className="fa-text-label fa-text-muted fa-text-capitalized">
               {formatCalendarDate(month.date, { month: 'long' })}
             </h3>
-            <ExpenseList ledger={ledger} expenses={month.expenses} onOpen={onOpen} />
+            <ExpenseList ledger={ledger} expenses={month.expenses} isWide={isWide} onOpen={onOpen} />
           </div>
         ))}
       {page.moreErrorCode && (

@@ -289,6 +289,21 @@ describe('DashboardScreen', () => {
       expect(within(row).queryByText(shown(formatMinor(0, 'CLP')))).toBeNull();
     });
 
+    it('shows the reader’s part of an expense the list sent a split for', async () => {
+      const split = {
+        ...LUNCH,
+        splitMode: 'equal',
+        participants: [
+          { memberId: 'ana', shareMinor: 33500 },
+          { memberId: 'leo', shareMinor: 33500 },
+        ],
+      };
+      renderWith(ledger(), page([split]));
+
+      const row = await screen.findByRole('button', { name: /Almuerzo/ });
+      expect(within(row).getByText(i18n.t('expenses:row.yourShareEqual', { total: 2 }))).toBeTruthy();
+    });
+
     it('loads the next page after the ones on screen', async () => {
       const second = { ...LUNCH, id: 'taxi', title: 'Taxi', date: '2026-11-01' };
       vi.mocked(fetchLedger).mockResolvedValue(ledger());

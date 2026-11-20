@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { Card, ExpenseRow } from '../ui';
 import { formatCalendarDate, formatMinor } from '../../i18n/format.js';
 import { memberById, transactionDateOf } from '../../lib/ledger.js';
+import { rowSplit } from './rowSplit.js';
 
 /** What the expense means for me, from the `standing` the API sent with it. */
 function shareLabel(t, { involved, openMinor, settled }) {
@@ -12,7 +13,8 @@ function shareLabel(t, { involved, openMinor, settled }) {
   return { label: t('expenses:row.even'), labelTone: 'neutral' };
 }
 
-export function ExpenseList({ ledger, expenses, onOpen }) {
+/** The expenses as rows. `isWide` gives each row the split column instead of the reader's part. */
+export function ExpenseList({ ledger, expenses, isWide = false, onOpen }) {
   const { t } = useTranslation();
 
   return (
@@ -40,6 +42,7 @@ export function ExpenseList({ ledger, expenses, onOpen }) {
             netMinor={shownMinor}
             currency={expense.currency}
             {...shareLabel(t, standing)}
+            split={rowSplit(t, ledger, expense, isWide)}
             onClick={() => onOpen(expense.id)}
           />
         );

@@ -120,7 +120,8 @@ async fn check_caller(table: &FakeTable, caller: &str, view: &Value, expected: &
 
     let listed =
         |rows: Vec<Value>| -> Vec<Value> { rows.iter().map(|r| alias(&names, &r["id"])).collect() };
-    let all = listed(all_expense_pages(table, caller, "").await);
+    let every_row = all_expense_pages(table, caller, "").await;
+    let all = listed(every_row.clone());
     assert_eq!(&json!(all), &view["lists"]["all"], "{label}: every expense");
     for (group, wanted) in view["lists"]["byGroup"].as_object().unwrap() {
         let filter = format!("&groupId={}", group_id(group));
@@ -166,6 +167,33 @@ async fn check_caller(table: &FakeTable, caller: &str, view: &Value, expected: &
             assert_eq!(
                 participant["shareMinor"], row["shares"][who],
                 "{label}: {name}: {who}"
+            );
+        }
+        // The list shows the same split as the detail, without the payment status.
+        if let Some(listed) = every_row.iter().find(|r| r["id"] == json!(id)) {
+            assert_eq!(
+                listed["splitMode"], body["splitMode"],
+                "{label}: {name}: listed split mode"
+            );
+            let parts: Vec<Value> = body["participants"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|participant| {
+                    let mut part = json!({
+                        "memberId": participant["memberId"],
+                        "shareMinor": participant["shareMinor"],
+                    });
+                    if let Some(percent) = participant.get("percent") {
+                        part["percent"] = percent.clone();
+                    }
+                    part
+                })
+                .collect();
+            assert_eq!(
+                listed["participants"],
+                json!(parts),
+                "{label}: {name}: listed participants"
             );
         }
         let applied: Vec<Value> = body["appliedPayments"]

@@ -121,3 +121,19 @@ pub fn before_transaction_dates() -> Items {
         })
         .collect()
 }
+
+/// The base data as it was stored before list entries carried the split: expense entries without
+/// `splitMode`, `shares` or `percents`.
+pub fn before_list_shares() -> Items {
+    base_items()
+        .into_iter()
+        .map(|((pk, sk), mut item)| {
+            if pk.ends_with("#EXPENSES") || pk.contains("#KIND#") {
+                for field in ["splitMode", "shares", "percents"] {
+                    item.remove(field);
+                }
+            }
+            ((pk, sk), item)
+        })
+        .collect()
+}

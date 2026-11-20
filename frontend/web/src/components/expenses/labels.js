@@ -1,5 +1,5 @@
 import { formatCalendarDate, formatNumber } from '../../i18n/format.js';
-import { memberById } from '../../lib/ledger.js';
+import { memberById, sharePercent } from '../../lib/ledger.js';
 import { quoteBetween } from '../../lib/money.js';
 
 // Translated names for closed sets of values. Each key is written out so the catalog test sees it.
@@ -41,6 +41,16 @@ export function memberLabel(t, ledger, id) {
 
 export function percentLabel(t, value) {
   return t('expenses:percent', { value: formatNumber(value, { maximumFractionDigits: 1 }) });
+}
+
+/** Each participant's part of an expense, such as "Tú 50 %, Lucía 25 %, Diego 25 %". */
+export function splitPartsLabel(t, ledger, expense) {
+  return expense.participants
+    .map(
+      (participant) =>
+        `${memberLabel(t, ledger, participant.memberId)} ${percentLabel(t, sharePercent(expense, participant))}`,
+    )
+    .join(', ');
 }
 
 export function quoteLabel(t, quote) {

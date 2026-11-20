@@ -1,13 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { toneFor } from './avatarTone.js';
+import { initials } from './initials.js';
 import './Avatar.css';
-
-function initials(name, single) {
-  const parts = String(name ?? '').trim().split(/\s+/);
-  const first = Array.from(parts[0])[0] ?? '?';
-  const last = !single && parts.length > 1 ? Array.from(parts[parts.length - 1])[0] : '';
-  return `${first}${last}`.toUpperCase();
-}
 
 export function Avatar({ name, tone, size = 'medium' }) {
   const { t } = useTranslation();

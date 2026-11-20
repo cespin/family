@@ -12,14 +12,15 @@ use aws_sdk_dynamodb::types::{
     AttributeDefinition, BillingMode, KeySchemaElement, KeyType, ScalarAttributeType,
 };
 use aws_sdk_dynamodb::Client;
-use family_ledger::service::backfill::transaction_dates;
+use family_ledger::service::backfill::{list_entries, transaction_dates};
 use family_ledger::store::dynamo::DynamoTable;
 use family_ledger::store::table::{
     CancelReason, Guard, Item, Key, PageQuery, Table, TxOp, TxOutcome,
 };
 use serde_json::{json, Value};
 use support::fixtures::{
-    base_items, before_transaction_dates, data_dir, is_list_entry, scenario_items, Items,
+    base_items, before_list_shares, before_transaction_dates, data_dir, is_list_entry,
+    scenario_items, Items,
 };
 use support::router::send;
 
@@ -301,6 +302,28 @@ async fn the_backfill_moves_every_list_entry_to_the_day_once() {
         .await
         .unwrap();
     assert_eq!((again.expenses, again.payments), (0, 0));
+    assert_eq!(head_rev(&table).await, rev);
+}
+
+#[tokio::test]
+async fn the_backfill_gives_every_list_entry_its_split_once() {
+    let table = seeded(&before_list_shares()).await;
+    let done = list_entries(&table, false).await.unwrap();
+    assert!(done > 0);
+
+    let wanted = base_items();
+    let after = all_items(&table, &wanted).await;
+    for ((pk, sk), item) in &wanted {
+        if pk.ends_with("#EXPENSES") || pk.contains("#KIND#") {
+            let stored = &after[&(pk.clone(), sk.clone())];
+            for field in ["splitMode", "shares", "percents"] {
+                assert_eq!(stored.get(field), item.get(field), "{pk} {sk} {field}");
+            }
+        }
+    }
+
+    let rev = head_rev(&table).await;
+    assert_eq!(list_entries(&table, false).await.unwrap(), 0);
     assert_eq!(head_rev(&table).await, rev);
 }
 

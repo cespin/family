@@ -100,6 +100,9 @@
   --fa-check-size: 1.375rem;
   --fa-split-height: 0.75rem;
   --fa-split-gap: 0.1875rem;
+  --fa-split-height-row: 0.5rem;
+  --fa-split-column-width: 10.75rem;
+  --fa-amount-column-width: 6.5rem;
   --fa-stepper-value: 3.125rem;
   --fa-percent-width: 3rem;
   --fa-segmented-compact: 13.125rem;

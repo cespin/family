@@ -285,6 +285,13 @@ function participantIds(expense) {
 // Seed items predate transaction dates, so they read their entry date, as the API's old items do.
 const transactionDay = (item) => item.transactionDate ?? item.date;
 
+/** One participant's part, as both the list and the detail return it. */
+function shareJson(expense, id) {
+  const row = { memberId: id, shareMinor: expense.shares[id] };
+  if (expense.splitMode === 'percent') row.percent = expense.percents[id];
+  return row;
+}
+
 function listItemJson(expense) {
   return {
     id: expense.id,
@@ -298,6 +305,8 @@ function listItemJson(expense) {
     date: expense.date,
     transactionDate: transactionDay(expense),
     participantIds: participantIds(expense),
+    splitMode: expense.splitMode,
+    participants: participantIds(expense).map((id) => shareJson(expense, id)),
     standing: standingJson(expense),
   };
 }
@@ -318,17 +327,11 @@ function detailJson(expense) {
   const body = {
     ...listItemJson(expense),
     revision: state.revision,
-    splitMode: expense.splitMode,
     note: expense.note ?? null,
     ratesId: ratesOn(expense.date)?.id ?? null,
     version: expense.version ?? 1,
     participants: participantIds(expense).map((id) => {
-      const row = {
-        memberId: id,
-        shareMinor: expense.shares[id],
-        status: participantStatus(expense, id, standing),
-      };
-      if (expense.splitMode === 'percent') row.percent = expense.percents[id];
+      const row = { ...shareJson(expense, id), status: participantStatus(expense, id, standing) };
       if (other) row.otherShareMinor = Math.round((expense.shares[id] * other.amountMinor) / expense.amountMinor);
       return row;
     }),

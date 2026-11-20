@@ -334,7 +334,7 @@ pub async fn list_expenses<T: Table>(
                 &entry.participant_ids,
                 me,
             );
-            Ok(json!({
+            let mut row = json!({
                 "id": entry.expense_id,
                 "title": entry.title,
                 "kind": entry.kind,
@@ -347,7 +347,21 @@ pub async fn list_expenses<T: Table>(
                 "transactionDate": entry.transaction_date(),
                 "participantIds": entry.participant_ids,
                 "standing": standing_json(&standing),
-            }))
+            });
+            // Entries saved before they carried shares list without a split: absent, not zero.
+            if let (Some(split_mode), Some(shares)) = (entry.split_mode, &entry.shares) {
+                let participants: Vec<Value> = entry
+                    .participant_ids
+                    .iter()
+                    .map(|id| {
+                        let share = shares.get(id).copied().unwrap_or(0);
+                        share_json(id, share, split_mode, entry.percents.as_ref())
+                    })
+                    .collect();
+                row["splitMode"] = json!(split_mode);
+                row["participants"] = json!(participants);
+            }
+            Ok(row)
         })
         .collect::<Result<Vec<Value>>>()?;
 
@@ -483,6 +497,21 @@ fn other_share(expense: &Expense, share: i64) -> Option<i64> {
     Some(exact::round(&value))
 }
 
+/// One participant's part of an expense, as both the list and the detail return it: the share,
+/// and the percentage when the split is by percent.
+fn share_json(
+    id: &str,
+    share: i64,
+    split_mode: SplitMode,
+    percents: Option<&BTreeMap<String, i64>>,
+) -> Value {
+    let mut row = json!({ "memberId": id, "shareMinor": share });
+    if split_mode == SplitMode::Percent {
+        row["percent"] = json!(percents.and_then(|p| p.get(id)));
+    }
+    row
+}
+
 fn detail_json(
     rev: u64,
     expense: &Expense,
@@ -496,15 +525,8 @@ fn detail_json(
         .iter()
         .map(|id| {
             let share = expense.shares.get(id).copied().unwrap_or(0);
-            let mut row = json!({
-                "memberId": id,
-                "shareMinor": share,
-                "status": participant_status(&view.pairs, expense, id),
-            });
-            if expense.split_mode == SplitMode::Percent {
-                let percent = expense.percents.as_ref().and_then(|p| p.get(id));
-                row["percent"] = json!(percent);
-            }
+            let mut row = share_json(id, share, expense.split_mode, expense.percents.as_ref());
+            row["status"] = json!(participant_status(&view.pairs, expense, id));
             if let Some(other) = other_share(expense, share) {
                 row["otherShareMinor"] = json!(other);
             }

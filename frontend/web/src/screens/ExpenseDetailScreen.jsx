@@ -6,6 +6,7 @@ import {
   memberLabel,
   percentLabel,
   quoteLabel,
+  splitPartsLabel,
 } from '../components/expenses/labels.js';
 import { SubHeader } from '../components/expenses/SubHeader.jsx';
 import { Amount, Avatar, Button, Card, PersonRow, SplitBar, StatusNote } from '../components/ui';
@@ -300,15 +301,7 @@ function ExpenseDetail({ ledger, expense, nav }) {
         <Card title={t('expenses:detail.splitTitle')} subtitle={splitSubtitle(t, ledger, expense, group)}>
           <div className="fa-detail__split">
             <SplitBar
-              label={expense.participants
-                .map(
-                  (participant) =>
-                    `${memberLabel(t, ledger, participant.memberId)} ${percentLabel(
-                      t,
-                      sharePercent(expense, participant),
-                    )}`,
-                )
-                .join(', ')}
+              label={splitPartsLabel(t, ledger, expense)}
               parts={expense.participants.map((participant) => {
                 const person = memberById(ledger, participant.memberId);
                 return {

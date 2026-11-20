@@ -130,8 +130,23 @@ export class Ledger {
     }
 
     for (const expense of Object.values(expenses)) {
-      const { id, title, kind, groupId, payerId, addedBy, amountMinor, currency, date, transactionDate, participantIds, seq } =
-        expense;
+      const {
+        id,
+        title,
+        kind,
+        groupId,
+        payerId,
+        addedBy,
+        amountMinor,
+        currency,
+        date,
+        transactionDate,
+        participantIds,
+        splitMode,
+        shares,
+        percents,
+        seq,
+      } = expense;
       const SK = `${transactionDate}#${String(seq).padStart(8, '0')}`;
       const entry = {
         expenseId: id,
@@ -145,6 +160,9 @@ export class Ledger {
         date,
         transactionDate,
         participantIds,
+        splitMode,
+        shares,
+        ...(percents ? { percents } : {}),
         seq,
       };
       items.push({ PK: `GROUP#${groupId}#EXPENSES`, SK, ...entry });
@@ -1562,6 +1580,7 @@ export const COVERAGE = [
   ['4', 'Rates in force on a past date, and several entries on one day', 'rates `october`, `november-first`, `november`'],
   ['4', 'An expense recorded before any rates existed', 'expense `te`'],
   ['4', 'The payer is not a participant', 'expense `libro`'],
+  ['4', 'List entries carry the split and each participant\'s share', 'the list entries of every expense, `farmacia` (percent), `taxi` (equal)'],
   ['4', 'A note on an expense', 'expense `kinesiologia`'],
   ['4', 'A caller who is not part of an expense in their group', 'expense `remedios`, seen by `carlos`'],
   ['4', 'A partly paid share', 'expense `cena`, participant `papa`'],

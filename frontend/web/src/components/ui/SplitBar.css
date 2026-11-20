@@ -10,6 +10,57 @@
   flex-basis: 0;
 }
 
+.fa-split-bar--row {
+  height: var(--fa-split-height-row);
+}
+
+/* With a legend, each part is a column: its fill, then its text. The bar's ends keep the pill. */
+.fa-split-bar--legend {
+  height: auto;
+  border-radius: 0;
+}
+
+.fa-split-bar__column {
+  display: flex;
+  flex-basis: 0;
+  flex-direction: column;
+  gap: var(--fa-space-1);
+  min-width: 0;
+}
+
+/* A column runs top to bottom, so the fill takes its height rather than a flex basis. */
+.fa-split-bar__column .fa-split-bar__part {
+  flex: none;
+  height: var(--fa-split-height);
+}
+
+.fa-split-bar--row .fa-split-bar__column .fa-split-bar__part {
+  height: var(--fa-split-height-row);
+}
+
+.fa-split-bar__column:first-child .fa-split-bar__part {
+  border-start-start-radius: var(--fa-radius-pill);
+  border-end-start-radius: var(--fa-radius-pill);
+}
+
+.fa-split-bar__column:last-child .fa-split-bar__part {
+  border-start-end-radius: var(--fa-radius-pill);
+  border-end-end-radius: var(--fa-radius-pill);
+}
+
+.fa-split-bar__legend {
+  overflow: hidden;
+  color: var(--fa-color-text-muted);
+  font-weight: var(--fa-weight-semibold);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.fa-split-bar__legend--mine {
+  color: var(--fa-color-text);
+  font-weight: var(--fa-weight-heavy);
+}
+
 .fa-split-bar__part--honey {
   background: var(--fa-color-honey);
 }
@@ -28,4 +79,12 @@
 
 .fa-split-bar__part--cocoa {
   background: var(--fa-color-text);
+}
+
+.fa-split-bar__part--mine {
+  background: var(--fa-color-text);
+}
+
+.fa-split-bar__part--others {
+  background: var(--fa-color-border);
 }
