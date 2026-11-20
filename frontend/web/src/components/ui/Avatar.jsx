@@ -3,23 +3,27 @@ import { toneFor } from './avatarTone.js';
 import { initials } from './initials.js';
 import './Avatar.css';
 
-export function Avatar({ name, tone, size = 'medium' }) {
+/** The member's emoji on their tone, or their initials when they have no emoji yet. */
+export function Avatar({ name, tone, avatar, size = 'medium' }) {
   const { t } = useTranslation();
+  const kind = avatar ? ' fa-avatar--emoji' : '';
   return (
     <span
-      className={`fa-avatar fa-avatar--${size} fa-avatar--${tone ?? toneFor(name)}`}
+      className={`fa-avatar fa-avatar--${size} fa-avatar--${tone ?? toneFor(name)}${kind}`}
       role="img"
       aria-label={name}
       title={name}
     >
       <span aria-hidden="true">
-        {t('common:avatar.initials', { initials: initials(name, size === 'small') })}
+        {avatar
+          ? t('common:avatar.emoji', { emoji: avatar })
+          : t('common:avatar.initials', { initials: initials(name, size === 'small') })}
       </span>
     </span>
   );
 }
 
-/** Overlapping avatars. `people` is a list of `{ id, name, tone }`. */
+/** Overlapping avatars. `people` is a list of `{ id, name, tone, avatar }`. */
 export function AvatarStack({ people, max = 4, size = 'small' }) {
   const { t } = useTranslation();
   const shown = people.length > max ? people.slice(0, max - 1) : people;
@@ -31,7 +35,13 @@ export function AvatarStack({ people, max = 4, size = 'small' }) {
       aria-label={people.map((person) => person.name).join(', ')}
     >
       {shown.map((person) => (
-        <Avatar key={person.id} name={person.name} tone={person.tone} size={size} />
+        <Avatar
+          key={person.id}
+          name={person.name}
+          tone={person.tone}
+          avatar={person.avatar}
+          size={size}
+        />
       ))}
       {extra > 0 && (
         <span className={`fa-avatar fa-avatar--${size} fa-avatar--more`} aria-hidden="true">

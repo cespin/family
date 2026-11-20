@@ -602,6 +602,9 @@ Resources:
                   type: string
                 tone:
                   type: string
+                avatar:
+                  # One emoji. The handler checks it against the list in family-ledger's profile.rs.
+                  type: string
             NewExpenseRequest:
               type: object
               additionalProperties: false

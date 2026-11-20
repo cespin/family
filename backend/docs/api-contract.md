@@ -5,8 +5,8 @@ Routes are unversioned under `/api`. The OpenAPI document inline in `templates/a
 | Route | Auth | Purpose |
 |---|---|---|
 | `GET /api/health` | None | Confirms the API is reachable |
-| `GET /api/me` | Cognito | The signed-in family member. `memberId`, `displayName` and `homeCurrency` are null until the first-sign-in step is done |
-| `PUT /api/me/profile` | Cognito | Completes the first-sign-in step, and later changes the home currency |
+| `GET /api/me` | Cognito | The signed-in family member. `memberId`, `displayName`, `homeCurrency` and `avatar` are null until the first-sign-in step is done. `avatar` is also null for a member saved before avatars, until `scripts/backfill-avatars.sh` runs |
+| `PUT /api/me/profile` | Cognito | Completes the first-sign-in step, and later changes the home currency or avatar |
 | `GET /api/ledger` | Cognito | Members, groups, exchange rates and the caller's balances |
 | `GET /api/expenses` | Cognito | One page of expenses, newest first |
 | `GET /api/expenses/{expenseId}` | Cognito | One expense in full, with its payments |
@@ -93,7 +93,7 @@ Balances come from `GET /api/ledger` and never depend on how many expenses have 
   "revision": 42,
   "me": "<memberId>",
   "members": [
-    { "id": "<memberId>", "displayName": "Tío Beto", "homeCurrency": "USD", "tone": "sage", "active": true }
+    { "id": "<memberId>", "displayName": "Tío Beto", "homeCurrency": "USD", "tone": "sage", "avatar": "🐒", "active": true }
   ],
   "groups": [
     {
@@ -121,6 +121,7 @@ Balances come from `GET /api/ledger` and never depend on how many expenses have 
 }
 ```
 
+- **`avatar`** is one emoji, or null for a member saved before avatars until `scripts/backfill-avatars.sh` runs. A client shows initials for null.
 - **`active`** is false for a former member, who stays in the history but cannot be added to a new expense or group. A payment with them is still accepted, so an old debt can always be cleared.
 - **`exchangeRates`** runs newest first, so the first entry is the current one. It is empty until rates are entered.
 - **`standings`** amounts stay in their original currencies. Positive means that member owes the caller. A `groupId` of null is credit between two people who share no group.
@@ -227,7 +228,7 @@ Takes `limit` and `cursor` as above, and optionally `memberId` to list only the 
 
 | Route | Fields |
 |---|---|
-| `PUT /api/me/profile` | `homeCurrency`, `displayName` on the first call, and optionally `tone` |
+| `PUT /api/me/profile` | `homeCurrency`, `displayName` on the first call, and optionally `tone` and `avatar` |
 | `POST /api/expenses` | `requestId`, `title`, `kind`, `groupId`, `payerId`, `amountMinor`, `currency`, `date`, `splitMode`, `participantIds`, and optionally `transactionDate`, `percents`, `otherAmount`, `chargedCurrency`, `note`, `usualSplit` |
 | `PUT /api/expenses/{expenseId}` | The same fields except `date`, plus `version`. Without `transactionDate` the saved one is kept. A payer who did not add the expense must send its saved `title`, `kind`, `groupId`, `payerId`, `splitMode`, `participantIds` and `percents` unchanged, and no `usualSplit` |
 | `POST /api/payments` | `requestId`, `fromId`, `toId`, `paid`, `method`, `date`, and optionally `transactionDate`, `credited`, `groupId` |
@@ -236,6 +237,7 @@ Takes `limit` and `cursor` as above, and optionally `memberId` to list only the 
 | `PUT /api/groups/{groupId}` | `requestId`, `name`, `memberIds`, `version`, and optionally `usualSplit` |
 | `POST /api/exchange-rates` | `requestId`, `usdCad`, `cadClp`, `date` |
 
+- **`avatar`** is one of the emojis in `AVATARS` in `functions/family-ledger/src/service/profile.rs`. Anything else is `validation_error`. Without one, the first call stores 🐵 and a later call keeps the saved avatar.
 - **`usualSplit` on an expense** asks to make it the group's usual split, and holds a whole percentage for every current member of the group.
 - **The debt currency** is `currency`. It must be one of the purchase's two currencies, and the form defaults it to `chargedCurrency`.
 - **`credited`** is sent only when a payment clears the debt. It can be in any supported currency, and is accepted only within the tolerance in section 12 of the requirements. Otherwise the server credits exactly what was paid.

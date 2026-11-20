@@ -12,6 +12,7 @@ import {
   fetchPayments,
   recordPayment,
   saveExpense,
+  saveProfile,
   updatePayment,
 } from '../lib/expenses.js';
 import { todayIso } from '../lib/ledger.js';
@@ -958,6 +959,64 @@ describe('DashboardScreen', () => {
       });
       expect(screen.queryByLabelText(i18n.t('expenses:settle.amountYouPay'))).toBeNull();
       expect(recordPayment).toHaveBeenCalledOnce();
+    });
+  });
+
+  describe('settings', () => {
+    const avatarOption = (emoji) =>
+      screen.getByRole('radio', { name: i18n.t('common:avatar.option', { emoji }) });
+
+    beforeEach(() => {
+      vi.mocked(saveProfile).mockReset();
+      vi.mocked(SESSION.updateMember).mockReset();
+      vi.mocked(useSession).mockReturnValue({
+        ...SESSION,
+        member: { ...SESSION.member, avatar: '🐵' },
+      });
+    });
+
+    async function openSettings() {
+      renderWith();
+      await userEvent.click(await button(i18n.t('expenses:settings.open')));
+      await screen.findByRole('heading', { name: i18n.t('expenses:settings.title') });
+    }
+
+    it('starts at the saved avatar and saves only when it changes', async () => {
+      await openSettings();
+      expect(avatarOption('🐵').getAttribute('aria-checked')).toBe('true');
+      const save = screen.getByRole('button', { name: i18n.t('expenses:settings.avatarSave') });
+      expect(save.disabled).toBe(true);
+      await userEvent.click(avatarOption('🦊'));
+      expect(save.disabled).toBe(false);
+    });
+
+    it('changes the avatar and keeps the saved currency, even with another one picked', async () => {
+      const answer = { ...SESSION.member, avatar: '🦊' };
+      vi.mocked(saveProfile).mockResolvedValue(answer);
+      await openSettings();
+      // A currency picked but not saved must not ride along with the avatar.
+      await userEvent.click(screen.getByRole('button', { name: i18n.t('expenses:currencies.USD') }));
+      await userEvent.click(avatarOption('🦊'));
+      await userEvent.click(screen.getByRole('button', { name: i18n.t('expenses:settings.avatarSave') }));
+
+      await waitFor(() => expect(SESSION.updateMember).toHaveBeenCalledWith(answer));
+      const [auth, body] = vi.mocked(saveProfile).mock.calls[0];
+      expect(auth.getToken).toBe(SESSION.getToken);
+      expect(body).toEqual({ homeCurrency: 'CAD', avatar: '🦊' });
+      expect(await screen.findByText(i18n.t('expenses:settings.avatarSaved', { avatar: '🦊' }))).toBeTruthy();
+    });
+
+    it('explains a refused avatar next to the avatar, not the currency', async () => {
+      vi.mocked(saveProfile).mockRejectedValue(new ApiError(400, 'validation_error'));
+      await openSettings();
+      await userEvent.click(avatarOption('🦊'));
+      await userEvent.click(screen.getByRole('button', { name: i18n.t('expenses:settings.avatarSave') }));
+
+      const alert = await screen.findByRole('alert');
+      expect(alert.textContent).toBe(i18n.t('common:errors.validation_error'));
+      const avatarCard = screen.getByRole('radiogroup').closest('form');
+      expect(within(avatarCard).getByRole('alert')).toBe(alert);
+      expect(SESSION.updateMember).not.toHaveBeenCalled();
     });
   });
 

@@ -2003,7 +2003,86 @@
       "displayName": "Nina"
     },
     "expect": {
-      "status": 200
+      "status": 200,
+      "body": {
+        "avatar": "🐵"
+      }
+    }
+  },
+  {
+    "name": "finishing sign-up with an avatar",
+    "caller": "nina",
+    "method": "PUT",
+    "path": "/api/me/profile",
+    "body": {
+      "homeCurrency": "CLP",
+      "displayName": "Nina",
+      "avatar": "🦊"
+    },
+    "expect": {
+      "status": 200,
+      "body": {
+        "avatar": "🦊"
+      }
+    }
+  },
+  {
+    "name": "changing only the avatar",
+    "caller": "carlos",
+    "method": "PUT",
+    "path": "/api/me/profile",
+    "body": {
+      "homeCurrency": "CAD",
+      "avatar": "🐸"
+    },
+    "expect": {
+      "status": 200,
+      "body": {
+        "homeCurrency": "CAD",
+        "avatar": "🐸"
+      }
+    }
+  },
+  {
+    "name": "an avatar outside the list",
+    "caller": "carlos",
+    "method": "PUT",
+    "path": "/api/me/profile",
+    "body": {
+      "homeCurrency": "CAD",
+      "avatar": "🙈"
+    },
+    "expect": {
+      "status": 400,
+      "code": "validation_error"
+    }
+  },
+  {
+    "name": "an avatar of two emojis",
+    "caller": "carlos",
+    "method": "PUT",
+    "path": "/api/me/profile",
+    "body": {
+      "homeCurrency": "CAD",
+      "avatar": "🐵🐒"
+    },
+    "expect": {
+      "status": 400,
+      "code": "validation_error"
+    }
+  },
+  {
+    "name": "an avatar that is not an emoji",
+    "caller": "carlos",
+    "method": "PUT",
+    "path": "/api/me/profile",
+    "body": {
+      "homeCurrency": "CAD",
+      "avatar": "C"
+    },
+    "expect": {
+      "status": 400,
+      "code": "validation_error"
     }
   },
   {
@@ -2356,7 +2435,34 @@
       "body": {
         "memberId": null,
         "displayName": null,
-        "homeCurrency": null
+        "homeCurrency": null,
+        "avatar": null
+      }
+    }
+  },
+  {
+    "name": "who am I, with an avatar",
+    "caller": "carlos",
+    "method": "GET",
+    "path": "/api/me",
+    "expect": {
+      "status": 200,
+      "body": {
+        "displayName": "Carlos",
+        "avatar": "🐵"
+      }
+    }
+  },
+  {
+    "name": "who am I, saved before avatars",
+    "caller": "beto",
+    "method": "GET",
+    "path": "/api/me",
+    "expect": {
+      "status": 200,
+      "body": {
+        "displayName": "Tío Beto",
+        "avatar": null
       }
     }
   },

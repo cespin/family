@@ -37,6 +37,11 @@ name = "backfill-list-entries"
 path = "src/bin/backfill_list_entries.rs"
 required-features = ["backfill"]
 
+[[bin]]
+name = "backfill-avatars"
+path = "src/bin/backfill_avatars.rs"
+required-features = ["backfill"]
+
 [[test]]
 name = "ddb_local"
 required-features = ["ddb-local-tests"]

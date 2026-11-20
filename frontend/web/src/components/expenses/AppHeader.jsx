@@ -36,7 +36,10 @@ export function AppHeader({ wide, showNav, activeTab, onSelectTab, onAdd, onSett
             aria-label={t('common:actions.signOut')}
             onClick={signOut}
           />
-          <Avatar name={member?.displayName ?? member?.name ?? member?.email ?? ''} />
+          <Avatar
+            name={member?.displayName ?? member?.name ?? member?.email ?? ''}
+            avatar={member?.avatar}
+          />
         </div>
       </div>
     </header>

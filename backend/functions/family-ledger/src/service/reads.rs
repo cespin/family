@@ -85,6 +85,7 @@ pub async fn me<T: Table>(table: &T, caller: &Caller) -> Result<Value> {
         "memberId": account.member_id,
         "displayName": member.as_ref().map(|m| &m.display_name),
         "homeCurrency": member.as_ref().map(|m| m.home_currency),
+        "avatar": member.as_ref().and_then(|m| m.avatar.as_ref()),
     }))
 }
 
@@ -141,6 +142,7 @@ pub async fn ledger<T: Table>(table: &T, caller: &Caller) -> Result<Value> {
                 "displayName": member.display_name,
                 "homeCurrency": member.home_currency,
                 "tone": member.tone,
+                "avatar": member.avatar,
                 "active": active.contains(&member.id),
             })
         })

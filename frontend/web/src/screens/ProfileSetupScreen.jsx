@@ -2,24 +2,30 @@ import { useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AuthLayout } from '../components/auth/AuthLayout.jsx';
 import { currencyLabel } from '../components/expenses/labels.js';
-import { Button, Segmented, TextField } from '../components/ui';
+import { AvatarPicker, Button, Segmented, TextField } from '../components/ui';
 import { useSession } from '../hooks/useSession.js';
 import { errorMessage } from '../i18n/errors.js';
+import { AVATARS, DEFAULT_AVATAR } from '../lib/avatars.js';
 import { saveProfile } from '../lib/expenses.js';
 import { CURRENCIES } from '../lib/money.js';
 import './ProfileSetupScreen.css';
 
 const NAME_MAX = 40;
 
-/** The first sign-in step: a display name and a home currency make the account a family member. */
+/**
+ * The first sign-in step: a display name, a home currency and an avatar make the account a family
+ * member.
+ */
 export function ProfileSetupScreen() {
   const { t } = useTranslation();
   const session = useSession();
   const { member, signOut, updateMember } = session;
   const currencyId = useId();
+  const avatarId = useId();
   // Starts from the name on the Google account, which may be missing.
   const [name, setName] = useState(member?.name ?? '');
   const [currency, setCurrency] = useState(null);
+  const [avatar, setAvatar] = useState(DEFAULT_AVATAR);
   const [saving, setSaving] = useState(false);
   const [errorCode, setErrorCode] = useState(null);
 
@@ -32,7 +38,7 @@ export function ProfileSetupScreen() {
     setSaving(true);
     setErrorCode(null);
     try {
-      updateMember(await saveProfile(session, { displayName, homeCurrency: currency }));
+      updateMember(await saveProfile(session, { displayName, homeCurrency: currency, avatar }));
     } catch (error) {
       setErrorCode(error?.code ?? 'generic');
       setSaving(false);
@@ -65,6 +71,18 @@ export function ProfileSetupScreen() {
             options={CURRENCIES.map((code) => ({ value: code, label: currencyLabel(t, code) }))}
           />
           <p className="fa-text-caption fa-text-muted">{t('auth:profile.currencyHint')}</p>
+        </div>
+        <div className="fa-profile__question">
+          <p id={avatarId} className="fa-text-label">
+            {t('auth:profile.avatar')}
+          </p>
+          <AvatarPicker
+            labelledBy={avatarId}
+            options={AVATARS}
+            value={avatar}
+            onChange={setAvatar}
+          />
+          <p className="fa-text-caption fa-text-muted">{t('auth:profile.avatarHint')}</p>
         </div>
         {errorCode && (
           <p className="fa-text-body" role="alert">

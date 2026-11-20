@@ -26,6 +26,20 @@
   font-size: var(--fa-text-amount);
 }
 
+.fa-avatar--emoji {
+  font-size: var(--fa-text-avatar-emoji);
+  font-weight: var(--fa-weight-regular);
+  letter-spacing: normal;
+}
+
+.fa-avatar--emoji.fa-avatar--small {
+  font-size: var(--fa-text-avatar-emoji-small);
+}
+
+.fa-avatar--emoji.fa-avatar--large {
+  font-size: var(--fa-text-avatar-emoji-large);
+}
+
 .fa-avatar--clay {
   background: var(--fa-color-accent-soft);
   color: var(--fa-color-accent);

@@ -212,11 +212,11 @@ function AdvanceForm({ ledger, candidates, onStart, onRecorded }) {
         {person && direction && (
           <>
             <div className="fa-advance__people">
-              <Avatar name={giver.name} tone={giver.tone} size="large" />
+              <Avatar name={giver.name} tone={giver.tone} avatar={giver.avatar} size="large" />
               <span className="fa-advance__arrow">
                 <ArrowRight aria-hidden="true" size={24} strokeWidth={1.75} />
               </span>
-              <Avatar name={receiver.name} tone={receiver.tone} size="large" />
+              <Avatar name={receiver.name} tone={receiver.tone} avatar={receiver.avatar} size="large" />
             </div>
 
             <div className="fa-advance__question">

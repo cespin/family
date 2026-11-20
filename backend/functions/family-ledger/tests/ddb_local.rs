@@ -12,15 +12,15 @@ use aws_sdk_dynamodb::types::{
     AttributeDefinition, BillingMode, KeySchemaElement, KeyType, ScalarAttributeType,
 };
 use aws_sdk_dynamodb::Client;
-use family_ledger::service::backfill::{list_entries, transaction_dates};
+use family_ledger::service::backfill::{avatars, list_entries, transaction_dates};
 use family_ledger::store::dynamo::DynamoTable;
 use family_ledger::store::table::{
     CancelReason, Guard, Item, Key, PageQuery, Table, TxOp, TxOutcome,
 };
 use serde_json::{json, Value};
 use support::fixtures::{
-    base_items, before_list_shares, before_transaction_dates, data_dir, is_list_entry,
-    scenario_items, Items,
+    base_items, before_avatars, before_list_shares, before_transaction_dates, data_dir,
+    is_list_entry, scenario_items, Items,
 };
 use support::router::send;
 
@@ -324,6 +324,35 @@ async fn the_backfill_gives_every_list_entry_its_split_once() {
 
     let rev = head_rev(&table).await;
     assert_eq!(list_entries(&table, false).await.unwrap(), 0);
+    assert_eq!(head_rev(&table).await, rev);
+}
+
+#[tokio::test]
+async fn the_backfill_gives_every_member_a_monkey_once() {
+    let before = before_avatars();
+    let table = seeded(&before).await;
+    let members = before
+        .keys()
+        .filter(|(pk, sk)| pk == "LEDGER#main" && sk.starts_with("PROFILE#"))
+        .count();
+    assert_eq!(avatars(&table, false).await.unwrap(), members);
+
+    // The data set's avatars are the ones the backfill hands out, except Tío Beto's, which it
+    // leaves out to stand for a member saved before avatars.
+    let wanted = base_items();
+    let after = all_items(&table, &wanted).await;
+    for ((pk, sk), item) in &wanted {
+        if pk == "LEDGER#main" && sk.starts_with("PROFILE#") {
+            let stored = &after[&(pk.clone(), sk.clone())];
+            assert!(stored["avatar"].is_string(), "{sk}");
+            if item.get("avatar").is_some() {
+                assert_eq!(stored.get("avatar"), item.get("avatar"), "{sk}");
+            }
+        }
+    }
+
+    let rev = head_rev(&table).await;
+    assert_eq!(avatars(&table, false).await.unwrap(), 0);
     assert_eq!(head_rev(&table).await, rev);
 }
 

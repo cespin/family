@@ -28,7 +28,7 @@ export function ExpenseRow({
   onClick,
 }) {
   const variant = split?.variant;
-  const avatar = <Avatar name={payer.name} tone={payer.tone} />;
+  const avatar = <Avatar name={payer.name} tone={payer.tone} avatar={payer.avatar} />;
   const main = (
     <span className="fa-expense-row__main">
       <span className="fa-expense-row__title fa-text-body-strong">{title}</span>

@@ -215,6 +215,9 @@ pub struct Member {
     pub home_currency: Currency,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tone: Option<String>,
+    /// One emoji from `service::profile::AVATARS`. Absent on a member saved before avatars.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub avatar: Option<String>,
     pub email: String,
     pub created_at: String,
     #[serde(flatten)]

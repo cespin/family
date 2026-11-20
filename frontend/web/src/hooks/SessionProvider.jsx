@@ -24,6 +24,7 @@ const MOCK_STATE = {
     memberId: 'carlos',
     displayName: 'Carlos',
     homeCurrency: 'CAD',
+    avatar: '🐵',
   },
 };
 

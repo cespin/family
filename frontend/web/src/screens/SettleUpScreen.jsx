@@ -190,6 +190,7 @@ function SettleForm({ ledger, row, onRecorded }) {
           <Avatar
             name={youPay ? caller.name : other.name}
             tone={youPay ? caller.tone : other.tone}
+            avatar={youPay ? caller.avatar : other.avatar}
             size="large"
           />
           <span className="fa-settle__arrow">
@@ -198,6 +199,7 @@ function SettleForm({ ledger, row, onRecorded }) {
           <Avatar
             name={youPay ? other.name : caller.name}
             tone={youPay ? other.tone : caller.tone}
+            avatar={youPay ? other.avatar : caller.avatar}
             size="large"
           />
         </div>

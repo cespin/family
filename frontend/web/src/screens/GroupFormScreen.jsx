@@ -138,7 +138,7 @@ function GroupForm({ ledger, ledgerState, group, nav }) {
                       onChange={() => handleToggle(id)}
                     />
                     <label htmlFor={checkId} className="fa-group-form__person">
-                      <Avatar name={person.name} tone={person.tone} size="small" />
+                      <Avatar name={person.name} tone={person.tone} avatar={person.avatar} size="small" />
                       <span className="fa-group-form__person-text">
                         <span className="fa-text-body-strong">{memberLabel(t, ledger, id)}</span>
                         <span className="fa-text-caption fa-text-muted">

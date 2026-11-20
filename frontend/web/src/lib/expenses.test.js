@@ -22,8 +22,8 @@ const LEDGER = {
   revision: 42,
   me: 'ana',
   members: [
-    { id: 'ana', displayName: 'Ana', homeCurrency: 'CAD', tone: 'sage', active: true },
-    { id: 'leo', displayName: 'Leo', homeCurrency: 'CLP', tone: null, active: false },
+    { id: 'ana', displayName: 'Ana', homeCurrency: 'CAD', tone: 'sage', avatar: '🐸', active: true },
+    { id: 'leo', displayName: 'Leo', homeCurrency: 'CLP', tone: null, avatar: null, active: false },
   ],
   groups: [
     {
@@ -64,8 +64,8 @@ describe('the expenses seam', () => {
 
       expect(apiFetch).toHaveBeenCalledWith('/ledger', { token: 'token-1' });
       expect(ledger.members).toEqual([
-        { id: 'ana', name: 'Ana', currency: 'CAD', tone: 'sage', active: true },
-        { id: 'leo', name: 'Leo', currency: 'CLP', tone: undefined, active: false },
+        { id: 'ana', name: 'Ana', currency: 'CAD', tone: 'sage', avatar: '🐸', active: true },
+        { id: 'leo', name: 'Leo', currency: 'CLP', tone: undefined, avatar: undefined, active: false },
       ]);
       expect(ledger.groups[0]).toEqual({
         id: 'casa',

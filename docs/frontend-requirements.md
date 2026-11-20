@@ -42,10 +42,12 @@ The frontend's internal data shape is not binding. It can adapt to the API, as l
 ### First sign-in
 
 - Choose their home currency before entering the app.
+- Choose an avatar, which starts at 🐵.
 
 ### Settings
 
 - Change their home currency at any time.
+- Change their avatar at any time.
 
 ### Exchange rates
 
@@ -124,6 +126,7 @@ Every member of the family, because anyone can be added to a group, including fo
 - A display name, such as "Tío Beto".
 - A home currency.
 - Optionally, an avatar tone: `clay`, `honey`, `sage`, `lagoon` or `cocoa`. Without one, the frontend picks a colour from the name.
+- An avatar: one emoji from a fixed list, shown on the tone. A member saved before avatars existed has none until the avatar backfill gives them a monkey, and the frontend shows their initials meanwhile.
 
 ### Groups
 
@@ -348,6 +351,10 @@ A percentage expense can also ask to become the group's usual split. That change
 ### Choosing a home currency
 
 A member sets only their own home currency, at first sign-in or at any time later, and it must be a supported currency. Changing it never changes what is owed, because debts stay in their original currencies.
+
+### Choosing an avatar
+
+A member sets only their own avatar, at first sign-in or at any time later, and it must be one emoji from the fixed list the backend accepts. 🙈🙉🙊 are not on it, because the app already uses them to mean "hidden" and "something went wrong". A first sign-in without one gets 🐵.
 
 ### Creating a group
 

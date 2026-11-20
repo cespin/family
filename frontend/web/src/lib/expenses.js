@@ -35,6 +35,7 @@ function toMember(member) {
     name: member.displayName,
     currency: member.homeCurrency,
     tone: member.tone ?? undefined,
+    avatar: member.avatar ?? undefined,
     active: member.active,
   };
 }
@@ -129,7 +130,10 @@ export async function saveExchangeRates(auth, body) {
   return call(auth, '/exchange-rates', { method: 'POST', body });
 }
 
-/** The first sign-in step, and later changes of home currency. Answers in the `GET /api/me` shape. */
+/**
+ * The first sign-in step, and later changes of home currency or avatar. Answers in the `GET /api/me`
+ * shape.
+ */
 export async function saveProfile(auth, body) {
   return call(auth, '/me/profile', { method: 'PUT', body });
 }

@@ -15,7 +15,7 @@ export function PersonRow({
 }) {
   const content = (
     <>
-      <Avatar name={person.name} tone={person.tone} size={avatarSize} />
+      <Avatar name={person.name} tone={person.tone} avatar={person.avatar} size={avatarSize} />
       <span className="fa-person-row__main">
         <span className={strong ? 'fa-text-body-strong' : 'fa-text-body'}>{title}</span>
         {subtitle && <span className="fa-text-caption fa-text-muted">{subtitle}</span>}

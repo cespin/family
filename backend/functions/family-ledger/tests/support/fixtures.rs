@@ -137,3 +137,16 @@ pub fn before_list_shares() -> Items {
         })
         .collect()
 }
+
+/// The base data as it was stored before avatars existed: members without `avatar`.
+pub fn before_avatars() -> Items {
+    base_items()
+        .into_iter()
+        .map(|((pk, sk), mut item)| {
+            if pk == "LEDGER#main" && sk.starts_with("PROFILE#") {
+                item.remove("avatar");
+            }
+            ((pk, sk), item)
+        })
+        .collect()
+}

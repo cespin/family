@@ -10,7 +10,9 @@
   },
   "avatar": {
     "initials": "{{initials}}",
-    "more": "+{{extra}}"
+    "more": "+{{extra}}",
+    "emoji": "{{emoji}}",
+    "option": "{{emoji}}"
   },
   "monkeys": {
     "all": "🙈🙉🙊",

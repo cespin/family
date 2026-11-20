@@ -106,8 +106,23 @@ describe('screens', () => {
       expect(vi.mocked(saveProfile).mock.calls[0][1]).toEqual({
         displayName: 'Anita',
         homeCurrency: 'CLP',
+        avatar: '🐵',
       });
       expect(value.updateMember).toHaveBeenCalledWith(MEMBER);
+    });
+
+    it('starts at the monkey and saves the avatar the person picks instead', async () => {
+      vi.mocked(useSession).mockReturnValue(session('needsProfile'));
+      vi.mocked(saveProfile).mockResolvedValue(MEMBER);
+      render(<App />);
+
+      const monkey = screen.getByRole('radio', { name: i18n.t('common:avatar.option', { emoji: '🐵' }) });
+      expect(monkey.getAttribute('aria-checked')).toBe('true');
+      await userEvent.click(screen.getByRole('radio', { name: i18n.t('common:avatar.option', { emoji: '🦊' }) }));
+      await userEvent.click(screen.getByRole('button', { name: i18n.t('expenses:currencies.CAD') }));
+      await userEvent.click(screen.getByRole('button', { name: i18n.t('auth:profile.submit') }));
+
+      expect(vi.mocked(saveProfile).mock.calls[0][1].avatar).toBe('🦊');
     });
 
     it('keeps the step open and explains when saving fails', async () => {

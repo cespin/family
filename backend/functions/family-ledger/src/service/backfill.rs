@@ -3,15 +3,17 @@
 //!   before transaction dates existed.
 //! - "Backfilling list entries" rewrites every expense's list entries that differ from what the
 //!   expense writes today, such as entries saved before they carried shares.
+//! - "Backfilling avatars" gives a monkey to every member saved before avatars existed.
 
 use family_core::{ApiError, Result};
 
 use crate::consistent_read;
-use crate::model::{Expense, ExpenseEntry, Payment, PaymentEntry};
+use crate::model::{Expense, ExpenseEntry, Member, Payment, PaymentEntry};
 use crate::protocol::write::{commit_as_operator, Commit};
 use crate::rules::validate::require_date;
 use crate::service::expenses::{group_entry_key, kind_entry_key};
 use crate::service::payments::entry_key;
+use crate::service::profile::BACKFILL_MONKEYS;
 use crate::service::reads::{read_expense, read_payment};
 use crate::store::keys;
 use crate::store::table::{from_item, is_retired, retired_item, to_item, Item, Key, Table};
@@ -192,6 +194,68 @@ pub async fn list_entries<T: Table>(table: &T, dry_run: bool) -> Result<usize> {
                 to_item(&group_entry_key(expense), &entry, rev + 1)?,
                 to_item(&kind_entry_key(expense), &entry, rev + 1)?,
             ];
+            match commit_as_operator(table, rev, items).await? {
+                Commit::Saved => {
+                    rev += 1;
+                    contended = 0;
+                    done += 1;
+                }
+                // Someone else wrote first, so what was read may be stale: read it all again.
+                Commit::Contended => {
+                    contended += 1;
+                    if contended >= CONTENDED_TRIES {
+                        return Err(ApiError::conflict(
+                            "The ledger kept changing during the backfill. Run it again.",
+                        ));
+                    }
+                    break;
+                }
+            }
+        }
+    }
+}
+
+/// Every member without an avatar, with the monkey their place in the sign-up order gives them,
+/// read at one revision. The place counts every member, so a later run gives the same monkeys.
+async fn without_avatars<T: Table>(table: &T) -> Result<(u64, Vec<Member>)> {
+    let (rev, mut members) = consistent_read!(table, session, {
+        let mut members = Vec::new();
+        for item in session.ledger_prefix("PROFILE#").await? {
+            let mut member: Member = from_item(&item)?;
+            member.id = Key::of(&item)?.sk["PROFILE#".len()..].to_string();
+            members.push(member);
+        }
+        members
+    });
+    members.sort_by(|a, b| (&a.created_at, &a.id).cmp(&(&b.created_at, &b.id)));
+    let pending = members
+        .into_iter()
+        .enumerate()
+        .filter(|(_, member)| member.avatar.is_none())
+        .map(|(place, member)| Member {
+            avatar: Some(BACKFILL_MONKEYS[place % BACKFILL_MONKEYS.len()].to_string()),
+            ..member
+        })
+        .collect();
+    Ok((rev, pending))
+}
+
+/// Gives every member without an avatar a monkey, one write each, former members included.
+/// Members who already have one keep it, so running it again changes nothing. With `dry_run` it
+/// only counts the members it would change.
+pub async fn avatars<T: Table>(table: &T, dry_run: bool) -> Result<usize> {
+    let mut done = 0;
+    let mut contended = 0;
+    loop {
+        let (mut rev, pending) = without_avatars(table).await?;
+        if dry_run {
+            return Ok(pending.len());
+        }
+        if pending.is_empty() {
+            return Ok(done);
+        }
+        for member in &pending {
+            let items = vec![to_item(&keys::member(&member.id), member, rev + 1)?];
             match commit_as_operator(table, rev, items).await? {
                 Commit::Saved => {
                     rev += 1;

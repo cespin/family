@@ -814,7 +814,7 @@ function ExpenseForm({ ledger, ledgerState, expense, nav, onConflict }) {
                           onChange={() => handleToggle(id)}
                         />
                         <label htmlFor={`${participantsId}-${id}`} className="fa-add__person">
-                          <Avatar name={person.name} tone={person.tone} size="small" />
+                          <Avatar name={person.name} tone={person.tone} avatar={person.avatar} size="small" />
                           <span className="fa-add__person-text">
                             <span className="fa-add__person-name fa-text-body-strong">{label}</span>
                             {subtitle && (

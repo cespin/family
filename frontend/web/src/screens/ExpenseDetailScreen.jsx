@@ -255,6 +255,7 @@ function ExpenseDetail({ ledger, expense, nav }) {
                 <Avatar
                   name={net < 0 ? payer.name : caller.name}
                   tone={net < 0 ? payer.tone : caller.tone}
+                  avatar={net < 0 ? payer.avatar : caller.avatar}
                 />
                 <div className="fa-detail__owed-text">
                   <span className="fa-text-body-strong">
@@ -370,7 +371,12 @@ function ExpenseDetail({ ledger, expense, nav }) {
           <ul className="fa-detail__activity">
             {activityOf(t, ledger, expense).map((item) => (
               <li key={item.id} className="fa-detail__activity-item">
-                <Avatar name={item.person.name} tone={item.person.tone} size="small" />
+                <Avatar
+                  name={item.person.name}
+                  tone={item.person.tone}
+                  avatar={item.person.avatar}
+                  size="small"
+                />
                 <span className="fa-detail__activity-text fa-text-body">{item.text}</span>
                 <span className="fa-text-caption fa-text-muted">
                   {formatCalendarDate(item.date, SHORT_DATE)}

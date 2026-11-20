@@ -32,7 +32,7 @@ oxlint warns about a missing dependency through `react-hooks/exhaustive-deps`. F
 | Field | Meaning |
 |---|---|
 | `status` | `loading`, `signedOut`, `notInvited`, `failed`, `needsProfile` or `signedIn` |
-| `member` | The account from `GET /api/me`, when `status` is `needsProfile` or `signedIn`. `memberId`, `displayName` and `homeCurrency` are null until the first sign-in step is done, which is what `needsProfile` means |
+| `member` | The account from `GET /api/me`, when `status` is `needsProfile` or `signedIn`. `memberId`, `displayName`, `homeCurrency` and `avatar` are null until the first sign-in step is done, which is what `needsProfile` means. `avatar` is also null for a member saved before avatars, who shows initials |
 | `errorCode` | The API error code, when `status` is `failed` |
 | `signIn()` | Starts the redirect to Google through Cognito |
 | `signOut()` | Ends the session on the server and at Cognito |

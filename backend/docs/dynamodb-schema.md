@@ -39,7 +39,7 @@ The design needs no GSI and no change to the table definition in `templates/data
 |---|---|---|---|
 | Account link | `ACCOUNT#<lowercased email>` | `LINK` | `memberId` |
 | Ledger head | `LEDGER#main` | `HEAD` | `rev`, `lastWrite` |
-| Member | `LEDGER#main` | `PROFILE#<memberId>` | `displayName`, `homeCurrency`, `tone`, `email`, `createdAt` |
+| Member | `LEDGER#main` | `PROFILE#<memberId>` | `displayName`, `homeCurrency`, `tone`, `avatar`, `email`, `createdAt` |
 | Group | `LEDGER#main` | `GROUP#<groupId>` | `name`, `createdBy`, `memberIds`, `usualSplit`, `version`, `seq` |
 | Expense | `LEDGER#main` | `EXPENSE#<expenseId>` | See below |
 | Payment | `LEDGER#main` | `PAYMENT#<paymentId>` | See below |
@@ -137,6 +137,10 @@ Expenses and payments saved before `transactionDate` existed get one from `scrip
 ### Backfilling list entries
 
 List entries saved before they carried `splitMode`, `shares` and `percents` get them from `scripts/backfill-list-entries.sh`, run after the API that writes them is deployed, at a quiet moment because each expense moves the head. For every expense it compares the live entries at its current keys with the ones it would write today, and rewrites them in place when they differ, one transaction per expense through the write protocol, with no allowlist check because an operator runs it. Entries that already match are left alone, so running it again changes nothing. `--dry-run` only counts. If an expense has no live entry at one of its keys, it stops before writing anything and names the expense, because that is a broken ledger to look at rather than something to fill in.
+
+### Backfilling avatars
+
+Members saved before avatars existed get one from `scripts/backfill-avatars.sh`, run after the API that stores avatars is deployed. It orders every member, former ones included, by `createdAt` and then identifier, and gives the member in place `i` the monkey `🐵 🐒 🦍 🦧` at `i` modulo 4. Places count every member, so a second run would hand out the same monkeys. It writes one transaction per member through the write protocol, with no allowlist check because an operator runs it. Members who already have an avatar keep it, so running it again changes nothing. `--dry-run` only counts.
 
 ### Test data set
 

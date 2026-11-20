@@ -238,7 +238,7 @@ export class Ledger {
     this.state.invited.push(alias);
   }
 
-  profile(alias, { displayName, homeCurrency, tone, invited = true }) {
+  profile(alias, { displayName, homeCurrency, tone, avatar, invited = true }) {
     const id = this.newId('member', alias);
     const rev = this.commit([`PROFILE#${id}`]);
     this.state.members[id] = {
@@ -247,6 +247,7 @@ export class Ledger {
       displayName,
       homeCurrency,
       tone,
+      avatar,
       email: `${alias}@example.test`,
       createdAt: `2026-09-01T12:${String(rev).padStart(2, '0')}:00Z`,
       invited,
@@ -559,13 +560,15 @@ for (const name of [
 export function baseLedger() {
   const l = new Ledger();
 
-  l.profile('carlos', { displayName: 'Carlos', homeCurrency: 'CAD', tone: 'honey' });
-  l.profile('lucia', { displayName: 'Lucía', homeCurrency: 'CLP', tone: 'clay' });
-  l.profile('diego', { displayName: 'Diego', homeCurrency: 'USD', tone: 'lagoon' });
-  l.profile('mama', { displayName: 'Mamá', homeCurrency: 'CLP', tone: 'sage' });
-  l.profile('papa', { displayName: 'Papá', homeCurrency: 'CLP', tone: 'cocoa' });
+  // The avatars are the monkeys the avatar backfill hands out in sign-up order. Tío Beto was saved
+  // before avatars existed, so the backfill gives him the sixth: 🐒.
+  l.profile('carlos', { displayName: 'Carlos', homeCurrency: 'CAD', tone: 'honey', avatar: '🐵' });
+  l.profile('lucia', { displayName: 'Lucía', homeCurrency: 'CLP', tone: 'clay', avatar: '🐒' });
+  l.profile('diego', { displayName: 'Diego', homeCurrency: 'USD', tone: 'lagoon', avatar: '🦍' });
+  l.profile('mama', { displayName: 'Mamá', homeCurrency: 'CLP', tone: 'sage', avatar: '🦧' });
+  l.profile('papa', { displayName: 'Papá', homeCurrency: 'CLP', tone: 'cocoa', avatar: '🐵' });
   l.profile('beto', { displayName: 'Tío Beto', homeCurrency: 'USD' });
-  l.profile('rosa', { displayName: 'Rosa', homeCurrency: 'CLP', tone: 'clay', invited: false });
+  l.profile('rosa', { displayName: 'Rosa', homeCurrency: 'CLP', tone: 'clay', avatar: '🦍', invited: false });
   l.invite('nina');
 
   l.createGroup('family', {
@@ -1542,7 +1545,14 @@ export function requestCases(l) {
     ['an unsupported home currency', 'carlos', ['PUT', '/api/me/profile'], { homeCurrency: 'EUR' }, INVALID],
     ['changing the home currency', 'carlos', ['PUT', '/api/me/profile'], { homeCurrency: 'USD' }, OK],
     ['finishing sign-up without a display name', 'nina', ['PUT', '/api/me/profile'], { homeCurrency: 'CLP' }, INVALID],
-    ['finishing sign-up', 'nina', ['PUT', '/api/me/profile'], { homeCurrency: 'CLP', displayName: 'Nina' }, OK],
+    ['finishing sign-up', 'nina', ['PUT', '/api/me/profile'], { homeCurrency: 'CLP', displayName: 'Nina' }, { status: 200, body: { avatar: '🐵' } }],
+    ['finishing sign-up with an avatar', 'nina', ['PUT', '/api/me/profile'], { homeCurrency: 'CLP', displayName: 'Nina', avatar: '🦊' }, { status: 200, body: { avatar: '🦊' } }],
+
+    // Section 7, avatar.
+    ['changing only the avatar', 'carlos', ['PUT', '/api/me/profile'], { homeCurrency: 'CAD', avatar: '🐸' }, { status: 200, body: { homeCurrency: 'CAD', avatar: '🐸' } }],
+    ['an avatar outside the list', 'carlos', ['PUT', '/api/me/profile'], { homeCurrency: 'CAD', avatar: '🙈' }, INVALID],
+    ['an avatar of two emojis', 'carlos', ['PUT', '/api/me/profile'], { homeCurrency: 'CAD', avatar: '🐵🐒' }, INVALID],
+    ['an avatar that is not an emoji', 'carlos', ['PUT', '/api/me/profile'], { homeCurrency: 'CAD', avatar: 'C' }, INVALID],
 
     // Section 7, creating and changing groups.
     ['a blank group name', 'carlos', POST_GROUP, newGroup({ name: '  ' }), INVALID],
@@ -1569,7 +1579,9 @@ export function requestCases(l) {
     // Section 8, access.
     ['a member removed from the allowlist', 'rosa', ['GET', '/api/ledger'], undefined, FORBIDDEN],
     ['the ledger before finishing sign-up', 'nina', ['GET', '/api/ledger'], undefined, FORBIDDEN],
-    ['who am I before finishing sign-up', 'nina', ['GET', '/api/me'], undefined, { status: 200, body: { memberId: null, displayName: null, homeCurrency: null } }],
+    ['who am I before finishing sign-up', 'nina', ['GET', '/api/me'], undefined, { status: 200, body: { memberId: null, displayName: null, homeCurrency: null, avatar: null } }],
+    ['who am I, with an avatar', 'carlos', ['GET', '/api/me'], undefined, { status: 200, body: { displayName: 'Carlos', avatar: '🐵' } }],
+    ['who am I, saved before avatars', 'beto', ['GET', '/api/me'], undefined, { status: 200, body: { displayName: 'Tío Beto', avatar: null } }],
 
     // Section 9, pages and filters.
     ['the first page of expenses', 'carlos', ['GET', '/api/expenses?limit=2'], undefined, { status: 200, expenses: [e('kinesiologia'), e('tablet')], morePages: true }],
@@ -1610,6 +1622,7 @@ export function requestCases(l) {
 /** Where each requirement is represented. Names refer to the aliases in expected.json. */
 export const COVERAGE = [
   ['4', 'A member with no avatar tone', 'member `beto`'],
+  ['4', 'A member saved before avatars, whom the avatar backfill gives a monkey', 'member `beto`'],
   ['4', 'Invited, but has not finished the first sign-in step', 'allowlist entry `nina`'],
   ['4, 8', 'A former member stays in the history', 'member `rosa`, expense `libro`, group `club`'],
   ['4', 'Every expense kind', 'expenses `cena` (meal), `tablet` (parents), `flores` (gift), `libro` (other)'],

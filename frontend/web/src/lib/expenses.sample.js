@@ -18,11 +18,12 @@ const state = {
   requests: new Map(),
   rateEntries: [{ id: 'rates-oct', usdCad: '1.40', cadClp: '670', date: '2026-10-01', enteredBy: 'lucia' }],
   members: [
-    { id: 'carlos', name: 'Carlos', tone: 'honey', currency: 'CAD', active: true },
-    { id: 'lucia', name: 'Lucía', tone: 'clay', currency: 'CLP', active: true },
-    { id: 'diego', name: 'Diego', tone: 'lagoon', currency: 'USD', active: true },
-    { id: 'mama', name: 'Mamá', tone: 'sage', currency: 'CLP', active: true },
-    { id: 'papa', name: 'Papá', tone: 'cocoa', currency: 'CLP', active: true },
+    { id: 'carlos', name: 'Carlos', tone: 'honey', avatar: '🐵', currency: 'CAD', active: true },
+    { id: 'lucia', name: 'Lucía', tone: 'clay', avatar: '🦊', currency: 'CLP', active: true },
+    { id: 'diego', name: 'Diego', tone: 'lagoon', avatar: '🦍', currency: 'USD', active: true },
+    { id: 'mama', name: 'Mamá', tone: 'sage', avatar: '🌻', currency: 'CLP', active: true },
+    { id: 'papa', name: 'Papá', tone: 'cocoa', avatar: '🦧', currency: 'CLP', active: true },
+    // Saved before avatars, so he shows his initials.
     { id: 'beto', name: 'Tío Beto', currency: 'USD', active: true },
   ],
   groups: [
@@ -252,6 +253,7 @@ function ledgerJson() {
       displayName: member.name,
       homeCurrency: member.currency,
       tone: member.tone ?? null,
+      avatar: member.avatar ?? null,
       active: member.active,
     })),
     groups: myGroups().map(groupJson),
@@ -578,6 +580,7 @@ function saveProfile(body) {
   const member = state.members.find((item) => item.id === ME);
   member.currency = body.homeCurrency;
   if (body.tone) member.tone = body.tone;
+  if (body.avatar) member.avatar = body.avatar;
   return {
     sub: 'sample',
     email: 'dev@example.test',
@@ -585,6 +588,7 @@ function saveProfile(body) {
     memberId: member.id,
     displayName: member.name,
     homeCurrency: member.currency,
+    avatar: member.avatar ?? null,
   };
 }
 

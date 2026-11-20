@@ -1,0 +1,31 @@
+.fa-avatar-picker {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--fa-control-height), 1fr));
+  gap: var(--fa-space-1);
+  padding: var(--fa-space-1);
+  background: var(--fa-color-surface-sunken);
+  border-radius: var(--fa-radius-large);
+}
+
+.fa-avatar-picker__option {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--fa-control-height);
+  background: transparent;
+  border: var(--fa-border-control) solid transparent;
+  border-radius: var(--fa-radius-pill);
+  font-size: var(--fa-text-avatar-emoji);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.fa-avatar-picker__option[aria-checked='true'] {
+  background: var(--fa-color-accent-soft);
+  border-color: var(--fa-color-accent);
+}
+
+.fa-avatar-picker__option:focus-visible {
+  outline: var(--fa-focus-width) solid transparent;
+  box-shadow: var(--fa-focus-ring);
+}

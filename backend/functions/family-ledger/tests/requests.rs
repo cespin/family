@@ -84,7 +84,7 @@ async fn every_request_case_gets_the_answer_it_must_get() {
     let cases = cases();
     assert_eq!(
         cases.len(),
-        121,
+        128,
         "the data set changed, so check this runner still covers it"
     );
 
@@ -139,7 +139,10 @@ async fn every_request_case_gets_the_answer_it_must_get() {
         let repeat = name.starts_with("repeating");
         if answer.status >= 400 || case["method"] == "GET" || repeat {
             assert_eq!(after, before, "{name}: this request must change nothing");
-        } else if case["path"] != "/api/me/profile" || name == "finishing sign-up" {
+        } else if case["path"] != "/api/me/profile"
+            || name.starts_with("finishing sign-up")
+            || name == "changing only the avatar"
+        {
             assert_eq!(
                 head_rev(&after),
                 head_rev(&before) + 1,
