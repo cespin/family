@@ -45,7 +45,6 @@ import {
   splitByPercent,
   splitEqual,
 } from '../lib/money.js';
-import { scrollToTop } from '../lib/scroll.js';
 import './AddExpenseScreen.css';
 
 const KINDS = ['meal', 'parents', 'gift', 'other'];
@@ -365,7 +364,6 @@ function ExpenseForm({ ledger, ledgerState, expense, nav, onConflict }) {
   const [form, setForm] = useState(() =>
     expense ? formFromExpense(ledger, expense) : blankForm(ledger),
   );
-  const [savedNote, setSavedNote] = useState(null);
   const [saving, setSaving] = useState(false);
   const [errorCode, setErrorCode] = useState(null);
 
@@ -421,13 +419,11 @@ function ExpenseForm({ ledger, ledgerState, expense, nav, onConflict }) {
 
   function update(patch) {
     setForm((current) => ({ ...current, ...patch }));
-    setSavedNote(null);
   }
 
   function handleGroup(nextGroup) {
     if (nextGroup.id === form.groupId) return;
     setForm((current) => formForGroup(ledger, nextGroup, current));
-    setSavedNote(null);
   }
 
   function handlePayer(event) {
@@ -528,14 +524,12 @@ function ExpenseForm({ ledger, ledgerState, expense, nav, onConflict }) {
         nav.expense(expense.id);
         return;
       }
-      setSavedNote(
+      nav.homeWithNote(
         t('expenses:add.saved', {
           group: group.name,
           audience: audienceNote(t, ledger, includedIds),
         }),
       );
-      setForm(blankForm(ledger));
-      scrollToTop();
     } catch (error) {
       setErrorCode(error?.code ?? 'generic');
       if (error?.code === 'conflict' && expense) {
@@ -555,12 +549,6 @@ function ExpenseForm({ ledger, ledgerState, expense, nav, onConflict }) {
         onBack={expense ? () => nav.expense(expense.id) : nav.home}
         title={expense ? t('expenses:add.editTitle') : t('expenses:add.title')}
       />
-
-      {savedNote && (
-        <div className="fa-add__saved">
-          <StatusNote>{savedNote}</StatusNote>
-        </div>
-      )}
 
       <form className="fa-add__form" onSubmit={handleSubmit}>
         <div className="fa-add__fields">

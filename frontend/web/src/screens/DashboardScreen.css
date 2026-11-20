@@ -59,3 +59,8 @@
   gap: var(--fa-space-2);
   padding: var(--fa-space-3) var(--fa-space-5) 0;
 }
+
+/* A confirmation carried over from the screen that sent the person home. */
+.fa-shell__note {
+  padding: var(--fa-space-3) var(--fa-space-5) 0;
+}

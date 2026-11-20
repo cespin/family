@@ -4,10 +4,6 @@
   min-height: 100dvh;
 }
 
-.fa-add__saved {
-  padding: var(--fa-space-3) var(--fa-space-5) 0;
-}
-
 .fa-add__form {
   display: flex;
   flex: 1;

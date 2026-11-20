@@ -64,6 +64,9 @@ export function DashboardScreen() {
 
   const nav = {
     home: () => setView({ name: 'home', tab: 'balances' }),
+    // Apart from `home`, which is handed straight to click handlers and would take the event as
+    // a note. The note lives in the view, so the next navigation clears it.
+    homeWithNote: (note) => setView({ name: 'home', tab: 'balances', note }),
     add: () => setView({ name: 'add' }),
     edit: (expenseId) => setView({ name: 'add', expenseId }),
     expense: (expenseId) => setView({ name: 'detail', expenseId }),
@@ -112,6 +115,11 @@ export function DashboardScreen() {
             <Button variant="quiet" size="small" onClick={reload}>
               {t('common:actions.retry')}
             </Button>
+          </div>
+        )}
+        {name === 'home' && view.note && (
+          <div className="fa-shell__note">
+            <StatusNote>{view.note}</StatusNote>
           </div>
         )}
         <Screen

@@ -409,14 +409,54 @@ describe('DashboardScreen', () => {
       expect(second).toBe(first);
     });
 
+    const savedNote = () =>
+      i18n.t('expenses:add.saved', {
+        group: 'Casa',
+        audience: i18n.t('expenses:add.audienceOne', { name: 'Leo' }),
+      });
+
+    it('goes back home once saved, and says where the expense went', async () => {
+      vi.mocked(saveExpense).mockResolvedValue({});
+      await openForm();
+      await fillIn('Farmacia', '100');
+      await submit();
+
+      expect(await screen.findByText(savedNote())).toBeTruthy();
+      expect(screen.queryByLabelText(i18n.t('expenses:add.what'))).toBeNull();
+      expect(screen.getByRole('button', { name: i18n.t('expenses:nav.add') })).toBeTruthy();
+    });
+
+    it('stays on the form, with no saved note, when the save fails', async () => {
+      vi.mocked(saveExpense).mockRejectedValue(new ApiError(0, 'generic'));
+      await openForm();
+      await fillIn('Farmacia', '100');
+      await submit();
+
+      await screen.findByRole('alert');
+      expect(screen.getByLabelText(i18n.t('expenses:add.what')).value).toBe('Farmacia');
+      expect(screen.queryByText(savedNote())).toBeNull();
+    });
+
+    it('drops the saved note on the next navigation', async () => {
+      vi.mocked(saveExpense).mockResolvedValue({});
+      await openForm();
+      await fillIn('Farmacia', '100');
+      await submit();
+      await screen.findByText(savedNote());
+
+      await userEvent.click(screen.getByRole('button', { name: i18n.t('expenses:nav.add') }));
+      await userEvent.click(await button(i18n.t('expenses:add.close')));
+
+      await button(i18n.t('expenses:nav.add'));
+      expect(screen.queryByText(savedNote())).toBeNull();
+    });
+
     it('uses a new requestId for the next expense', async () => {
       vi.mocked(saveExpense).mockResolvedValue({});
       await openForm();
       await fillIn('Farmacia', '100');
       await submit();
-      await waitFor(() =>
-        expect(screen.getByLabelText(i18n.t('expenses:add.what')).value).toBe(''),
-      );
+      await userEvent.click(await button(i18n.t('expenses:nav.add')));
       await fillIn('Farmacia', '100');
       await submit();
 
@@ -548,10 +588,8 @@ describe('DashboardScreen', () => {
       await payer();
       await choose('expenses:add.modeTheirs');
       await submit();
-      // The form starts over after a save, with me as the payer again.
-      await waitFor(() =>
-        expect(screen.getByLabelText(i18n.t('expenses:add.what')).value).toBe(''),
-      );
+      // A save goes home, so the next expense starts on a fresh form, with me as the payer again.
+      await userEvent.click(await button(i18n.t('expenses:nav.add')));
       await fillIn('Farmacia', '100');
       await payer();
       await choose('expenses:add.modeMine');
