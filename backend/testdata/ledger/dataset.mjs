@@ -432,9 +432,10 @@ export class Ledger {
 
   /**
    * An edit keeps the entry date, who added it, its place in the replay and the rates it recorded.
-   * It may change the transaction date, which only moves where the expense is listed.
+   * It may change the transaction date, which only moves where the expense is listed. `by` sends it
+   * as another member, such as a payer correcting an expense someone else added.
    */
-  editExpense(alias, changes) {
+  editExpense(alias, changes, { by } = {}) {
     const expense = this.state.expenses[this.expenseId(alias)];
     const updated = { ...expense, ...changes };
     updated.shares = this.computeShares(
@@ -464,7 +465,7 @@ export class Ledger {
       version: expense.version,
     };
     const rev = this.commit([`EXPENSE#${expense.id}`]);
-    this.record(expense.addedBy, 'PUT', `/api/expenses/${expense.id}`, body);
+    this.record(by ? this.member(by) : expense.addedBy, 'PUT', `/api/expenses/${expense.id}`, body);
     this.state.expenses[expense.id] = {
       ...updated,
       version: expense.version + 1,
@@ -1059,6 +1060,31 @@ export const SCENARIOS = [
     },
   },
   {
+    name: 'payer-corrects-expense',
+    requirement: 'Section 7, editing',
+    description:
+      'Lucía, who paid the therapy Carlos added, corrects it to CLP 100.000 charged as CAD 145,00, on the day it was charged',
+    apply: (l) =>
+      l.editExpense(
+        'kinesiologia',
+        {
+          amountMinor: 100000,
+          otherAmount: { amountMinor: 14500, currency: 'CAD' },
+          chargedCurrency: 'CLP',
+          transactionDate: '2026-11-13',
+          note: 'Cobrado con la tarjeta.',
+        },
+        { by: 'lucia' },
+      ),
+    // Carlos's half is CLP 50.000, and Diego's CLP 30.000 still covers his quarter, CLP 25.000.
+    expect: {
+      pairs: [
+        ['kinesiologia', 'carlos', 'lucia', 50000],
+        ['kinesiologia', 'diego', 'lucia', 'settled'],
+      ],
+    },
+  },
+  {
     name: 'remove-member-clears-split',
     requirement: 'Section 7, changing a group',
     description: 'Removing a member from a group with a usual split clears the split',
@@ -1623,6 +1649,7 @@ export const COVERAGE = [
   ['7', 'A group whose creator lost access', 'group `club`'],
   ['7', 'An edited expense', 'expense `kinesiologia`, version 2'],
   ['7', 'An expense whose payer did not add it, so the payer can correct only its amounts, transaction date and note', 'expense `kinesiologia`, added by `carlos` and paid by `lucia`'],
+  ['7', 'A payer correcting an expense someone else added', 'scenario `payer-corrects-expense`'],
   ['7, 9', 'Every validation rule, refusal and retry', '`requests.json`'],
   ['8', 'Members only see their own groups', '`callers` in `expected.json`'],
   ['8', 'A payment across groups only shows its part to others', 'scenario `payment-full`, seen by `mama`'],

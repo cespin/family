@@ -670,3 +670,130 @@ pub async fn put_expense<T: Table>(
     }
     Err(kept_losing())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rstest::rstest;
+
+    const ADDER: &str = "a0000000-0000-4000-8000-000000000001";
+    const PAYER: &str = "a0000000-0000-4000-8000-000000000002";
+    const OTHER: &str = "a0000000-0000-4000-8000-000000000003";
+    const OUTSIDER: &str = "a0000000-0000-4000-8000-000000000004";
+
+    /// An expense Carlos added and Lucía paid, split between the three of them.
+    fn saved(split_mode: SplitMode) -> Expense {
+        let percents = (split_mode == SplitMode::Percent)
+            .then(|| BTreeMap::from([(ADDER.into(), 50), (PAYER.into(), 25), (OTHER.into(), 25)]));
+        Expense {
+            id: "c0000000-0000-4000-8000-000000000001".into(),
+            title: "Kinesiología de Mamá".into(),
+            kind: Kind::Parents,
+            group_id: "b0000000-0000-4000-8000-000000000001".into(),
+            payer_id: PAYER.into(),
+            added_by: ADDER.into(),
+            amount_minor: 120000,
+            currency: Currency::Clp,
+            other_amount_minor: None,
+            other_currency: None,
+            charged_currency: None,
+            date: "2026-11-14".into(),
+            transaction_date: Some("2026-11-14".into()),
+            split_mode,
+            participant_ids: vec![ADDER.into(), PAYER.into(), OTHER.into()],
+            shares: BTreeMap::new(),
+            percents,
+            note: Some("Sesión 2 de 6.".into()),
+            recorded_rates: None,
+            recorded_at: "2026-11-14T12:00:00Z".into(),
+            version: 1,
+            seq: 1,
+            stamp: Stamp::default(),
+        }
+    }
+
+    /// What a payer sends to change nothing about `expense`.
+    fn unchanged(expense: &Expense) -> Fields {
+        Fields {
+            request_id: "d0000000-0000-4000-8000-000000000001".into(),
+            title: expense.title.clone(),
+            kind: expense.kind,
+            group_id: expense.group_id.clone(),
+            payer_id: expense.payer_id.clone(),
+            amount_minor: expense.amount_minor,
+            currency: expense.currency,
+            transaction_date: expense.transaction_date.clone(),
+            split_mode: expense.split_mode,
+            participant_ids: expense.participant_ids.clone(),
+            percents: expense.percents.clone(),
+            other_amount: None,
+            charged_currency: None,
+            note: expense.note.clone(),
+            usual_split: None,
+        }
+    }
+
+    #[rstest]
+    #[case::nothing(SplitMode::Percent, |_: &mut Fields| {})]
+    #[case::the_amount(SplitMode::Percent, |f: &mut Fields| f.amount_minor = 100000)]
+    #[case::the_currency(SplitMode::Percent, |f: &mut Fields| {
+        f.amount_minor = 15000;
+        f.currency = Currency::Cad;
+    })]
+    #[case::the_charged_amount(SplitMode::Percent, |f: &mut Fields| {
+        f.other_amount = Some(Money { amount_minor: 17000, currency: Currency::Cad });
+        f.charged_currency = Some(Currency::Cad);
+    })]
+    #[case::the_transaction_date(SplitMode::Percent, |f: &mut Fields| {
+        f.transaction_date = Some("2026-11-13".into());
+    })]
+    #[case::a_new_note(SplitMode::Percent, |f: &mut Fields| f.note = Some("Con la tarjeta.".into()))]
+    #[case::no_note(SplitMode::Percent, |f: &mut Fields| f.note = None)]
+    #[case::the_participants_in_another_order(SplitMode::Percent, |f: &mut Fields| {
+        f.participant_ids.reverse();
+    })]
+    #[case::nothing_on_an_equal_split(SplitMode::Equal, |_: &mut Fields| {})]
+    #[case::the_amount_on_an_equal_split(SplitMode::Equal, |f: &mut Fields| f.amount_minor = 90000)]
+    fn the_payer_may_correct(#[case] split_mode: SplitMode, #[case] change: fn(&mut Fields)) {
+        let old = saved(split_mode);
+        let mut fields = unchanged(&old);
+        change(&mut fields);
+        assert!(check_payer_edit(&old, &fields).is_ok());
+    }
+
+    #[rstest]
+    #[case::the_title(|f: &mut Fields| f.title = "Otra cosa".into())]
+    #[case::the_kind(|f: &mut Fields| f.kind = Kind::Other)]
+    #[case::the_group(|f: &mut Fields| f.group_id = "b0000000-0000-4000-8000-000000000002".into())]
+    #[case::the_payer(|f: &mut Fields| f.payer_id = ADDER.into())]
+    #[case::the_split_mode(|f: &mut Fields| {
+        f.split_mode = SplitMode::Equal;
+        f.percents = None;
+    })]
+    #[case::one_participant_fewer(|f: &mut Fields| {
+        f.participant_ids.pop();
+        f.percents = Some(BTreeMap::from([(ADDER.into(), 50), (PAYER.into(), 50)]));
+    })]
+    #[case::someone_else_in_a_participant_s_place(|f: &mut Fields| {
+        f.participant_ids[2] = OUTSIDER.into();
+        f.percents = Some(BTreeMap::from([
+            (ADDER.into(), 50),
+            (PAYER.into(), 25),
+            (OUTSIDER.into(), 25),
+        ]));
+    })]
+    #[case::the_percentages(|f: &mut Fields| {
+        f.percents = Some(BTreeMap::from([(ADDER.into(), 40), (PAYER.into(), 30), (OTHER.into(), 30)]));
+    })]
+    #[case::the_usual_split(|f: &mut Fields| {
+        f.usual_split = f.percents.clone();
+    })]
+    fn the_payer_may_not_change(#[case] change: fn(&mut Fields)) {
+        let old = saved(SplitMode::Percent);
+        let mut fields = unchanged(&old);
+        change(&mut fields);
+        let refused = check_payer_edit(&old, &fields).expect_err("refused");
+        assert_eq!(refused.status(), 403);
+        assert_eq!(refused.code(), "forbidden");
+    }
+}
