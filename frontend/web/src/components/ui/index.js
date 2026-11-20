@@ -1,4 +1,5 @@
 export { Amount } from './Amount.jsx';
+export { AutocompleteField } from './AutocompleteField.jsx';
 export { Avatar, AvatarStack } from './Avatar.jsx';
 export { Button } from './Button.jsx';
 export { Card } from './Card.jsx';

@@ -126,6 +126,8 @@
   --fa-measure-narrow: 34ch;
 
   --fa-duration-fast: 150ms;
+
+  --fa-layer-popover: 10;
 }
 
 @media (prefers-color-scheme: dark) {

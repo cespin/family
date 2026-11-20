@@ -12,6 +12,7 @@ import {
 import { SubHeader } from '../components/expenses/SubHeader.jsx';
 import { TransactionDateField } from '../components/expenses/TransactionDateField.jsx';
 import {
+  AutocompleteField,
   Avatar,
   Button,
   Card,
@@ -23,6 +24,7 @@ import {
 import { useExpense } from '../hooks/useExpense.js';
 import { useRequestId } from '../hooks/useRequestId.js';
 import { useSession } from '../hooks/useSession.js';
+import { useTitleHistory } from '../hooks/useTitleHistory.js';
 import { errorMessage } from '../i18n/errors.js';
 import { currencyDigits, formatAmountInput, formatMinor, formatNumber } from '../i18n/format.js';
 import { saveExpense } from '../lib/expenses.js';
@@ -45,6 +47,7 @@ import {
   splitByPercent,
   splitEqual,
 } from '../lib/money.js';
+import { titleSuggestions } from '../lib/titleSuggestions.js';
 import './AddExpenseScreen.css';
 
 const KINDS = ['meal', 'parents', 'gift', 'other'];
@@ -350,6 +353,7 @@ function ExpenseForm({ ledger, ledgerState, expense, nav, onConflict }) {
   const { t } = useTranslation();
   const session = useSession();
   const { prepare, done } = useRequestId();
+  const titleHistory = useTitleHistory();
   const currencyId = useId();
   const chargedCurrencyId = useId();
   const debtId = useId();
@@ -404,6 +408,7 @@ function ExpenseForm({ ledger, ledgerState, expense, nav, onConflict }) {
     chargedProblem: other ? amountProblem(t, other.minor, other.currency) : null,
   });
   const hasTitle = form.title.trim().length > 0;
+  const suggestions = titleSuggestions(titleHistory, form.title);
   const hasDate = isTransactionDate(form.transactionDate);
   const canSave = split.ok && hasTitle && hasDate && !saving;
   // A usual split names every current member of the group, so it cannot include someone who left.
@@ -552,12 +557,14 @@ function ExpenseForm({ ledger, ledgerState, expense, nav, onConflict }) {
 
       <form className="fa-add__form" onSubmit={handleSubmit}>
         <div className="fa-add__fields">
-          <TextField
+          <AutocompleteField
             label={t('expenses:add.what')}
             placeholder={t('expenses:add.whatPlaceholder')}
             maxLength={TITLE_MAX}
             value={form.title}
             onChange={(event) => update({ title: event.target.value })}
+            suggestions={suggestions}
+            onPick={(title) => update({ title })}
           />
 
           <TransactionDateField
