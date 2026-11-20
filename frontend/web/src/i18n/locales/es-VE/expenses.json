@@ -144,6 +144,8 @@
     "less": "Menos para {{name}}",
     "more": "Más para {{name}}",
     "saveUsual": "Usar este reparto la próxima vez en {{group}}",
+    "payerOnly": "Lo agregó {{name}}. Como pagaste tú, puedes corregir los montos, la fecha y la nota.",
+    "payerOnlyFallback": "Como pagaste tú, puedes corregir los montos, la fecha y la nota.",
     "note": "Nota (opcional)",
     "notePlaceholder": "Algo que convenga recordar",
     "status": {

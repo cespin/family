@@ -421,9 +421,30 @@ function addExpense(body) {
   return detailJson(expense);
 }
 
+// A payer who did not add an expense may change only its amounts, transaction date and note.
+function changesTheSplit(expense, body) {
+  const samePeople =
+    [...participantIds(expense)].sort().join() === [...body.participantIds].sort().join();
+  const samePercents =
+    JSON.stringify(Object.entries(expense.percents ?? {}).sort()) ===
+    JSON.stringify(Object.entries(body.percents ?? {}).sort());
+  return (
+    expense.title !== body.title.trim() ||
+    expense.kind !== body.kind ||
+    expense.groupId !== body.groupId ||
+    expense.payerId !== body.payerId ||
+    expense.splitMode !== body.splitMode ||
+    !samePeople ||
+    !samePercents ||
+    Boolean(body.usualSplit)
+  );
+}
+
 function editExpense(id, body) {
   const expense = findExpense(id);
-  if (expense.addedById !== ME) fail(403, 'forbidden');
+  if (expense.addedById !== ME) {
+    if (expense.payerId !== ME || changesTheSplit(expense, body)) fail(403, 'forbidden');
+  }
   if (body.version !== (expense.version ?? 1)) fail(409, 'conflict');
   const group = findGroup(body.groupId);
   Object.assign(expense, expenseFields(body, group), {

@@ -108,6 +108,11 @@ function blankForm(ledger) {
   });
 }
 
+/** The parts of a form that only the member who added the expense can change. */
+function lockedFields({ title, kind, groupId, payerId, mode, included, percents }) {
+  return { title, kind, groupId, payerId, mode, included, percents };
+}
+
 function formFromExpense(ledger, expense) {
   const group = groupById(ledger, expense.groupId);
   const ids = peopleFor(ledger, group, expense);
@@ -365,9 +370,16 @@ function ExpenseForm({ ledger, ledgerState, expense, nav, onConflict }) {
   const participantsId = useId();
   const usualId = useId();
 
-  const [form, setForm] = useState(() =>
+  const [typed, setForm] = useState(() =>
     expense ? formFromExpense(ledger, expense) : blankForm(ledger),
   );
+  // A payer who did not add the expense corrects only its amounts, date and note (section 7). The
+  // rest always comes from the expense as last loaded, so an edit by its adder that wins a
+  // conflict is what a retry sends.
+  const payerOnly =
+    Boolean(expense) && expense.addedBy !== ledger.me && expense.payerId === ledger.me;
+  const form = payerOnly ? { ...typed, ...lockedFields(formFromExpense(ledger, expense)) } : typed;
+  const adder = payerOnly ? memberById(ledger, expense.addedBy) : null;
   const [saving, setSaving] = useState(false);
   const [errorCode, setErrorCode] = useState(null);
 
@@ -412,7 +424,8 @@ function ExpenseForm({ ledger, ledgerState, expense, nav, onConflict }) {
   const hasDate = isTransactionDate(form.transactionDate);
   const canSave = split.ok && hasTitle && hasDate && !saving;
   // A usual split names every current member of the group, so it cannot include someone who left.
-  const canKeepUsual = isPercent && includedIds.every((id) => group.memberIds.includes(id));
+  const canKeepUsual =
+    !payerOnly && isPercent && includedIds.every((id) => group.memberIds.includes(id));
 
   function submitLabel() {
     if (saving) return t('expenses:add.submit.saving');
@@ -557,14 +570,23 @@ function ExpenseForm({ ledger, ledgerState, expense, nav, onConflict }) {
 
       <form className="fa-add__form" onSubmit={handleSubmit}>
         <div className="fa-add__fields">
+          {payerOnly && (
+            <p className="fa-text-caption fa-text-muted">
+              {adder
+                ? t('expenses:add.payerOnly', { name: adder.name })
+                : t('expenses:add.payerOnlyFallback')}
+            </p>
+          )}
+
           <AutocompleteField
             label={t('expenses:add.what')}
             placeholder={t('expenses:add.whatPlaceholder')}
             maxLength={TITLE_MAX}
             value={form.title}
             onChange={(event) => update({ title: event.target.value })}
-            suggestions={suggestions}
+            suggestions={payerOnly ? [] : suggestions}
             onPick={(title) => update({ title })}
+            disabled={payerOnly}
           />
 
           <TransactionDateField
@@ -672,164 +694,167 @@ function ExpenseForm({ ledger, ledgerState, expense, nav, onConflict }) {
             )}
           </div>
 
-          <div className="fa-add__question">
-            <p id={kindId} className="fa-text-label">
-              {t('expenses:add.kind')}
-            </p>
-            <div className="fa-add__chips" role="group" aria-labelledby={kindId}>
-              {KINDS.map((kind) => (
-                <Chip key={kind} pressed={form.kind === kind} onClick={() => update({ kind })}>
-                  {kindLabel(t, kind)}
-                </Chip>
-              ))}
-            </div>
-          </div>
-
-          <div className="fa-add__question">
-            <p id={groupId} className="fa-text-label">
-              {t('expenses:add.group')}
-            </p>
-            <div className="fa-add__chips" role="group" aria-labelledby={groupId}>
-              {ledger.groups.map((option) => (
-                <Chip
-                  key={option.id}
-                  pressed={option.id === form.groupId}
-                  onClick={() => handleGroup(option)}
-                >
-                  {option.name}
-                </Chip>
-              ))}
-            </div>
-            <p className="fa-text-caption fa-text-muted">
-              {group.usual
-                ? t('expenses:add.groupUsual', { split: usualSplitLabel(t, ledger, group) })
-                : t('expenses:add.groupEqual', { people: ids.length })}
-            </p>
-          </div>
-
-          <div className="fa-add__question">
-            <label htmlFor={payerId} className="fa-text-label">
-              {t('expenses:add.payer')}
-            </label>
-            <select
-              id={payerId}
-              className="fa-add__select"
-              value={form.payerId}
-              onChange={handlePayer}
-            >
-              {ids.map((id) => (
-                <option key={id} value={id}>
-                  {memberLabel(t, ledger, id)}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="fa-add__question">
-            <p id={splitId} className="fa-text-label">
-              {t('expenses:add.split')}
-            </p>
-            <Segmented
-              labelledBy={splitId}
-              value={choice}
-              onChange={handleChoice}
-              wrap={ownChoices}
-              options={[
-                { value: 'equal', label: t('expenses:add.modeEqual') },
-                { value: 'percent', label: t('expenses:add.modePercent') },
-                ...(ownChoices
-                  ? [
-                      { value: 'mine', label: t('expenses:add.modeMine') },
-                      { value: 'theirs', label: t('expenses:add.modeTheirs') },
-                    ]
-                  : []),
-              ]}
-            />
-            <p className="fa-text-caption fa-text-muted">
-              {splitHint(t, ledger, choice, form.payerId)}
-            </p>
-          </div>
-
-          <div className="fa-add__question">
-            <div className="fa-add__participants-head">
-              <p id={participantsId} className="fa-text-label">
-                {t('expenses:add.participants')}
+          {/* Who is on the expense and how it is split stay as the member who added it chose. */}
+          <fieldset className="fa-add__locked" disabled={payerOnly}>
+            <div className="fa-add__question">
+              <p id={kindId} className="fa-text-label">
+                {t('expenses:add.kind')}
               </p>
-              {isPercent && (
-                <Button
-                  variant="quiet"
-                  size="small"
-                  onClick={() => update({ percents: evenPercents(ids, includedIds) })}
-                >
-                  {t('expenses:add.evenOut')}
-                </Button>
-              )}
+              <div className="fa-add__chips" role="group" aria-labelledby={kindId}>
+                {KINDS.map((kind) => (
+                  <Chip key={kind} pressed={form.kind === kind} onClick={() => update({ kind })}>
+                    {kindLabel(t, kind)}
+                  </Chip>
+                ))}
+              </div>
             </div>
-            <Card flush>
-              <ul className="fa-add__participants" aria-labelledby={participantsId}>
-                {ids.map((id) => {
-                  const person = memberById(ledger, id);
-                  const included = Boolean(form.included[id]);
-                  const label = memberLabel(t, ledger, id);
-                  const object = id === ledger.me ? t('expenses:you.object') : person.name;
-                  const subtitle = participantSubtitle(t, ledger, {
-                    id,
-                    included,
-                    form,
-                    share: shares[id],
-                    hasAmount,
-                    debt,
-                  });
-                  return (
-                    <li key={id} className="fa-add__participant">
-                      <input
-                        id={`${participantsId}-${id}`}
-                        type="checkbox"
-                        className="fa-add__check"
-                        checked={included}
-                        onChange={() => handleToggle(id)}
-                      />
-                      <label htmlFor={`${participantsId}-${id}`} className="fa-add__person">
-                        <Avatar name={person.name} tone={person.tone} size="small" />
-                        <span className="fa-add__person-text">
-                          <span className="fa-add__person-name fa-text-body-strong">{label}</span>
-                          {subtitle && (
-                            <span className="fa-text-caption fa-text-muted">{subtitle}</span>
-                          )}
-                        </span>
-                      </label>
-                      {included && !isPercent && hasAmount && (
-                        <span className="fa-add__share">
-                          {formatMinor(shares[id], debt.currency)}
-                        </span>
-                      )}
-                      {included && isPercent && (
-                        <div className="fa-add__stepper">
-                          <Button
-                            variant="secondary"
-                            iconOnly
-                            icon={Minus}
-                            aria-label={t('expenses:add.less', { name: object })}
-                            onClick={() => handleStep(id, -1)}
-                          />
-                          <span className="fa-add__percent fa-text-label" aria-live="polite">
-                            {percentLabel(t, form.percents[id] ?? 0)}
+
+            <div className="fa-add__question">
+              <p id={groupId} className="fa-text-label">
+                {t('expenses:add.group')}
+              </p>
+              <div className="fa-add__chips" role="group" aria-labelledby={groupId}>
+                {ledger.groups.map((option) => (
+                  <Chip
+                    key={option.id}
+                    pressed={option.id === form.groupId}
+                    onClick={() => handleGroup(option)}
+                  >
+                    {option.name}
+                  </Chip>
+                ))}
+              </div>
+              <p className="fa-text-caption fa-text-muted">
+                {group.usual
+                  ? t('expenses:add.groupUsual', { split: usualSplitLabel(t, ledger, group) })
+                  : t('expenses:add.groupEqual', { people: ids.length })}
+              </p>
+            </div>
+
+            <div className="fa-add__question">
+              <label htmlFor={payerId} className="fa-text-label">
+                {t('expenses:add.payer')}
+              </label>
+              <select
+                id={payerId}
+                className="fa-add__select"
+                value={form.payerId}
+                onChange={handlePayer}
+              >
+                {ids.map((id) => (
+                  <option key={id} value={id}>
+                    {memberLabel(t, ledger, id)}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="fa-add__question">
+              <p id={splitId} className="fa-text-label">
+                {t('expenses:add.split')}
+              </p>
+              <Segmented
+                labelledBy={splitId}
+                value={choice}
+                onChange={handleChoice}
+                wrap={ownChoices}
+                options={[
+                  { value: 'equal', label: t('expenses:add.modeEqual') },
+                  { value: 'percent', label: t('expenses:add.modePercent') },
+                  ...(ownChoices
+                    ? [
+                        { value: 'mine', label: t('expenses:add.modeMine') },
+                        { value: 'theirs', label: t('expenses:add.modeTheirs') },
+                      ]
+                    : []),
+                ]}
+              />
+              <p className="fa-text-caption fa-text-muted">
+                {splitHint(t, ledger, choice, form.payerId)}
+              </p>
+            </div>
+
+            <div className="fa-add__question">
+              <div className="fa-add__participants-head">
+                <p id={participantsId} className="fa-text-label">
+                  {t('expenses:add.participants')}
+                </p>
+                {isPercent && (
+                  <Button
+                    variant="quiet"
+                    size="small"
+                    onClick={() => update({ percents: evenPercents(ids, includedIds) })}
+                  >
+                    {t('expenses:add.evenOut')}
+                  </Button>
+                )}
+              </div>
+              <Card flush>
+                <ul className="fa-add__participants" aria-labelledby={participantsId}>
+                  {ids.map((id) => {
+                    const person = memberById(ledger, id);
+                    const included = Boolean(form.included[id]);
+                    const label = memberLabel(t, ledger, id);
+                    const object = id === ledger.me ? t('expenses:you.object') : person.name;
+                    const subtitle = participantSubtitle(t, ledger, {
+                      id,
+                      included,
+                      form,
+                      share: shares[id],
+                      hasAmount,
+                      debt,
+                    });
+                    return (
+                      <li key={id} className="fa-add__participant">
+                        <input
+                          id={`${participantsId}-${id}`}
+                          type="checkbox"
+                          className="fa-add__check"
+                          checked={included}
+                          onChange={() => handleToggle(id)}
+                        />
+                        <label htmlFor={`${participantsId}-${id}`} className="fa-add__person">
+                          <Avatar name={person.name} tone={person.tone} size="small" />
+                          <span className="fa-add__person-text">
+                            <span className="fa-add__person-name fa-text-body-strong">{label}</span>
+                            {subtitle && (
+                              <span className="fa-text-caption fa-text-muted">{subtitle}</span>
+                            )}
                           </span>
-                          <Button
-                            variant="secondary"
-                            iconOnly
-                            icon={Plus}
-                            aria-label={t('expenses:add.more', { name: object })}
-                            onClick={() => handleStep(id, 1)}
-                          />
-                        </div>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            </Card>
-          </div>
+                        </label>
+                        {included && !isPercent && hasAmount && (
+                          <span className="fa-add__share">
+                            {formatMinor(shares[id], debt.currency)}
+                          </span>
+                        )}
+                        {included && isPercent && (
+                          <div className="fa-add__stepper">
+                            <Button
+                              variant="secondary"
+                              iconOnly
+                              icon={Minus}
+                              aria-label={t('expenses:add.less', { name: object })}
+                              onClick={() => handleStep(id, -1)}
+                            />
+                            <span className="fa-add__percent fa-text-label" aria-live="polite">
+                              {percentLabel(t, form.percents[id] ?? 0)}
+                            </span>
+                            <Button
+                              variant="secondary"
+                              iconOnly
+                              icon={Plus}
+                              aria-label={t('expenses:add.more', { name: object })}
+                              onClick={() => handleStep(id, 1)}
+                            />
+                          </div>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </Card>
+            </div>
+          </fieldset>
 
           <StatusNote tone={split.ok ? 'success' : 'warning'} strong={!split.ok}>
             {split.note}

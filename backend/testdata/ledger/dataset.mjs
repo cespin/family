@@ -840,10 +840,12 @@ export function baseLedger() {
     participants: ['carlos', 'lucia', 'diego'],
     percents: { carlos: 50, lucia: 25, diego: 25 },
   });
+  // Carlos books the session that Lucía pays, so the payer is not the member who added it.
   l.addExpense('kinesiologia', {
     title: 'Kinesiología de Mamá',
     kind: 'parents',
     group: 'care',
+    by: 'carlos',
     payer: 'lucia',
     amountMinor: 120000,
     currency: 'CLP',
@@ -1465,6 +1467,16 @@ export function requestCases(l) {
 
     // Section 7, editing.
     ['editing an expense someone else added', 'carlos', putExpense('almuerzo'), edit('almuerzo'), FORBIDDEN],
+    ['the payer corrects the amounts, transaction date and note', 'lucia', putExpense('kinesiologia'), edit('kinesiologia', { amountMinor: 100000, otherAmount: { amountMinor: 14500, currency: 'CAD' }, chargedCurrency: 'CLP', transactionDate: '2026-11-13', note: 'Cobrado con la tarjeta.' }), { status: 200, body: { version: 3, amountMinor: 100000, addedBy: m('carlos'), transactionDate: '2026-11-13', note: 'Cobrado con la tarjeta.' } }],
+    ['the payer changes the title', 'lucia', putExpense('kinesiologia'), edit('kinesiologia', { title: 'Otra cosa' }), FORBIDDEN],
+    ['the payer changes the kind', 'lucia', putExpense('kinesiologia'), edit('kinesiologia', { kind: 'other' }), FORBIDDEN],
+    ['the payer hands the expense to someone else', 'lucia', putExpense('kinesiologia'), edit('kinesiologia', { payerId: m('carlos') }), FORBIDDEN],
+    ['the payer moves the expense to another group', 'lucia', putExpense('kinesiologia'), edit('kinesiologia', { groupId: g('family') }), FORBIDDEN],
+    ['the payer changes the split mode', 'lucia', putExpense('kinesiologia'), edit('kinesiologia', { splitMode: 'equal', percents: undefined }), FORBIDDEN],
+    ['the payer changes the participants', 'lucia', putExpense('kinesiologia'), edit('kinesiologia', { participantIds: [m('carlos'), m('lucia')], percents: { [m('carlos')]: 50, [m('lucia')]: 50 } }), FORBIDDEN],
+    ['the payer changes the percentages', 'lucia', putExpense('kinesiologia'), edit('kinesiologia', { percents: { [m('carlos')]: 40, [m('lucia')]: 30, [m('diego')]: 30 } }), FORBIDDEN],
+    ['the payer sets the usual split', 'lucia', putExpense('kinesiologia'), edit('kinesiologia', { usualSplit: { [m('carlos')]: 50, [m('lucia')]: 25, [m('diego')]: 25 } }), FORBIDDEN],
+    ['a participant who neither added nor paid it', 'diego', putExpense('kinesiologia'), edit('kinesiologia', { note: 'Otra nota.' }), FORBIDDEN],
     ['editing with a stale version', 'carlos', putExpense('tablet'), edit('tablet', { version: 99 }), CONFLICT],
     ['changing the date on an edit', 'carlos', putExpense('tablet'), edit('tablet', { date: '2026-11-13' }), INVALID],
     ['changing the transaction date on an edit', 'carlos', putExpense('tablet'), edit('tablet', { transactionDate: '2026-10-30' }), { status: 200, body: { date: '2026-11-12', transactionDate: '2026-10-30', version: 2 } }],
@@ -1610,6 +1622,7 @@ export const COVERAGE = [
   ['7', 'Someone added later sees past expenses and owes nothing for them', 'group `trip`, member `mama`'],
   ['7', 'A group whose creator lost access', 'group `club`'],
   ['7', 'An edited expense', 'expense `kinesiologia`, version 2'],
+  ['7', 'An expense whose payer did not add it, so the payer can correct only its amounts, transaction date and note', 'expense `kinesiologia`, added by `carlos` and paid by `lucia`'],
   ['7, 9', 'Every validation rule, refusal and retry', '`requests.json`'],
   ['8', 'Members only see their own groups', '`callers` in `expected.json`'],
   ['8', 'A payment across groups only shows its part to others', 'scenario `payment-full`, seen by `mama`'],

@@ -42,3 +42,8 @@
   outline: var(--fa-focus-width) solid transparent;
   box-shadow: var(--fa-focus-ring);
 }
+
+.fa-segmented__option:disabled {
+  opacity: var(--fa-opacity-disabled);
+  cursor: default;
+}

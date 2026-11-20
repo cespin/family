@@ -476,6 +476,26 @@ fn entry_items(old: &Expense, new: &Expense, rev: u64) -> Result<Vec<Item>> {
     Ok(items)
 }
 
+/// A payer who did not add the expense can correct only its amounts, its transaction date and its
+/// note: who is on it and how it is split stay as the member who added it chose.
+fn check_payer_edit(old: &Expense, fields: &Fields) -> Result<()> {
+    let same_people = old.participant_ids.iter().collect::<BTreeSet<_>>()
+        == fields.participant_ids.iter().collect::<BTreeSet<_>>();
+    let unchanged = old.title == fields.title
+        && old.kind == fields.kind
+        && old.group_id == fields.group_id
+        && old.payer_id == fields.payer_id
+        && old.split_mode == fields.split_mode
+        && old.percents == fields.percents
+        && same_people;
+    if !unchanged || fields.usual_split.is_some() {
+        return Err(ApiError::forbidden(
+            "the payer can change only the amounts, the transaction date and the note",
+        ));
+    }
+    Ok(())
+}
+
 struct EditContext<'a> {
     signed: &'a Signed,
     expense_id: &'a str,
@@ -524,7 +544,9 @@ async fn edit_once<T: Table>(table: &T, context: &EditContext<'_>) -> Result<Opt
         });
 
     if old.stamp.last_request_id.as_deref() == Some(&fields.request_id) {
-        if old.stamp.last_request_hash.as_deref() == Some(*hash) && old.added_by == *me {
+        if old.stamp.last_request_hash.as_deref() == Some(*hash)
+            && (old.added_by == *me || old.payer_id == *me)
+        {
             return Ok(Some(expense_detail(table, me, expense_id).await?));
         }
         return Err(ApiError::conflict(
@@ -532,9 +554,12 @@ async fn edit_once<T: Table>(table: &T, context: &EditContext<'_>) -> Result<Opt
         ));
     }
     if old.added_by != *me {
-        return Err(ApiError::forbidden(
-            "only the member who added an expense can edit it",
-        ));
+        if old.payer_id != *me {
+            return Err(ApiError::forbidden(
+                "only the member who added or paid an expense can edit it",
+            ));
+        }
+        check_payer_edit(&old, fields)?;
     }
     if old.version != *version {
         return Err(ApiError::conflict("The expense changed since it was read."));

@@ -194,7 +194,7 @@ function ExpenseDetail({ ledger, expense, nav }) {
         backLabel={t('expenses:detail.back')}
         onBack={nav.home}
         action={
-          expense.addedBy === me && (
+          (expense.addedBy === me || expense.payerId === me) && (
             <Button variant="quiet" size="small" onClick={() => nav.edit(expense.id)}>
               {t('expenses:detail.edit')}
             </Button>

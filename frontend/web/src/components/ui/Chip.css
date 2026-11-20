@@ -24,7 +24,7 @@
   inset: var(--fa-touch-overhang) 0;
 }
 
-.fa-chip:hover {
+.fa-chip:hover:not(:disabled) {
   background: var(--fa-color-surface-sunken);
 }
 
@@ -37,4 +37,9 @@
 .fa-chip:focus-visible {
   outline: var(--fa-focus-width) solid transparent;
   box-shadow: var(--fa-focus-ring);
+}
+
+.fa-chip:disabled {
+  opacity: var(--fa-opacity-disabled);
+  cursor: default;
 }

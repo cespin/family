@@ -690,9 +690,51 @@ describe('DashboardScreen', () => {
       expect(await screen.findByText(i18n.t('common:errors.not_found'))).toBeTruthy();
     });
 
-    it('offers no Edit button to someone who did not add it', async () => {
+    it('offers no Edit button to someone who neither added nor paid it', async () => {
       await openLunch();
       expect(screen.queryByRole('button', { name: i18n.t('expenses:detail.edit') })).toBeNull();
+    });
+
+    it('lets the payer who did not add it correct only the amounts, date and note', async () => {
+      const paidByMe = detail({ payerId: 'ana', addedBy: 'leo' });
+      vi.mocked(saveExpense).mockResolvedValue(paidByMe);
+      await openLunch(paidByMe);
+      await userEvent.click(screen.getByRole('button', { name: i18n.t('expenses:detail.edit') }));
+
+      expect(
+        await screen.findByText(i18n.t('expenses:add.payerOnly', { name: 'Leo' })),
+      ).toBeTruthy();
+      // `:disabled` also covers controls disabled through their fieldset.
+      const locked = (element) => element.matches(':disabled');
+      expect(locked(screen.getByLabelText(i18n.t('expenses:add.what')))).toBe(true);
+      expect(locked(screen.getByLabelText(i18n.t('expenses:add.payer')))).toBe(true);
+      expect(locked(screen.getByRole('checkbox', { name: /Leo/ }))).toBe(true);
+      expect(locked(screen.getByRole('button', { name: 'Casa' }))).toBe(true);
+      expect(locked(screen.getByLabelText(i18n.t('expenses:add.howMuch')))).toBe(false);
+
+      const amount = screen.getByLabelText(i18n.t('expenses:add.howMuch'));
+      await userEvent.clear(amount);
+      await userEvent.type(amount, '70000');
+      await chooseDay('2026-11-13');
+      await userEvent.type(screen.getByLabelText(i18n.t('expenses:add.note')), 'Con la tarjeta');
+      await userEvent.click(screen.getByRole('button', { name: i18n.t('expenses:add.submit.save') }));
+
+      const [, body, expenseId] = vi.mocked(saveExpense).mock.calls[0];
+      expect(expenseId).toBe('lunch');
+      expect(body).toMatchObject({
+        title: 'Almuerzo',
+        kind: 'meal',
+        groupId: 'casa',
+        payerId: 'ana',
+        splitMode: 'equal',
+        participantIds: ['ana', 'leo'],
+        amountMinor: 70000,
+        currency: 'CLP',
+        transactionDate: '2026-11-13',
+        note: 'Con la tarjeta',
+        version: 4,
+      });
+      expect(body).not.toHaveProperty('usualSplit');
     });
 
     it('shows a payment in another currency with what it covered', async () => {
@@ -752,6 +794,35 @@ describe('DashboardScreen', () => {
       expect(first.version).toBe(4);
       expect(second.version).toBe(5);
       expect(second.title).toBe('Almuerzo largo');
+    });
+
+    it('retries a payer’s correction with what the adder changed meanwhile', async () => {
+      const paidByMe = detail({ payerId: 'ana', addedBy: 'leo' });
+      vi.mocked(fetchExpense).mockResolvedValueOnce(paidByMe).mockResolvedValueOnce(paidByMe);
+      vi.mocked(fetchExpense).mockResolvedValue({ ...paidByMe, title: 'Almuerzo del domingo', version: 5 });
+      vi.mocked(saveExpense)
+        .mockRejectedValueOnce(new ApiError(409, 'conflict'))
+        .mockResolvedValue(paidByMe);
+      renderWith();
+      await userEvent.click(await screen.findByRole('button', { name: /Almuerzo/ }));
+      await userEvent.click(await button(i18n.t('expenses:detail.edit')));
+
+      const note = await screen.findByLabelText(i18n.t('expenses:add.note'));
+      await userEvent.type(note, 'Con la tarjeta');
+      const save = () =>
+        userEvent.click(screen.getByRole('button', { name: i18n.t('expenses:add.submit.save') }));
+      await save();
+      expect(await screen.findByText(i18n.t('expenses:add.conflict'))).toBeTruthy();
+      await waitFor(() =>
+        expect(screen.getByLabelText(i18n.t('expenses:add.what')).value).toBe('Almuerzo del domingo'),
+      );
+      expect(note.value).toBe('Con la tarjeta');
+
+      await save();
+      const second = vi.mocked(saveExpense).mock.calls[1][1];
+      expect(second.version).toBe(5);
+      expect(second.title).toBe('Almuerzo del domingo');
+      expect(second.note).toBe('Con la tarjeta');
     });
 
     it('edits it with its version and transaction date, and without the entry date', async () => {

@@ -229,7 +229,7 @@ Takes `limit` and `cursor` as above, and optionally `memberId` to list only the 
 |---|---|
 | `PUT /api/me/profile` | `homeCurrency`, `displayName` on the first call, and optionally `tone` |
 | `POST /api/expenses` | `requestId`, `title`, `kind`, `groupId`, `payerId`, `amountMinor`, `currency`, `date`, `splitMode`, `participantIds`, and optionally `transactionDate`, `percents`, `otherAmount`, `chargedCurrency`, `note`, `usualSplit` |
-| `PUT /api/expenses/{expenseId}` | The same fields except `date`, plus `version`. Without `transactionDate` the saved one is kept |
+| `PUT /api/expenses/{expenseId}` | The same fields except `date`, plus `version`. Without `transactionDate` the saved one is kept. A payer who did not add the expense must send its saved `title`, `kind`, `groupId`, `payerId`, `splitMode`, `participantIds` and `percents` unchanged, and no `usualSplit` |
 | `POST /api/payments` | `requestId`, `fromId`, `toId`, `paid`, `method`, `date`, and optionally `transactionDate`, `credited`, `groupId` |
 | `PUT /api/payments/{paymentId}` | `requestId`, `transactionDate`, `version`. Nothing else about a payment can change |
 | `POST /api/groups` | `requestId`, `name`, `memberIds`, and optionally `usualSplit` |
@@ -250,7 +250,7 @@ A write returns the saved resource, in the shape its read route uses: `GET /api/
 | Situation | Code |
 |---|---|
 | A rule in section 7 of the requirements is broken, or a query parameter is not valid | `validation_error` |
-| The caller did not add this expense or create this group, or has not finished the first-sign-in step | `forbidden` |
+| The caller neither added nor paid this expense, changed what only its adder can change, did not create this group, or has not finished the first-sign-in step | `forbidden` |
 | The expense, payment, group or member does not exist or is not visible to the caller, including in a query parameter | `not_found` |
 | A stale `version`, a reused `requestId` with different content, or a write that kept losing to others | `conflict` |
 | A member with an open balance in the group cannot be removed from it | `member_has_open_balance` |

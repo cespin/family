@@ -79,6 +79,7 @@ The frontend's internal data shape is not binding. It can adapt to the API, as l
 - Choose "I pay all" or "I pay nothing", from the caller's side, not the payer's. Both are sent as an equal split: with only the caller as participant, or with everyone else. When someone else paid, "I pay all" makes the caller owe them the whole amount, so an advance the caller gave them covers it (section 12).
 - Choose to keep a percentage split as the group's usual split.
 - Edit an expense they added, through the same form, including the day the money was spent.
+- Correct an expense they paid but someone else added, through the same form: its amounts, the day the money was spent and the note. Everything else is shown but locked, with a line saying who added it.
 
 ### Expense detail
 
@@ -325,7 +326,7 @@ Client-side checks are a convenience. The backend must enforce every rule below.
 | Percentages | Required for `percent`, in whole numbers adding up to 100 |
 | Entry date | A valid calendar date. The browser supplies its own today, because family members live in different time zones |
 | Transaction date | A valid calendar date chosen by the member, up to the browser's today. A browser that predates it sends none, and the entry date is used |
-| Editing | Only the member who added the expense can edit it. Editing can change the transaction date, and keeps the entry date and who added it. An expense added by someone who has since left the group or lost access can no longer be edited |
+| Editing | The member who added the expense can change all of it. The payer, when someone else added it, can change only the amount and currency, the second amount and debt currency, the transaction date and the note, and cannot make the split the group's usual split. Nobody else can edit it. Editing keeps the entry date and who added it. An expense whose adder has since left the group or lost access can no longer be fully edited, but its payer can still make those corrections, within the same rules as any edit |
 
 When an expense is edited, a payer or participant who has since left the group may stay on it.
 
@@ -426,7 +427,7 @@ Done when the frontend connected to the API, and listed here so the reasons stay
 - Replace the three functions in `lib/expenses.js` with `apiFetch` calls, using `getToken()` from `useSession`.
 - Remove the `expenses_unavailable` state.
 - Load expenses page by page, and send the group and kind filters to the API instead of filtering in the browser.
-- Show the Edit button only to the member who added the expense.
+- Show the Edit button only to the member who added the expense or paid it.
 - Design and build the home currency step for a member's first sign-in, and a settings option to change it later.
 - Design and build creating and changing groups, including the "Nuevo grupo" button left out of the first version. Only a group's creator sees the controls for changing it.
 - Replace the browser's balance and allocation calculations in `lib/ledger.js` with the backend's standings.

@@ -159,3 +159,8 @@
   border-top: var(--fa-border-width) solid var(--fa-color-border);
   box-shadow: var(--fa-shadow-medium);
 }
+
+/* Groups the controls a payer who did not add the expense cannot change, without its own box. */
+.fa-add__locked {
+  display: contents;
+}
