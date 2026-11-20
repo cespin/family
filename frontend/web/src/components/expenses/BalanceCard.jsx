@@ -21,6 +21,22 @@ function headlineFor(t, total) {
   return total < 0 ? t('expenses:balance.youOwe') : t('expenses:balance.even');
 }
 
+function rowSubtitle(t, row, currency) {
+  const parts = [];
+  if (row.member.currency !== currency && row.homeMinor != null) {
+    parts.push(
+      t('expenses:balance.theirCurrency', {
+        amount: formatMinor(row.homeMinor, row.member.currency),
+      }),
+    );
+  }
+  if (row.ungroupedMinor != null && row.ungroupedMinor !== 0) {
+    const amount = formatMinor(row.ungroupedMinor, currency);
+    parts.push(t('expenses:balance.ungroupedPart', { amount }));
+  }
+  return parts.length > 0 ? parts.join(' · ') : null;
+}
+
 function rowTitle(t, row) {
   const { name } = row.member;
   if (row.netMinor == null) return t('expenses:balance.unknown', { name });
@@ -35,8 +51,8 @@ export function BalanceCard({ ledger, groupId, onSettle, onAdvance, onPayments, 
   const [currency, setCurrency] = useState(myself(ledger).currency);
   const canAdvance = advanceCandidates(ledger, currency).length > 0;
 
-  const rows = balancesFor(ledger, { groupId, currency });
-  const total = balanceTotal(ledger, { groupId, currency });
+  const rows = balancesFor(ledger, { groupId, currency, withUngrouped: true });
+  const total = balanceTotal(ledger, { groupId, currency, withUngrouped: true });
   const rates = ratesLine(t, ledger);
   const scope =
     groupId === ALL_GROUPS
@@ -78,13 +94,7 @@ export function BalanceCard({ ledger, groupId, onSettle, onAdvance, onPayments, 
                 person={row.member}
                 strong={false}
                 title={rowTitle(t, row)}
-                subtitle={
-                  row.member.currency !== currency && row.homeMinor != null
-                    ? t('expenses:balance.theirCurrency', {
-                        amount: formatMinor(row.homeMinor, row.member.currency),
-                      })
-                    : null
-                }
+                subtitle={rowSubtitle(t, row, currency)}
                 trailing={<Amount minor={row.netMinor} currency={currency} size="small" />}
               />
             ))}

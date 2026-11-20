@@ -471,6 +471,8 @@ When a payment clears a balance held in several currencies, the frontend sends t
 
 If two members share no expense and no group was chosen, the credit belongs to the two of them and to no group.
 
+A group's balance, on Home and on its card in Grupos, includes this credit for each group both members belong to, and the row says how much of it has no group. The total across all groups counts it once, so the group totals can add up to more than that total. Choosing a group when settling up still looks only at the debts held in that group.
+
 ### Changing groups
 
 - **Adding a member** stores 0 for them in the usual split, so its percentages still add up to 100.

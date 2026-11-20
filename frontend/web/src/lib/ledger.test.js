@@ -99,6 +99,86 @@ describe('balances from the API standings', () => {
   });
 });
 
+describe('credit with no group in a group view', () => {
+  // Diego owes Carlos CAD 10 in "pyh", and Carlos holds USD 20 of Diego's credit with no group.
+  function withUngrouped(overrides = {}) {
+    return {
+      me: 'carlos',
+      rates: RATES,
+      members: MEMBERS,
+      groups: [
+        { id: 'pyh', name: 'Padre e Hijo', memberIds: ['carlos', 'diego'] },
+        { id: 'other', name: 'Otro', memberIds: ['carlos', 'lucia'] },
+      ],
+      standings: [
+        {
+          memberId: 'diego',
+          overall: [
+            { minor: 1000, currency: 'CAD' },
+            { minor: -2000, currency: 'USD' },
+          ],
+          groups: [
+            { groupId: 'pyh', amounts: [{ minor: 1000, currency: 'CAD' }] },
+            { groupId: null, amounts: [{ minor: -2000, currency: 'USD' }] },
+          ],
+        },
+      ],
+      ...overrides,
+    };
+  }
+
+  it('counts it in a group both people belong to, and says how much of it has no group', () => {
+    const [diego] = balancesFor(withUngrouped(), {
+      groupId: 'pyh',
+      currency: 'USD',
+      withUngrouped: true,
+    });
+    expect(diego.entries).toEqual([
+      { minor: 1000, currency: 'CAD' },
+      { minor: -2000, currency: 'USD' },
+    ]);
+    expect(diego.ungroupedMinor).toBe(-2000);
+    expect(diego.netMinor).toBe(-1286);
+    const total = balanceTotal(withUngrouped(), {
+      groupId: 'pyh',
+      currency: 'USD',
+      withUngrouped: true,
+    });
+    expect(total).toBe(-1286);
+  });
+
+  it('reads only what is held in the group unless asked, as settling up does', () => {
+    const [diego] = balancesFor(withUngrouped(), { groupId: 'pyh', currency: 'USD' });
+    expect(diego.entries).toEqual([{ minor: 1000, currency: 'CAD' }]);
+    expect(diego.ungroupedMinor).toBe(0);
+  });
+
+  it('leaves it out of a group the other person is not in', () => {
+    const rows = balancesFor(withUngrouped(), {
+      groupId: 'other',
+      currency: 'USD',
+      withUngrouped: true,
+    });
+    expect(rows).toEqual([]);
+  });
+
+  it('counts it once across all groups', () => {
+    const [diego] = balancesFor(withUngrouped(), { currency: 'USD', withUngrouped: true });
+    expect(diego.netMinor).toBe(-1286);
+    expect(diego.ungroupedMinor).toBe(0);
+  });
+
+  it('is absent, not zero, when it cannot be converted', () => {
+    const [diego] = balancesFor(withUngrouped({ rates: null }), {
+      groupId: 'pyh',
+      currency: 'CAD',
+      withUngrouped: true,
+    });
+    expect(diego.ungroupedMinor).toBeNull();
+    expect(diego.netMinor).toBeNull();
+  });
+});
+
 describe('advanceCandidates', () => {
   const withMembers = (ledger) => ({
     ...ledger,

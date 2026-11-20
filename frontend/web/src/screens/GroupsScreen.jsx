@@ -23,7 +23,7 @@ function GroupCard({ ledger, group, onEdit }) {
   const { t } = useTranslation();
   const people = groupPeople(ledger, group);
   const { currency } = myself(ledger);
-  const total = balanceTotal(ledger, { groupId: group.id, currency });
+  const total = balanceTotal(ledger, { groupId: group.id, currency, withUngrouped: true });
   const currencies = new Set(people.map((person) => person.currency)).size;
   const split = group.usual ? t('expenses:groups.byPercent') : t('expenses:groups.equalParts');
   const summary =

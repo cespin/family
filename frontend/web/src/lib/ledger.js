@@ -62,27 +62,48 @@ export function expensesByMonth(expenses) {
   return months;
 }
 
-/** What is open with one person, in its original currencies: positive means they owe me. */
-function entriesOf(standing, groupId) {
-  if (groupId === ALL_GROUPS) return standing.overall;
+function amountsIn(standing, groupId) {
   return standing.groups.find((group) => group.groupId === groupId)?.amounts ?? [];
+}
+
+/**
+ * Credit with no group that a group's view shows: only when both of us belong to that group. See
+ * "Credit with no group" in docs/frontend-requirements.md.
+ */
+function ungroupedIn(ledger, standing, groupId) {
+  const group = groupById(ledger, groupId);
+  const members = group?.memberIds ?? [];
+  const shared = members.includes(ledger.me) && members.includes(standing.memberId);
+  return shared ? amountsIn(standing, null) : [];
+}
+
+/** What is open with one person, in its original currencies: positive means they owe me. */
+function entriesOf(ledger, standing, groupId, withUngrouped) {
+  if (groupId === ALL_GROUPS) return { entries: standing.overall, ungrouped: [] };
+  const ungrouped = withUngrouped ? ungroupedIn(ledger, standing, groupId) : [];
+  return { entries: [...amountsIn(standing, groupId), ...ungrouped], ungrouped };
 }
 
 /**
  * What each person and I owe each other, in `currency`. `netMinor` is null when a rate is missing,
  * and `homeMinor` is the same balance in that person's own currency. People who owe me come first,
  * then the largest debts.
+ *
+ * With `withUngrouped`, a group's rows also count credit that belongs to no group, and
+ * `ungroupedMinor` is that part in `currency`: 0 when there is none, null when a rate is missing.
+ * Leave it off to read only what is held in the group itself.
  */
-export function balancesFor(ledger, { groupId = ALL_GROUPS, currency }) {
+export function balancesFor(ledger, { groupId = ALL_GROUPS, currency, withUngrouped = false }) {
   const rows = ledger.standings
     .map((standing) => {
       const member = memberById(ledger, standing.memberId);
-      const entries = entriesOf(standing, groupId);
+      const { entries, ungrouped } = entriesOf(ledger, standing, groupId, withUngrouped);
       return {
         member,
         entries,
         netMinor: sumConverted(entries, currency, ledger.rates),
         homeMinor: sumConverted(entries, member.currency, ledger.rates),
+        ungroupedMinor: sumConverted(ungrouped, currency, ledger.rates),
       };
     })
     .filter((row) => row.member && row.entries.length > 0 && row.netMinor !== 0);
@@ -105,7 +126,7 @@ export function advanceCandidates(ledger, currency) {
     .filter((member) => member.active && member.id !== ledger.me)
     .map((member) => {
       const standing = ledger.standings.find((item) => item.memberId === member.id);
-      const entries = standing ? entriesOf(standing, ALL_GROUPS) : [];
+      const entries = standing ? standing.overall : [];
       return {
         member,
         entries,
@@ -119,8 +140,9 @@ export function advanceCandidates(ledger, currency) {
  * The sum of every balance in `currency`, or null when any of them cannot be converted. It adds
  * the original amounts and rounds once, so it can differ by a minor unit from the rounded rows.
  */
-export function balanceTotal(ledger, { groupId = ALL_GROUPS, currency }) {
-  const entries = balancesFor(ledger, { groupId, currency }).flatMap((row) => row.entries);
+export function balanceTotal(ledger, { groupId = ALL_GROUPS, currency, withUngrouped = false }) {
+  const rows = balancesFor(ledger, { groupId, currency, withUngrouped });
+  const entries = rows.flatMap((row) => row.entries);
   return sumConverted(entries, currency, ledger.rates);
 }
 

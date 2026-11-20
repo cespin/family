@@ -233,6 +233,31 @@ describe('DashboardScreen', () => {
       expect(await screen.findByText(i18n.t('expenses:balance.even'))).toBeTruthy();
     });
 
+    it('shows credit that has no group in a group both people belong to, and says so', async () => {
+      // Leo gave Ana CAD 20 before they shared any expense, so the credit has no group.
+      renderWith(
+        ledger({
+          standings: [
+            {
+              memberId: 'leo',
+              overall: [{ minor: -2000, currency: 'CAD' }],
+              groups: [{ groupId: null, amounts: [{ minor: -2000, currency: 'CAD' }] }],
+            },
+          ],
+        }),
+      );
+      await screen.findByText(i18n.t('expenses:balance.youOweThem', { name: 'Leo' }));
+      const ungrouped = i18n.t('expenses:balance.ungroupedPart', {
+        amount: formatMinor(-2000, 'CAD'),
+      });
+      expect(screen.queryByText(shown(ungrouped), { exact: false })).toBeNull();
+
+      await userEvent.click(screen.getByRole('button', { name: 'Casa' }));
+      expect(screen.getByText(i18n.t('expenses:balance.youOweThem', { name: 'Leo' }))).toBeTruthy();
+      expect(screen.getByText(shown(ungrouped), { exact: false })).toBeTruthy();
+      expect(screen.queryByText(i18n.t('expenses:balance.even'))).toBeNull();
+    });
+
     it('shows when the rates were entered, not that they are today’s', async () => {
       renderWith();
       expect(await screen.findByText(/1 USD = 1,40 CAD/)).toBeTruthy();

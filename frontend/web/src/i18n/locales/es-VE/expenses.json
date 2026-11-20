@@ -52,6 +52,7 @@
     "youOweThem": "Le debes a {{name}}",
     "unknown": "Cuentas con {{name}}",
     "theirCurrency": "En su moneda: {{amount}}",
+    "ungroupedPart": "Incluye {{amount}} sin grupo",
     "settle": "Saldar cuentas",
     "advance": "Anotar un adelanto",
     "payments": "Pagos y adelantos"
