@@ -128,14 +128,14 @@ case "$VERTICAL" in
   security)
     require_export FamilyTableArn data >/dev/null
     add_build_vars
-    SECRET_ARN="$(require_export GoogleOAuthSecretArn bootstrap)"
-    VERSION_ID="$(aws secretsmanager list-secret-version-ids --secret-id "$SECRET_ARN" \
-      --query "Versions[?contains(VersionStages, 'AWSCURRENT')] | [0].VersionId" --output text)"
-    if [[ -z "$VERSION_ID" || "$VERSION_ID" == "None" ]]; then
-      echo "error: the Google OAuth secret has no value. Run scripts/set-google-oauth.sh first." >&2
-      exit 1
-    fi
-    SCEPTRE_ARGS+=(--var "google_secret_version_id=${VERSION_ID}")
+    # config/security/stack.yaml reads these with !rcmd, which hides the AWS error on failure.
+    for param in client-id client-secret; do
+      if ! aws ssm get-parameter --name "/${STACK_NAME}-${SALT}/google-oauth/${param}" \
+          --query Parameter.Version --output text >/dev/null 2>&1; then
+        echo "error: the Google OAuth ${param} is not stored. Run scripts/set-google-oauth.sh first." >&2
+        exit 1
+      fi
+    done
     if [[ "$UNPROTECTED" == "1" ]]; then
       SCEPTRE_ARGS+=(--var "deletion_protected=false")
     fi

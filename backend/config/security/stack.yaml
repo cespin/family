@@ -13,6 +13,11 @@ parameters:
   DomainName: {{ var.domain_name }}
   CognitoDomainPrefix: {{ var.cognito_domain_prefix }}
   AuthPresignupCodeS3Key: lambda/auth-presignup/{{ var.code_auth_presignup }}/bootstrap.zip
-  # Resolved by scripts/deploy-vertical.sh. Changing it is what makes a rotated Google secret
-  # reach Cognito, because CloudFormation does not re-read an unchanged dynamic reference.
-  GoogleSecretVersionId: {{ var.google_secret_version_id }}
+  # Read from Parameter Store at deploy time, where scripts/set-google-oauth.sh stores them. !rcmd
+  # runs the command with this stack's own session and returns its stdout unstripped. $(...) drops
+  # the newline that --output text adds, and && keeps a failed aws call failing the deploy: a pipe
+  # would return the last command's status and pass an empty value on. Never move these into
+  # sceptre_user_data: a value rendered into the template body is kept in plaintext, while a NoEcho
+  # parameter is masked.
+  GoogleClientId: !rcmd 'v=$(aws ssm get-parameter --name /{{ var.stack_name }}-{{ var.salt }}/google-oauth/client-id --query Parameter.Value --output text) && printf %s "$v"'
+  GoogleClientSecret: !rcmd 'v=$(aws ssm get-parameter --name /{{ var.stack_name }}-{{ var.salt }}/google-oauth/client-secret --with-decryption --query Parameter.Value --output text) && printf %s "$v"'

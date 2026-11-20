@@ -22,7 +22,7 @@ Verticals deploy in this order, and each one is launched on its own:
 
 | # | Vertical | Owns | Exports (`fam-main-<Name>`) |
 |---|---|---|---|
-| 1 | `bootstrap` | Artifacts bucket, Google OAuth secret | `ArtifactsBucketName`, `GoogleOAuthSecretArn` |
+| 1 | `bootstrap` | Artifacts bucket | `ArtifactsBucketName` |
 | 2 | `certificate` | TLS certificate, in the certificate region | None. Has the output `CertificateArn` |
 | 3 | `data` | DynamoDB table | `FamilyTableName`, `FamilyTableArn` |
 | 4 | `security` | Cognito user pool, Google federation, allowlist trigger | `UserPoolArn`, `UserPoolClientId`, `CognitoDomain` |
@@ -159,7 +159,7 @@ A template that parses can still fail at deploy time, because API Gateway only e
 ## Gotchas in the existing stacks
 
 - **Circular dependency in `security`.** `UserPool` references `AuthPresignupFunction`, so that function's environment cannot reference the pool. Cognito passes what the trigger needs in the event.
-- **Rotating the Google secret.** CloudFormation does not re-read an unchanged dynamic reference, so `scripts/deploy-vertical.sh` passes the current version as `GoogleSecretVersionId`.
+- **Secrets reach a stack as `NoEcho` parameters resolved with `!rcmd`, never through Jinja.** Follow `GoogleClientSecret` in `config/security/stack.yaml`, whose comment explains the command's shape. Rotating the Google client needs only `scripts/set-google-oauth.sh` and a `security` deploy.
 - **Refresh token lifetime.** `RefreshTokenValidity` in `templates/security/stack.yaml` must equal `MAX_AGE_SECONDS` in `functions/auth-session/src/cookie.rs`, and a test enforces it.
 - **Cognito domain prefixes are global.** `scripts/deploy-vertical.sh` checks for a taken prefix before launching `security`.
 - **No `CustomErrorResponses` on the distribution.** They apply to every behavior, so an API 403 would reach the browser as a 200 with `index.html`. The SPA fallback lives in `ViewerRequestFunction` in `templates/hosting/stack.yaml`.

@@ -16,7 +16,7 @@ ARGS=(--profile "$AWS_PROFILE" --region <region> --certificate-region <certifica
 | Step | Command | Needed when |
 |---|---|---|
 | 1 | `scripts/deploy-vertical.sh bootstrap "${ARGS[@]}"` | First deploy |
-| 2 | `scripts/set-google-oauth.sh --profile "$AWS_PROFILE" --region <region>` | First deploy, or rotating the client. Interactive, so the owner runs it |
+| 2 | `scripts/set-google-oauth.sh --profile "$AWS_PROFILE" --region <region>` | First deploy, or rotating the client. Any time before `security`. Interactive, so the owner runs it |
 | 3 | `scripts/deploy-vertical.sh certificate "${ARGS[@]}"` | First deploy |
 | 4 | `scripts/deploy-vertical.sh data "${ARGS[@]}"` | Table changes |
 | 5 | `scripts/build-functions.sh --profile "$AWS_PROFILE" --region <region>` | Any Rust change |

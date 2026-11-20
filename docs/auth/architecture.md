@@ -30,4 +30,4 @@ Create a **Web application** client in Google Auth Platform:
 - Authorized JavaScript origin: `https://<cognito-domain>`
 - Authorized redirect URI: `https://<cognito-domain>/oauth2/idpresponse`
 
-`<cognito-domain>` is `<cognito_domain_prefix>.auth.<region>.amazoncognito.com`, using the prefix from `backend/stacks/main.yaml`. Store the client with `backend/scripts/set-google-oauth.sh`, then deploy the `security` vertical.
+`<cognito-domain>` is `<cognito_domain_prefix>.auth.<region>.amazoncognito.com`, using the prefix from `backend/stacks/main.yaml`. Store the client in Parameter Store with `backend/scripts/set-google-oauth.sh`, then deploy the `security` vertical, which reads it at deploy time.

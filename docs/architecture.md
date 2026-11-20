@@ -15,7 +15,7 @@ The browser and the API share one origin, so there is no CORS. Everything is ser
 
 | Vertical | Owns |
 |---|---|
-| `bootstrap` | Build artifacts bucket and the Google OAuth secret |
+| `bootstrap` | Build artifacts bucket |
 | `certificate` | TLS certificate for CloudFront |
 | `data` | The DynamoDB table |
 | `security` | Cognito user pool, Google federation and the allowlist triggers |

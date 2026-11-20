@@ -20,8 +20,18 @@ Parameters:
     Type: String
   AuthPresignupCodeS3Key:
     Type: String
-  GoogleSecretVersionId:
+  GoogleClientId:
     Type: String
+    AllowedPattern: '[^\s]+\.apps\.googleusercontent\.com'
+  # A NoEcho parameter, not a dynamic reference: AWS::Cognito::UserPoolIdentityProvider does not
+  # accept ssm-secure references, and CloudFormation cannot create a SecureString.
+  # config/security/stack.yaml resolves it from Parameter Store with !rcmd. NoEcho is safe here
+  # because the provider's primary identifier is the pool and provider name, not its details.
+  # Sceptre's Stack.__repr__ prints resolved parameters, so no hook or plugin may print a Stack.
+  GoogleClientSecret:
+    Type: String
+    NoEcho: true
+    AllowedPattern: '[^\s]+'
 Conditions:
   IsDeletionProtected: !Equals [!Ref DeletionProtected, 'true']
 Resources:
@@ -127,14 +137,8 @@ Resources:
       ProviderName: Google
       ProviderType: Google
       ProviderDetails:
-        client_id: !Sub
-          - '{{resolve:secretsmanager:${SecretArn}:SecretString:client_id::${GoogleSecretVersionId}}}'
-          - SecretArn: !ImportValue
-              'Fn::Sub': '${ExportKey}-${StackName}-GoogleOAuthSecretArn'
-        client_secret: !Sub
-          - '{{resolve:secretsmanager:${SecretArn}:SecretString:client_secret::${GoogleSecretVersionId}}}'
-          - SecretArn: !ImportValue
-              'Fn::Sub': '${ExportKey}-${StackName}-GoogleOAuthSecretArn'
+        client_id: !Ref GoogleClientId
+        client_secret: !Ref GoogleClientSecret
         authorize_scopes: openid email profile
       AttributeMapping:
         username: sub

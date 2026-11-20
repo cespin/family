@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 #
-# Stores the Google OAuth web client in Secrets Manager. The values are read from the terminal
-# without echo, never from arguments, so they do not reach shell history or the process list.
+# Stores the Google OAuth web client in Parameter Store: the client ID as a String and the client
+# secret as a SecureString, under /<stack_name>-<salt>/google-oauth/. The values are read from the
+# terminal, never from arguments, and the secret is passed on stdin, so it does not reach shell
+# history or the process list. The security vertical reads them at deploy time.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -22,11 +24,7 @@ if [[ ${#REMAINING_ARGS[@]} -gt 0 ]]; then
 fi
 apply_aws_args
 
-SECRET_ARN="$(cfn_export "$(stack_var export_key "$VAR_FILE")-$(stack_var stack_name "$VAR_FILE")-GoogleOAuthSecretArn")"
-if [[ -z "$SECRET_ARN" ]]; then
-  echo "error: the secret does not exist. Deploy the bootstrap vertical first." >&2
-  exit 1
-fi
+PARAM_PREFIX="/$(stack_var stack_name "$VAR_FILE")-$(stack_var salt "$VAR_FILE")/google-oauth"
 
 read -r -p "Google client ID: " CLIENT_ID
 read -r -s -p "Google client secret: " CLIENT_SECRET
@@ -41,11 +39,20 @@ if [[ -z "$CLIENT_SECRET" ]]; then
   exit 1
 fi
 
+# The client ID is not secret: it appears in every sign-in redirect.
+aws ssm put-parameter --name "${PARAM_PREFIX}/client-id" --type String --value "$CLIENT_ID" \
+  --overwrite --query Version --output text >/dev/null
+
 # Passed on stdin through a file descriptor, so the secret is never a process argument.
-CLIENT_ID="$CLIENT_ID" CLIENT_SECRET="$CLIENT_SECRET" python3 -I -c '
+NAME="${PARAM_PREFIX}/client-secret" CLIENT_SECRET="$CLIENT_SECRET" python3 -I -c '
 import json, os, sys
-sys.stdout.write(json.dumps({"client_id": os.environ["CLIENT_ID"], "client_secret": os.environ["CLIENT_SECRET"]}))
-' | aws secretsmanager put-secret-value --secret-id "$SECRET_ARN" \
-      --secret-string file:///dev/stdin --query VersionId --output text >/dev/null
+sys.stdout.write(json.dumps({
+    "Name": os.environ["NAME"],
+    "Value": os.environ["CLIENT_SECRET"],
+    "Type": "SecureString",
+    "Tier": "Standard",
+    "Overwrite": True,
+}))
+' | aws ssm put-parameter --cli-input-json file:///dev/stdin --query Version --output text >/dev/null
 
 echo "==> Google OAuth client stored. Deploy the security vertical to apply it."
