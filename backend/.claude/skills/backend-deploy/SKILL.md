@@ -34,6 +34,25 @@ scripts/family-member.sh remove <email> --profile "$AWS_PROFILE" --region <regio
 scripts/family-member.sh list --profile "$AWS_PROFILE" --region <region>
 ```
 
+## Resources outside the stacks
+
+The Google OAuth client is in Parameter Store, not in any stack, because CloudFormation cannot create a SecureString. `scripts/set-google-oauth.sh` creates and overwrites it, and nothing tracks it for drift or deletion.
+
+| Parameter | Type |
+|---|---|
+| `/<stack_name>-<salt>/google-oauth/client-id` | String |
+| `/<stack_name>-<salt>/google-oauth/client-secret` | SecureString, AWS-managed key |
+
+- **Creating an environment:** run step 2 before `security`. `deploy-vertical.sh security` refuses to launch while either parameter is missing.
+- **Deleting an environment:** deleting the stacks leaves both parameters behind. After the stacks are gone, remove them by hand:
+
+  ```bash
+  aws ssm delete-parameters --names /<stack_name>-<salt>/google-oauth/client-id \
+    /<stack_name>-<salt>/google-oauth/client-secret --profile "$AWS_PROFILE" --region <region>
+  ```
+
+- **A new salt means new parameters.** The names include the salt, so run step 2 again after changing it, and delete the old pair.
+
 ## Gotchas
 
 - **A deploy changes real infrastructure.** Confirm with the owner before running one, and never pass `--yes` unless they agreed.
