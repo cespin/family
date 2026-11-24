@@ -16,6 +16,18 @@ export const PAYMENT_MAX_MINOR = Number.MAX_SAFE_INTEGER;
  * The conversion table for one exchange rate entry from the API, or null when there is none.
  * The entry holds 1 USD in CAD and 1 CAD in CLP as decimal strings; CAD is the base.
  */
+/**
+ * The reader's own calendar day for a fetched entry's time. The entry's `date` is the UTC day,
+ * which in the Americas turns to tomorrow from the late afternoon on.
+ */
+function localDay(timestamp) {
+  const time = new Date(timestamp);
+  if (Number.isNaN(time.getTime())) return null;
+  const month = String(time.getMonth() + 1).padStart(2, '0');
+  const day = String(time.getDate()).padStart(2, '0');
+  return `${time.getFullYear()}-${month}-${day}`;
+}
+
 export function ratesFromEntry(entry) {
   if (!entry) return null;
   const usdCad = Number(entry.usdCad);
@@ -24,29 +36,12 @@ export function ratesFromEntry(entry) {
   return {
     id: entry.id,
     base: 'CAD',
-    asOf: entry.date,
+    asOf: (entry.fetchedAt && localDay(entry.fetchedAt)) || entry.date,
     enteredBy: entry.enteredBy,
     usdCad: entry.usdCad,
     cadClp: entry.cadClp,
     toBase: { CAD: 1, USD: usdCad, CLP: 1 / cadClp },
   };
-}
-
-const RATE_MAX = 1_000_000;
-const RATE_MAX_CHARS = 20;
-
-/**
- * Reads a typed exchange rate into the plain decimal the API takes, such as "1.40", or null.
- * A comma is the decimal separator when there is one, so "1.234,5" reads as 1234.5. Without a
- * comma, a single dot is decimal: rates are often below 10, so "1.400" means 1.4, not 1400.
- */
-export function parseRate(text) {
-  let value = String(text ?? '').replace(/\s/g, '');
-  if (value.includes(',')) value = value.replaceAll('.', '').replace(',', '.');
-  else if ((value.match(/\./g) ?? []).length > 1) value = value.replaceAll('.', '');
-  if (!/^\d+(\.\d+)?$/.test(value) || value.length > RATE_MAX_CHARS) return null;
-  const number = Number(value);
-  return number > 0 && number <= RATE_MAX ? value : null;
 }
 
 /**

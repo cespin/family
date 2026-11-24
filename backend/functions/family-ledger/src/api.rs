@@ -9,6 +9,7 @@ use lambda_http::{Body, Request, RequestExt, Response};
 use serde_json::Value;
 
 use crate::service::env::Env;
+use crate::service::rates::{RateFetcher, RatesUpdate};
 use crate::service::reads::{ExpenseFilters, PaymentFilters};
 use crate::service::{expenses, groups, payments, profile, rates, reads};
 use crate::store::table::Table;
@@ -73,13 +74,18 @@ pub async fn me_profile_put<T: Table, E: Env>(
 }
 
 /// `GET /api/ledger`, `/api/expenses`, `/api/expenses/{expenseId}` and `/api/payments`.
-pub async fn ledger_read<T: Table>(table: &T, event: &Request) -> Response<Body> {
+pub async fn ledger_read<T: Table, E: Env, U: RatesUpdate>(
+    table: &T,
+    env: &E,
+    update: &U,
+    event: &Request,
+) -> Response<Body> {
     let result = async {
         let caller = Caller::from_request(event)?;
         let mut query = query_parameters(event);
         let path = path_of(event);
         if path == "/api/ledger" {
-            reads::ledger(table, &caller).await
+            reads::ledger(table, env, update, &caller).await
         } else if path == "/api/expenses" {
             let filters = ExpenseFilters {
                 group_id: query.remove("groupId"),
@@ -160,11 +166,19 @@ pub async fn groups_write<T: Table>(table: &T, event: &Request) -> Response<Body
     finish(if creating { 201 } else { 200 }, result.await)
 }
 
-/// `POST /api/exchange-rates`.
-pub async fn exchange_rates_post<T: Table>(table: &T, event: &Request) -> Response<Body> {
+/// `POST /api/exchange-rates/refresh`. It takes no body.
+pub async fn exchange_rates_refresh<T: Table, F: RateFetcher, E: Env>(
+    table: &T,
+    fetcher: &F,
+    env: &E,
+    event: &Request,
+) -> Response<Body> {
     let result = async {
         let caller = Caller::from_request(event)?;
-        rates::post_rates(table, &caller, http::parse_json_body(event)?).await
+        if path_of(event) != "/api/exchange-rates/refresh" {
+            return Err(no_route());
+        }
+        rates::refresh_rates(table, fetcher, env, &caller).await
     };
-    finish(201, result.await)
+    finish(200, result.await)
 }

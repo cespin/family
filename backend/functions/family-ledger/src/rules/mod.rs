@@ -3,6 +3,7 @@
 pub mod exact;
 pub mod money;
 pub mod pair;
+pub mod rates;
 pub mod replay;
 pub mod split;
 pub mod standing;

@@ -1,7 +1,7 @@
 import { useId, useState } from 'react';
-import { ArrowLeftRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { currencyLabel, ratesLine } from '../components/expenses/labels.js';
+import { RefreshRatesButton } from '../components/expenses/RefreshRatesButton.jsx';
 import { SubHeader } from '../components/expenses/SubHeader.jsx';
 import { AvatarPicker, Button, Card, Segmented, StatusNote } from '../components/ui';
 import { useSession } from '../hooks/useSession.js';
@@ -11,6 +11,9 @@ import { saveProfile } from '../lib/expenses.js';
 import { myself } from '../lib/ledger.js';
 import { CURRENCIES } from '../lib/money.js';
 import './SettingsScreen.css';
+
+// ExchangeRate-API's free endpoint asks for a visible link back to it.
+const EXCHANGE_RATE_API_URL = 'https://www.exchangerate-api.com';
 
 export function SettingsScreen({ ledger, ledgerState, nav }) {
   const { t } = useTranslation();
@@ -135,9 +138,18 @@ export function SettingsScreen({ ledger, ledgerState, nav }) {
             <p className="fa-text-body fa-text-muted">
               {ratesLine(t, ledger) ?? t('expenses:rates.none')}
             </p>
-            <Button variant="secondary" block icon={ArrowLeftRight} onClick={nav.rates}>
-              {t('expenses:rates.open')}
-            </Button>
+            <RefreshRatesButton
+              variant="secondary"
+              size="medium"
+              block
+              onRefreshed={ledgerState.reload}
+            />
+            <p className="fa-text-caption fa-text-muted">{t('expenses:rates.sources')}</p>
+            <p className="fa-text-caption">
+              <a href={EXCHANGE_RATE_API_URL} target="_blank" rel="noreferrer">
+                {t('expenses:rates.attribution')}
+              </a>
+            </p>
           </div>
         </Card>
       </div>

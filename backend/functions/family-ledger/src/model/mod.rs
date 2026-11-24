@@ -247,8 +247,14 @@ pub struct RateEntry {
     pub id: String,
     pub usd_cad: String,
     pub cad_clp: String,
+    /// The UTC day of `fetched_at`, or the day a member typed the rates in.
     pub date: String,
-    pub entered_by: String,
+    /// Who typed the rates in. Rates fetched from the public services have no one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub entered_by: Option<String>,
+    /// When the public services were asked. Rates typed in by a member have none.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fetched_at: Option<String>,
     pub seq: u64,
     #[serde(flatten)]
     pub stamp: Stamp,
@@ -259,8 +265,37 @@ impl RateEntry {
         RecordedRates {
             usd_cad: self.usd_cad.clone(),
             cad_clp: self.cad_clp.clone(),
+            rates_id: Some(self.id.clone()),
         }
     }
+}
+
+/// What one rate service answered on the latest attempt, kept to diagnose a wrong rate.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SourceAnswer {
+    pub source: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub usd_cad: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub usd_clp: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+}
+
+/// When the rates were last checked against the public services. It lives outside the ledger, so
+/// checking never moves the ledger's revision. Its own `rev` counts its writes.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RatesStatus {
+    /// The last time the services answered well enough to give a rate.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub checked_at: Option<String>,
+    /// The last time a refresh asked the services, whatever they answered.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub attempted_at: Option<String>,
+    #[serde(default)]
+    pub last_answers: Vec<SourceAnswer>,
 }
 
 /// The stored form of a pair of members' state.

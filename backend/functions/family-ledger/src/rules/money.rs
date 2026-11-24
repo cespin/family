@@ -43,6 +43,9 @@ pub struct Money {
 pub struct RecordedRates {
     pub usd_cad: String,
     pub cad_clp: String,
+    /// The rate entry these came from. Events recorded before it was kept have none.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rates_id: Option<String>,
 }
 
 impl RecordedRates {
@@ -115,6 +118,7 @@ mod tests {
         RecordedRates {
             usd_cad: "1.40".into(),
             cad_clp: "670".into(),
+            rates_id: None,
         }
         .exact()
         .unwrap()

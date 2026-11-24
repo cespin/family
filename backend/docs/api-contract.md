@@ -17,7 +17,7 @@ Routes are unversioned under `/api`. The OpenAPI document inline in `templates/a
 | `PUT /api/payments/{paymentId}` | Cognito | Corrects the day a payment's money was given |
 | `POST /api/groups` | Cognito | Creates a group, answering 201 |
 | `PUT /api/groups/{groupId}` | Cognito | Renames a group or changes its members |
-| `POST /api/exchange-rates` | Cognito | Enters new exchange rates, answering 201 |
+| `POST /api/exchange-rates/refresh` | Cognito | Asks the public rate services for the exchange rates now, and waits for them |
 | `POST /api/auth/session` | None | Exchanges an authorization code and sets the session cookie |
 | `POST /api/auth/session/refresh` | Session cookie | Returns a fresh ID token |
 | `DELETE /api/auth/session` | Session cookie | Revokes the session and clears the cookie |
@@ -40,6 +40,7 @@ Every non-2xx response with a body has this shape:
 | `not_found` | 404 |
 | `conflict` | 409 |
 | `member_has_open_balance` | 409 |
+| `rates_unavailable` | 503 |
 | `too_many_requests` | 429 |
 | `request_error` | Other 4xx |
 | `internal_error` | 5xx |
@@ -54,15 +55,15 @@ Every route uses the `CognitoUserPool` authorizer, re-reads the allowlist and an
 
 - **Money** is an integer in minor units, always next to its currency: `amountMinor` and `currency`. The supported currencies are `CAD`, `USD` and `CLP`.
 - **Dates** are calendar dates written `YYYY-MM-DD`, with no time or time zone.
-- **Expenses and payments carry two dates.** `date` is the day it was entered, which the browser sends as its own local today and nobody can change. It decides which debts a payment pays first and which rates the detail names. `transactionDate` is the day the money was spent or given, which the member chooses and can correct. It orders the lists and is the date screens show. A request without `transactionDate`, from a browser that predates it, stores its `date`.
-- **Exchange rates** are decimal strings, such as `"1.40"`, so no float reaches the money rules.
+- **Expenses and payments carry two dates.** `date` is the day it was entered, which the browser sends as its own local today and nobody can change. It decides which debts a payment pays first. `transactionDate` is the day the money was spent or given, which the member chooses and can correct. It orders the lists and is the date screens show. A request without `transactionDate`, from a browser that predates it, stores its `date`.
+- **Exchange rates** are decimal strings, such as `"1.4000"`, so no float reaches the money rules. Nobody types them in: the backend fetches them from public rate services, as section "Exchange rates" of the requirements describes.
 - **The backend sends data and stable codes**, never display text.
 - **Shares are computed by the server.** A request sends participants and percentages, and never sends shares.
 - **Bodies are validated twice:** by a gateway schema with `additionalProperties: false`, and by the handler with `deny_unknown_fields`.
 
 ### Retries and concurrent edits
 
-- **Every write carries a `requestId`**, a UUID the browser generates once per save and reuses when it retries. On a `POST` it also becomes the new resource's `id`. `PUT /api/me/profile` is the exception, because repeating it changes nothing.
+- **Every write carries a `requestId`**, a UUID the browser generates once per save and reuses when it retries. On a `POST` it also becomes the new resource's `id`. `PUT /api/me/profile` and `POST /api/exchange-rates/refresh` are the exceptions, because repeating them is safe.
 - **A repeated request is safe.** The same `requestId` with the same content returns the saved result with the original success status, such as 201. The same `requestId` with different content returns `conflict`.
 - **Expenses, payments and groups carry a `version`.** A `PUT` sends back the version it read, and a stale version returns `conflict`.
 - **Saving a usual split through an expense** also increases the group's `version`.
@@ -106,8 +107,11 @@ Balances come from `GET /api/ledger` and never depend on how many expenses have 
     }
   ],
   "exchangeRates": [
-    { "id": "<rateId>", "usdCad": "1.40", "cadClp": "670", "date": "2026-11-18", "enteredBy": "<memberId>" }
+    { "id": "<rateId>", "usdCad": "1.4328", "cadClp": "711.42", "date": "2026-11-18", "fetchedAt": "2026-11-18T12:00:00Z" },
+    { "id": "<rateId>", "usdCad": "1.40", "cadClp": "670", "date": "2026-11-01", "enteredBy": "<memberId>" }
   ],
+  "exchangeRatesCheckedAt": "2026-11-18T12:00:00Z",
+  "exchangeRatesUpdating": false,
   "standings": [
     {
       "memberId": "<memberId>",
@@ -123,7 +127,9 @@ Balances come from `GET /api/ledger` and never depend on how many expenses have 
 
 - **`avatar`** is one emoji, or null for a member saved before avatars until `scripts/backfill-avatars.sh` runs. A client shows initials for null.
 - **`active`** is false for a former member, who stays in the history but cannot be added to a new expense or group. A payment with them is still accepted, so an old debt can always be cleared.
-- **`exchangeRates`** runs newest first, so the first entry is the current one. It is empty until rates are entered.
+- **`exchangeRates`** runs newest first, so the first entry is the current one. It is empty until the first rates are fetched. An entry has `fetchedAt`, when the services were asked, or `enteredBy`, the member who typed it in before rates were fetched.
+- **`exchangeRatesCheckedAt`** is when the services last answered well enough to give rates, or null if they never have. It can be later than the first entry's `fetchedAt`, because rates that did not change add no entry.
+- **`exchangeRatesUpdating`** is true when this read found the last check older than six hours and started an update in the background. The rates in this answer are the old ones, and a read a few seconds later shows the new ones.
 - **`standings`** amounts stay in their original currencies. Positive means that member owes the caller. A `groupId` of null is credit between two people who share no group.
 
 ### `GET /api/expenses`
@@ -188,7 +194,7 @@ Balances come from `GET /api/ledger` and never depend on how many expenses have 
 }
 ```
 
-- **`ratesId`** names the entry in force on the expense's entry `date`, and is null when none existed.
+- **`ratesId`** names the entry whose rates the expense recorded, and is null when none existed. An expense recorded before that was kept names the entry in force on its entry `date`.
 - **`otherAmount`, `chargedCurrency` and `otherShareMinor`** are present only on a purchase charged in a different currency. `percent` is present only when `splitMode` is `percent`.
 - **`status`** is `owes`, `partly_paid` or `paid`.
 - **`appliedPayments`** includes credit applied to the expense, naming the payment the credit came from. `date` is the payment's entry date and `transactionDate` the day its money was given.
@@ -235,7 +241,7 @@ Takes `limit` and `cursor` as above, and optionally `memberId` to list only the 
 | `PUT /api/payments/{paymentId}` | `requestId`, `transactionDate`, `version`. Nothing else about a payment can change |
 | `POST /api/groups` | `requestId`, `name`, `memberIds`, and optionally `usualSplit` |
 | `PUT /api/groups/{groupId}` | `requestId`, `name`, `memberIds`, `version`, and optionally `usualSplit` |
-| `POST /api/exchange-rates` | `requestId`, `usdCad`, `cadClp`, `date` |
+| `POST /api/exchange-rates/refresh` | None. A minute after a refresh asked the services, another one answers without asking them, so repeating it is safe without a `requestId` |
 
 - **`avatar`** is one of the emojis in `AVATARS` in `functions/family-ledger/src/service/profile.rs`. Anything else is `validation_error`. Without one, the first call stores 🐵 and a later call keeps the saved avatar.
 - **`usualSplit` on an expense** asks to make it the group's usual split, and holds a whole percentage for every current member of the group.
@@ -245,7 +251,7 @@ Takes `limit` and `cursor` as above, and optionally `memberId` to list only the 
 - **Either member of a payment can correct its `transactionDate`.** Anyone else gets `not_found`, as for a payment they cannot list. The money it moved stays where it is.
 - **`participantIds` order is not significant.** The server stores participants in group order, because equal splits depend on it. A participant who has left the group keeps their position on the expense.
 
-A write returns the saved resource, in the shape its read route uses: `GET /api/expenses/{expenseId}` for an expense, one entry of `payments` in `GET /api/payments` for a payment, and one entry of `groups` or `exchangeRates` in `GET /api/ledger` for a group or exchange rate. `PUT /api/me/profile` returns the `GET /api/me` shape. The frontend reloads the balances and the first page after every save, because one change can move many standings.
+A write returns the saved resource, in the shape its read route uses: `GET /api/expenses/{expenseId}` for an expense, one entry of `payments` in `GET /api/payments` for a payment, and one entry of `groups` in `GET /api/ledger` for a group. `POST /api/exchange-rates/refresh` answers `revision`, `updated`, true when it saved new rates, `exchangeRate`, the entry in force afterwards in the `exchangeRates` shape or null, and `exchangeRatesCheckedAt`. `PUT /api/me/profile` returns the `GET /api/me` shape. The frontend reloads the balances and the first page after every save, because one change can move many standings.
 
 ### Errors on these routes
 
@@ -256,3 +262,4 @@ A write returns the saved resource, in the shape its read route uses: `GET /api/
 | The expense, payment, group or member does not exist or is not visible to the caller, including in a query parameter | `not_found` |
 | A stale `version`, a reused `requestId` with different content, or a write that kept losing to others | `conflict` |
 | A member with an open balance in the group cannot be removed from it | `member_has_open_balance` |
+| Fewer than two rate services answered, or two that answered disagree. The rates in force stay | `rates_unavailable` |

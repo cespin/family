@@ -6,6 +6,7 @@ Rust Lambdas (`functions/`), CloudFormation templates (`templates/<vertical>/`) 
 
 - `functions/family-core`: shared errors, HTTP helpers, claims and allowlist access.
 - `functions/family-ledger`: the expenses ledger's money rules, storage protocols and route handlers.
+- `functions/family-rates`: the public exchange rate services the ledger's rates are fetched from.
 - `functions/<route>`: one crate per Lambda, kept thin. Routes that need the same table access share one.
 - `stacks/main.yaml`: environment values. `stacks/main.build.yaml` is generated and gitignored.
 - `scripts/`: the only supported way to build and deploy.

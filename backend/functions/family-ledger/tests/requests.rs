@@ -10,7 +10,7 @@ use family_ledger::rules::replay::{replay_all, slices_by_year};
 use serde_json::{json, Value};
 use support::fake_table::FakeTable;
 use support::fixtures::{base_items, data_dir, ledger_items, Items};
-use support::router::send;
+use support::router::send_write;
 
 fn cases() -> Vec<Value> {
     let text = fs::read_to_string(data_dir().join("requests.json")).expect("requests.json");
@@ -92,14 +92,7 @@ async fn every_request_case_gets_the_answer_it_must_get() {
         let name = case["name"].as_str().unwrap();
         let before = base_items();
         let table = FakeTable::seeded(before.clone());
-        let answer = send(
-            &table,
-            case["caller"].as_str().unwrap(),
-            case["method"].as_str().unwrap(),
-            case["path"].as_str().unwrap(),
-            case.get("body"),
-        )
-        .await;
+        let answer = send_write(&table, case).await;
 
         let expect = &case["expect"];
         assert_eq!(
@@ -137,7 +130,28 @@ async fn every_request_case_gets_the_answer_it_must_get() {
 
         let after = table.snapshot();
         let repeat = name.starts_with("repeating");
-        if answer.status >= 400 || case["method"] == "GET" || repeat {
+        if case["path"] == "/api/exchange-rates/refresh" {
+            // A refresh always records its attempt in the status item, which is outside the
+            // ledger, and moves the ledger only when it saves new rates.
+            let ledger = |items: &Items| -> Items {
+                let mut items = items.clone();
+                items.remove(&("RATES".to_string(), "STATUS".to_string()));
+                items
+            };
+            if answer.body["updated"] == json!(true) {
+                assert_eq!(
+                    head_rev(&after),
+                    head_rev(&before) + 1,
+                    "{name}: one revision"
+                );
+            } else {
+                assert_eq!(
+                    ledger(&after),
+                    ledger(&before),
+                    "{name}: the ledger must not change"
+                );
+            }
+        } else if answer.status >= 400 || case["method"] == "GET" || repeat {
             assert_eq!(after, before, "{name}: this request must change nothing");
         } else if case["path"] != "/api/me/profile"
             || name.starts_with("finishing sign-up")

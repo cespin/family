@@ -29,6 +29,7 @@
     "member_has_open_balance": "Esta persona todavía tiene saldos pendientes en el grupo. Salden las cuentas antes de sacarla.",
     "request_error": "No pudimos procesar tu solicitud.",
     "too_many_requests": "Demasiados intentos. Espera un momento.",
-    "internal_error": "Algo salió mal de nuestro lado. Inténtalo más tarde."
+    "internal_error": "Algo salió mal de nuestro lado. Inténtalo más tarde.",
+    "rates_unavailable": "No pudimos traer el cambio ahora. Seguimos con el que teníamos; inténtalo más tarde."
   }
 }

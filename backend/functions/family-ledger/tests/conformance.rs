@@ -8,7 +8,7 @@ use std::fs;
 use serde_json::{json, Value};
 use support::fake_table::FakeTable;
 use support::fixtures::{base_items, data_dir, scenario_items, Items};
-use support::router::send;
+use support::router::{send, send_write};
 
 fn expected() -> Value {
     let text = fs::read_to_string(data_dir().join("expected.json")).expect("expected.json");
@@ -295,14 +295,7 @@ async fn each_scenarios_writes_store_exactly_what_the_data_set_says() {
         let name = scenario["name"].as_str().unwrap();
         let table = FakeTable::seeded(base_items());
         for write in scenario["writes"].as_array().unwrap() {
-            let answer = send(
-                &table,
-                write["caller"].as_str().unwrap(),
-                write["method"].as_str().unwrap(),
-                write["path"].as_str().unwrap(),
-                Some(&write["body"]),
-            )
-            .await;
+            let answer = send_write(&table, write).await;
             assert!(
                 answer.status < 300,
                 "{name}: {} {}",

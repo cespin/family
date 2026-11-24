@@ -49,6 +49,20 @@ pub fn decimal(text: &str) -> Option<Exact> {
     Some(Exact::from_integer(digits) / power_of_ten(fraction.len() as u32))
 }
 
+/// Writes a non-negative value as a plain decimal with exactly `places` decimals, such as `1.4000`.
+/// Halves round up, which is away from zero.
+pub fn to_decimal(value: &Exact, places: u32) -> String {
+    let scaled = (value * power_of_ten(places)).round().to_integer();
+    let digits = scaled.to_string();
+    let places = places as usize;
+    if places == 0 {
+        return digits;
+    }
+    let padded = format!("{digits:0>width$}", width = places + 1);
+    let (integer, fraction) = padded.split_at(padded.len() - places);
+    format!("{integer}.{fraction}")
+}
+
 /// The stored form of a fraction, such as `141169/50`.
 pub fn to_text(value: &Exact) -> String {
     format!("{}/{}", value.numer(), value.denom())
@@ -96,6 +110,22 @@ mod tests {
     #[case("1.2.3")]
     fn refuses_anything_but_a_plain_decimal(#[case] text: &str) {
         assert_eq!(decimal(text), None);
+    }
+
+    #[rstest]
+    #[case(7, 5, 4, "1.4000")]
+    #[case(711_365, 1000, 2, "711.37")]
+    #[case(711_364, 1000, 2, "711.36")]
+    #[case(1, 2000, 2, "0.00")]
+    #[case(5, 1000, 2, "0.01")]
+    #[case(670, 1, 0, "670")]
+    fn writes_fixed_decimals(
+        #[case] n: i64,
+        #[case] d: i64,
+        #[case] places: u32,
+        #[case] text: &str,
+    ) {
+        assert_eq!(to_decimal(&(whole(n) / whole(d)), places), text);
     }
 
     #[test]

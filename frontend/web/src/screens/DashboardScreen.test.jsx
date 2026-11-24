@@ -11,6 +11,7 @@ import {
   fetchLedger,
   fetchPayments,
   recordPayment,
+  refreshExchangeRates,
   saveExpense,
   saveProfile,
   updatePayment,
@@ -29,7 +30,7 @@ vi.mock('../lib/expenses.js', () => ({
   fetchPayments: vi.fn(),
   updatePayment: vi.fn(),
   saveGroup: vi.fn(),
-  saveExchangeRates: vi.fn(),
+  refreshExchangeRates: vi.fn(),
   saveProfile: vi.fn(),
 }));
 
@@ -147,6 +148,7 @@ describe('DashboardScreen', () => {
       recordPayment,
       fetchPayments,
       updatePayment,
+      refreshExchangeRates,
     ]) {
       vi.mocked(fn).mockReset();
     }
@@ -262,6 +264,57 @@ describe('DashboardScreen', () => {
     it('shows when the rates were entered, not that they are today’s', async () => {
       renderWith();
       expect(await screen.findByText(/1 USD = 1,40 CAD/)).toBeTruthy();
+    });
+  });
+
+  describe('exchange rates', () => {
+    const refresh = () => button(i18n.t('expenses:rates.refresh'));
+
+    it('offers no way to type rates in, only to ask for fresh ones', async () => {
+      renderWith();
+      expect(await refresh()).toBeTruthy();
+      expect(screen.queryByRole('textbox', { name: /CAD/ })).toBeNull();
+    });
+
+    it('reloads the balances when the backend saved new rates', async () => {
+      vi.mocked(refreshExchangeRates).mockResolvedValue({ updated: true });
+      renderWith();
+      await userEvent.click(await refresh());
+
+      await waitFor(() => expect(fetchLedger).toHaveBeenCalledTimes(2));
+      const [auth] = vi.mocked(refreshExchangeRates).mock.calls[0];
+      expect(auth.getToken).toBe(SESSION.getToken);
+    });
+
+    it('says the rates were already current, and still shows any saved since the last read', async () => {
+      vi.mocked(refreshExchangeRates).mockResolvedValue({ updated: false });
+      renderWith();
+      await userEvent.click(await refresh());
+
+      expect(await screen.findByText(i18n.t('expenses:rates.upToDate'))).toBeTruthy();
+      await waitFor(() => expect(fetchLedger).toHaveBeenCalledTimes(2));
+    });
+
+    it('explains that the services did not answer, and keeps the rates on screen', async () => {
+      vi.mocked(refreshExchangeRates).mockRejectedValue(new ApiError(503, 'rates_unavailable'));
+      renderWith();
+      await userEvent.click(await refresh());
+
+      const alert = await screen.findByRole('alert');
+      expect(alert.textContent).toBe(i18n.t('common:errors.rates_unavailable'));
+      expect(screen.getByText(/1 USD = 1,40 CAD/)).toBeTruthy();
+    });
+
+    it('can be asked for from settings too', async () => {
+      vi.mocked(refreshExchangeRates).mockResolvedValue({ updated: true });
+      renderWith();
+      await userEvent.click(await button(i18n.t('expenses:settings.open')));
+      await screen.findByRole('heading', { name: i18n.t('expenses:settings.title') });
+      await userEvent.click(await refresh());
+
+      await waitFor(() => expect(fetchLedger).toHaveBeenCalledTimes(2));
+      const credit = screen.getByRole('link', { name: i18n.t('expenses:rates.attribution') });
+      expect(credit.getAttribute('rel')).toBe('noreferrer');
     });
   });
 

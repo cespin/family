@@ -22,7 +22,7 @@ use support::fixtures::{
     base_items, before_avatars, before_list_shares, before_transaction_dates, data_dir,
     is_list_entry, scenario_items, Items,
 };
-use support::router::send;
+use support::router::{send, send_write};
 
 static TABLES: AtomicUsize = AtomicUsize::new(0);
 
@@ -257,14 +257,7 @@ async fn each_scenarios_writes_store_exactly_what_the_data_set_says() {
         let name = scenario["name"].as_str().unwrap();
         let table = seeded(&base_items()).await;
         for write in scenario["writes"].as_array().unwrap() {
-            let answer = send(
-                &table,
-                write["caller"].as_str().unwrap(),
-                write["method"].as_str().unwrap(),
-                write["path"].as_str().unwrap(),
-                Some(&write["body"]),
-            )
-            .await;
+            let answer = send_write(&table, write).await;
             assert!(answer.status < 300, "{name}: {}", answer.body);
         }
         let wanted = scenario_items(name);

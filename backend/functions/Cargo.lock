@@ -157,6 +157,7 @@ dependencies = [
  "aws-credential-types",
  "aws-sigv4",
  "aws-smithy-async",
+ "aws-smithy-eventstream",
  "aws-smithy-http",
  "aws-smithy-runtime",
  "aws-smithy-runtime-api",
@@ -197,6 +198,32 @@ dependencies = [
  "regex-lite",
  "tracing",
  "url",
+]
+
+[[package]]
+name = "aws-sdk-lambda"
+version = "1.162.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e4b0cf6f49ac89a743aad4220e06a59254c9af4f8e3323abe0d62f11f7d4bbc1"
+dependencies = [
+ "arc-swap",
+ "aws-credential-types",
+ "aws-runtime",
+ "aws-smithy-async",
+ "aws-smithy-eventstream",
+ "aws-smithy-http",
+ "aws-smithy-json",
+ "aws-smithy-observability",
+ "aws-smithy-runtime",
+ "aws-smithy-runtime-api",
+ "aws-smithy-schema",
+ "aws-smithy-types",
+ "aws-types",
+ "bytes",
+ "fastrand",
+ "http",
+ "regex-lite",
+ "tracing",
 ]
 
 [[package]]
@@ -280,6 +307,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6c5aa04c533733a77879294f1854c27b3715cc50ea71756d1f6a958702b1a9fb"
 dependencies = [
  "aws-credential-types",
+ "aws-smithy-eventstream",
  "aws-smithy-http",
  "aws-smithy-runtime-api",
  "aws-smithy-types",
@@ -306,11 +334,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "aws-smithy-eventstream"
+version = "0.61.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "14c8a643d0e114cae39e45415e3225793a6396698b7779a0c9e3ede731d8fc71"
+dependencies = [
+ "aws-smithy-types",
+ "bytes",
+ "crc32fast",
+]
+
+[[package]]
 name = "aws-smithy-http"
 version = "0.64.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "19af609dd5edf8b056cd0bb001c706c8b3b1458055328b334ec13d7f46f6aaa8"
 dependencies = [
+ "aws-smithy-eventstream",
  "aws-smithy-runtime-api",
  "aws-smithy-types",
  "bytes",
@@ -662,6 +702,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "crc32fast"
+version = "1.5.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2b929dd2a135771f40afabd1073f85eed59c800b7c61901e5c254270497dad64"
+dependencies = [
+ "cfg-if",
+]
+
+[[package]]
 name = "crypto-common"
 version = "0.1.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -771,15 +820,31 @@ dependencies = [
 ]
 
 [[package]]
-name = "exchange-rates-post"
+name = "exchange-rates-refresh"
 version = "0.1.0"
 dependencies = [
  "aws-config",
  "aws-sdk-dynamodb",
  "family-core",
  "family-ledger",
+ "family-rates",
  "lambda_http",
  "tokio",
+]
+
+[[package]]
+name = "exchange-rates-update"
+version = "0.1.0"
+dependencies = [
+ "aws-config",
+ "aws-sdk-dynamodb",
+ "family-core",
+ "family-ledger",
+ "family-rates",
+ "lambda_runtime",
+ "serde_json",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -828,6 +893,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "family-rates"
+version = "0.1.0"
+dependencies = [
+ "family-core",
+ "family-ledger",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "ureq",
+]
+
+[[package]]
 name = "fastrand"
 version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -847,9 +925,9 @@ checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
 
 [[package]]
 name = "form_urlencoded"
-version = "1.2.2"
+version = "1.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cb4cb245038516f5f85277875cdaa4f7d2c9a0fa0468de06ed190163b1581fcf"
+checksum = "afa489199eaffb1211795df1c6236ce1ad0d41a6fa45250add73e3b02420f06e"
 dependencies = [
  "percent-encoding",
 ]
@@ -1401,10 +1479,12 @@ version = "0.1.0"
 dependencies = [
  "aws-config",
  "aws-sdk-dynamodb",
+ "aws-sdk-lambda",
  "family-core",
  "family-ledger",
  "lambda_http",
  "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -2362,9 +2442,9 @@ dependencies = [
 
 [[package]]
 name = "url"
-version = "2.5.8"
+version = "2.5.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ff67a8a4397373c3ef660812acab3268222035010ab8680ec4215f38ba3d0eed"
+checksum = "f00cd2407bb42c0ef17be88d4cf020f5cceffd121665bac9b8b9493a369b3b1a"
 dependencies = [
  "form_urlencoded",
  "idna",

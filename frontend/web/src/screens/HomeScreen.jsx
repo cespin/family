@@ -233,7 +233,7 @@ export function HomeScreen({ ledgerState, isWide, nav, dataVersion }) {
               onSettle={nav.settle}
               onAdvance={nav.advance}
               onPayments={nav.payments}
-              onRates={nav.rates}
+              onRatesRefreshed={ledgerState.reload}
             />
             {isWide && hasGroups && <GroupsCard ledger={ledger} nav={nav} />}
           </div>

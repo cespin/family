@@ -44,6 +44,11 @@ pub fn rate(id: &str) -> Key {
     ledger(format!("RATE#{id}"))
 }
 
+/// When the rates were last checked. Outside `LEDGER#main`, so it never moves the ledger's revision.
+pub fn rates_status() -> Key {
+    Key::new("RATES", "STATUS")
+}
+
 pub fn pair(x: &str, y: &str) -> Key {
     let (low, high) = pair_key(x, y);
     ledger(format!("PAIR#{low}#{high}"))

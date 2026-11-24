@@ -36,9 +36,12 @@
   "rates": {
     "quote": "1 {{from}} = {{value}} {{to}}",
     "asOf": "Cambio del {{date}}: {{rates}}",
-    "none": "Todavía no hay tipo de cambio, así que no podemos convertir entre monedas.",
-    "open": "Tipo de cambio",
-    "add": "Agregar el cambio"
+    "none": "Todavía no tenemos el tipo de cambio, así que no podemos convertir entre monedas.",
+    "refresh": "Actualizar el cambio",
+    "refreshing": "Actualizando…",
+    "upToDate": "El cambio ya estaba al día.",
+    "sources": "Se actualiza solo cada 6 horas. Usamos el valor del medio entre tres fuentes públicas: Frankfurter, fawazahmed0 y ExchangeRate-API.",
+    "attribution": "Tipos de cambio de ExchangeRate-API"
   },
   "balance": {
     "viewIn": "Ver en",
@@ -314,24 +317,6 @@
     "saving": "Guardando…",
     "saved": "¡Listo! Ahora tu moneda es {{currency}}.",
     "ratesTitle": "Tipo de cambio"
-  },
-  "ratesScreen": {
-    "back": "Volver a saldos",
-    "title": "Tipo de cambio",
-    "intro": "Lo anota la familia a mano. Cambia cómo se ven los saldos y los pagos que vienen, nunca los pagos ya anotados.",
-    "none": "Todavía no hay tipo de cambio. Mientras tanto, lo que está en una sola moneda funciona igual.",
-    "currentTitle": "Cambio vigente",
-    "enteredBy": "Lo anotó {{name}} el {{date}}.",
-    "enteredByYou": "Lo anotaste tú el {{date}}.",
-    "newTitle": "Anotar un cambio nuevo",
-    "usdCad": "¿Cuántos CAD vale 1 USD?",
-    "cadClp": "¿Cuántos CLP vale 1 CAD?",
-    "bigChange": "Esto es más de un 20 % distinto del cambio anterior. Revisa que esté bien escrito antes de guardarlo.",
-    "confirm": "Sí, guardar este cambio",
-    "save": "Guardar el cambio",
-    "saving": "Guardando…",
-    "needRates": "Escribe los dos valores",
-    "saved": "¡Listo! Quedó anotado el cambio nuevo."
   },
   "groupForm": {
     "close": "Cerrar sin guardar",

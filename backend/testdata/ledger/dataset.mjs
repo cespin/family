@@ -31,6 +31,22 @@ export const requestHash = (body) => createHash('sha256').update(canonical(body)
 
 const stamp = (date, seq) => `${date}T12:${String(seq % 60).padStart(2, '0')}:00Z`;
 
+/** The clock of the test router's `FixedEnv`, which every request the tests send runs at. */
+export const ROUTER_NOW = '2026-11-18T12:00:00Z';
+/** The first id the router's `FixedEnv` hands out, which names a rate entry a refresh saves. */
+const ROUTER_FIRST_ID = 'a1000000-0000-4000-8000-000000000001';
+
+const gcd = (a, b) => (b === 0n ? a : gcd(b, a % b));
+
+/** A plain decimal as the reduced fraction the API stores for diagnosis, such as `7/5`. */
+function fractionText(decimal) {
+  const [integer, fraction = ''] = decimal.split('.');
+  const n = BigInt(`${integer}${fraction}`);
+  const d = 10n ** BigInt(fraction.length);
+  const divisor = gcd(n, d);
+  return `${n / divisor}/${d / divisor}`;
+}
+
 export class Ledger {
   constructor(state) {
     this.state = state ?? {
@@ -45,6 +61,7 @@ export class Ledger {
       expenses: {},
       payments: {},
       rates: [],
+      ratesStatus: undefined,
       bodies: {},
     };
   }
@@ -221,7 +238,7 @@ export class Ledger {
 
   currentRates() {
     const latest = this.state.rates[this.state.rates.length - 1];
-    return latest ? { usdCad: latest.usdCad, cadClp: latest.cadClp } : undefined;
+    return latest ? { usdCad: latest.usdCad, cadClp: latest.cadClp, ratesId: latest.id } : undefined;
   }
 
   events() {
@@ -315,13 +332,17 @@ export class Ledger {
     });
   }
 
+  /**
+   * Rates a member typed in, before the family's rates came from the public services. No route
+   * writes these any more, so only the base data has them, and a scenario cannot add one.
+   */
   enterRates(alias, { by, usdCad, cadClp, date }) {
+    if (this.state.writes) throw new Error(`${alias}: rates are no longer typed in`);
     const id = this.newId('rate', alias);
     const body = { requestId: id, usdCad, cadClp, date };
     const latest = this.state.rates[this.state.rates.length - 1]?.date ?? date;
     const effective = date < latest ? latest : date;
     const rev = this.commit([`RATE#${id}`]);
-    this.record(this.member(by), 'POST', '/api/exchange-rates', body);
     this.state.rates.push({
       id,
       alias,
@@ -334,6 +355,53 @@ export class Ledger {
       lastRequestId: id,
       lastRequestHash: requestHash(body),
     });
+  }
+
+  /**
+   * Rates the public services agreed on. Every service answers `usdCad` and `usdClp`, so the API
+   * stores `usdCad` and `usdClp / usdCad`, with 4 and 2 decimals. In a scenario the write goes
+   * through `POST /api/exchange-rates/refresh` at the router's clock, which names the entry.
+   */
+  fetchRates(alias, { by, usdCad, usdClp, cadClp, fetchedAt = ROUTER_NOW }) {
+    const scenario = Boolean(this.state.writes);
+    const id = scenario ? ROUTER_FIRST_ID : this.newId('rate', alias);
+    if (scenario) this.state.ids.rate[alias] = id;
+    const latest = this.state.rates[this.state.rates.length - 1]?.date ?? fetchedAt.slice(0, 10);
+    const today = fetchedAt.slice(0, 10);
+    const answers = [1, 2, 3].map(() => ({ usdCad, usdClp }));
+    const rev = this.commit([`RATE#${id}`]);
+    this.state.writes?.push({
+      caller: this.state.members[this.member(by)].alias,
+      method: 'POST',
+      path: '/api/exchange-rates/refresh',
+      answers,
+    });
+    this.state.rates.push({
+      id,
+      alias,
+      usdCad: usdCad.padEnd(usdCad.indexOf('.') + 5, '0'),
+      cadClp,
+      date: today < latest ? latest : today,
+      fetchedAt,
+      seq: rev,
+      rev,
+    });
+    // The refresh writes the status twice: once to take the lease, once when it is done.
+    this.checkRates({
+      at: fetchedAt,
+      answers: answers.map((answer, index) => ({
+        source: `fake-${index + 1}`,
+        usdCad: fractionText(answer.usdCad),
+        usdClp: fractionText(answer.usdClp),
+      })),
+      writes: scenario ? 2 : 1,
+    });
+  }
+
+  /** Records a check of the rates in the status item, outside the ledger. */
+  checkRates({ at, answers, writes = 1 }) {
+    const rev = (this.state.ratesStatus?.rev ?? 0) + writes;
+    this.state.ratesStatus = { checkedAt: at, attemptedAt: at, lastAnswers: answers, rev };
   }
 
   percentMap(percents) {
@@ -544,6 +612,7 @@ for (const name of [
   'createGroup',
   'updateGroup',
   'enterRates',
+  'fetchRates',
   'addExpense',
   'editExpense',
   'pay',
@@ -756,7 +825,19 @@ export function baseLedger() {
   l.updateGroup('trip', { members: ['diego', 'lucia', 'mama'] });
 
   l.enterRates('november-first', { by: 'lucia', usdCad: '1.39', cadClp: '668', date: '2026-11-01' });
-  l.enterRates('november', { by: 'diego', usdCad: '1.40', cadClp: '670', date: '2026-11-01' });
+  // The first rates the public services gave, the same day the family last typed them in.
+  l.fetchRates('november', {
+    by: 'diego',
+    usdCad: '1.40',
+    usdClp: '938',
+    cadClp: '670.00',
+    fetchedAt: '2026-11-01T15:00:00Z',
+  });
+  // Checked again three hours before the router's clock: unchanged, and still fresh.
+  l.checkRates({
+    at: '2026-11-18T09:00:00Z',
+    answers: [1, 2, 3].map((index) => ({ source: `fake-${index}`, usdCad: '7/5', usdClp: '938/1' })),
+  });
 
   l.addExpense('pizzas', {
     title: 'Pizzas en casa de Mamá',
@@ -1268,7 +1349,7 @@ export const SCENARIOS = [
     description: 'A later rate entry neither reopens the closed debts nor moves the open ones',
     apply: (l) => {
       carlosPays(l, 10000, 'care');
-      l.enterRates('later', { by: 'lucia', usdCad: '1.40', cadClp: '655', date: '2026-11-19' });
+      l.fetchRates('later', { by: 'lucia', usdCad: '1.40', usdClp: '917', cadClp: '655.00' });
     },
     expect: { almuerzo: 16550, kinesiologia: 'settled', tablet: 'settled' },
   },
@@ -1421,18 +1502,26 @@ export function requestCases(l) {
       ...overrides,
     };
   };
-  const rates = (overrides = {}) => ({
-    requestId: requestId(),
-    usdCad: '1.41',
-    cadClp: '672',
-    date: '2026-11-19',
-    ...overrides,
+  // What the three rate services answer to a refresh. Null is a service that failed.
+  const answer = (usdCad, usdClp) => ({ usdCad, usdClp });
+  const agreeing = (usdCad, usdClp) => [1, 2, 3].map(() => answer(usdCad, usdClp));
+  // The entry a refresh saves, named by the router's first id and dated by its clock.
+  const fetched = (usdCad, cadClp) => ({
+    id: ROUTER_FIRST_ID,
+    usdCad,
+    cadClp,
+    date: ROUTER_NOW.slice(0, 10),
+    fetchedAt: ROUTER_NOW,
   });
+  const november = (({ id, usdCad, cadClp, date, fetchedAt }) => ({ id, usdCad, cadClp, date, fetchedAt }))(
+    l.state.rates.find((rate) => rate.alias === 'november'),
+  );
 
   const POST_EXPENSE = ['POST', '/api/expenses'];
   const POST_PAYMENT = ['POST', '/api/payments'];
   const POST_GROUP = ['POST', '/api/groups'];
-  const POST_RATES = ['POST', '/api/exchange-rates'];
+  const REFRESH_RATES = ['POST', '/api/exchange-rates/refresh'];
+  const UNAVAILABLE = { status: 503, code: 'rates_unavailable' };
   const putExpense = (alias) => ['PUT', `/api/expenses/${e(alias)}`];
   const putPayment = (alias) => ['PUT', `/api/payments/${p(alias)}`];
   const paymentEdit = (alias, overrides = {}) => ({
@@ -1458,7 +1547,7 @@ export function requestCases(l) {
     ['a valid expense is saved', 'carlos', POST_EXPENSE, expense(), CREATED],
     ['a valid payment is saved', 'carlos', POST_PAYMENT, payment(), CREATED],
     ['a valid group is saved', 'carlos', POST_GROUP, newGroup(), CREATED],
-    ['valid rates are saved', 'lucia', POST_RATES, rates(), CREATED],
+    ['the rates are refreshed', 'lucia', REFRESH_RATES, undefined, { status: 200, body: { updated: true, exchangeRate: fetched('1.4100', '672.00') } }, agreeing('1.41', '947.52')],
 
     // Section 7, saving an expense.
     ['a blank title', 'carlos', POST_EXPENSE, expense({ title: '   ' }), INVALID],
@@ -1568,13 +1657,13 @@ export function requestCases(l) {
     ['changing a group with a stale version', 'carlos', putGroup('care'), groupEdit('care', { name: 'Otro nombre', version: 99 }), CONFLICT],
     ['renaming your own group', 'carlos', putGroup('care'), groupEdit('care', { name: 'Cuidado de los papás' }), OK],
 
-    // Section 7, entering exchange rates.
-    ['a missing rate', 'carlos', POST_RATES, rates({ cadClp: undefined }), INVALID],
-    ['a rate of zero', 'carlos', POST_RATES, rates({ usdCad: '0' }), INVALID],
-    ['a negative rate', 'carlos', POST_RATES, rates({ usdCad: '-1.40' }), INVALID],
-    ['a rate that is not a number', 'carlos', POST_RATES, rates({ cadClp: 'mucho' }), INVALID],
-    ['a rate date that does not exist', 'carlos', POST_RATES, rates({ date: '2026-13-01' }), INVALID],
-    ['a rate dated before the latest entry', 'carlos', POST_RATES, rates({ date: '2026-10-15' }), { status: 201, body: { date: '2026-11-01' } }],
+    // Section 7, refreshing the exchange rates.
+    ['three services give the middle rate', 'carlos', REFRESH_RATES, undefined, { status: 200, body: { updated: true, exchangeRate: fetched('1.4200', '680.00') } }, [answer('1.41', '944.70'), answer('1.43', '979.55'), answer('1.42', '965.60')]],
+    ['two services that agree are enough', 'carlos', REFRESH_RATES, undefined, { status: 200, body: { updated: true, exchangeRate: fetched('1.4050', '670.00') } }, [answer('1.40', '938'), null, answer('1.41', '944.70')]],
+    ['two services that disagree keep the rates', 'carlos', REFRESH_RATES, undefined, UNAVAILABLE, [answer('1.40', '938'), answer('1.50', '1005'), null]],
+    ['one service is not enough', 'carlos', REFRESH_RATES, undefined, UNAVAILABLE, [answer('1.40', '938'), null, null]],
+    ['rates the services still agree on add no entry', 'carlos', REFRESH_RATES, undefined, { status: 200, body: { updated: false, exchangeRate: november } }, agreeing('1.40', '938')],
+    ['refreshing before finishing sign-up', 'nina', REFRESH_RATES, undefined, FORBIDDEN],
 
     // Section 8, access.
     ['a member removed from the allowlist', 'rosa', ['GET', '/api/ledger'], undefined, FORBIDDEN],
@@ -1609,12 +1698,13 @@ export function requestCases(l) {
     ['repeating a saved payment', 'lucia', POST_PAYMENT, savedPayment, CREATED],
   ];
 
-  return cases.map(([name, caller, [method, path], body, expect]) => ({
+  return cases.map(([name, caller, [method, path], body, expect, answers]) => ({
     name,
     caller,
     method,
     path,
     ...(body === undefined ? {} : { body }),
+    ...(answers === undefined ? {} : { answers }),
     expect,
   }));
 }
@@ -1629,6 +1719,7 @@ export const COVERAGE = [
   ['4', 'Every payment method', 'payments `carlos-cena` (transfer), `lucia-cena` (cash), `diego-cena` (other)'],
   ['4', 'Expenses on the same date keep a stable order', 'expenses `compra-cad`, `compra-clp`'],
   ['4', 'Rates in force on a past date, and several entries on one day', 'rates `october`, `november-first`, `november`'],
+  ['4', 'Rates fetched from the public services, after rates members typed in', 'rates `november-first`, `november`'],
   ['4', 'An expense recorded before any rates existed', 'expense `te`'],
   ['4', 'The payer is not a participant', 'expense `libro`'],
   ['4', 'List entries carry the split and each participant\'s share', 'the list entries of every expense, `farmacia` (percent), `taxi` (equal)'],

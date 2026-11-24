@@ -6,7 +6,7 @@ import {
   fetchLedger,
   fetchPayments,
   recordPayment,
-  saveExchangeRates,
+  refreshExchangeRates,
   saveExpense,
   saveGroup,
   saveProfile,
@@ -87,7 +87,25 @@ describe('the expenses seam', () => {
       expect(ledger.rateEntries.map((entry) => entry.id)).toEqual(['new', 'old']);
     });
 
-    it('has no rates, rather than made-up ones, until the family enters some', async () => {
+    it('says when the rates were checked and whether an update is on its way', async () => {
+      vi.mocked(apiFetch).mockResolvedValue({
+        ...LEDGER,
+        exchangeRatesCheckedAt: '2026-11-18T09:00:00Z',
+        exchangeRatesUpdating: true,
+      });
+      const ledger = await fetchLedger(session());
+      expect(ledger.ratesCheckedAt).toBe('2026-11-18T09:00:00Z');
+      expect(ledger.ratesUpdating).toBe(true);
+    });
+
+    it('expects no update from a server that does not say one started', async () => {
+      vi.mocked(apiFetch).mockResolvedValue(LEDGER);
+      const ledger = await fetchLedger(session());
+      expect(ledger.ratesCheckedAt).toBeNull();
+      expect(ledger.ratesUpdating).toBe(false);
+    });
+
+    it('has no rates, rather than made-up ones, until the first ones arrive', async () => {
       vi.mocked(apiFetch).mockResolvedValue({ ...LEDGER, exchangeRates: [] });
       const ledger = await fetchLedger(session());
       expect(ledger.rates).toBeNull();
@@ -167,13 +185,20 @@ describe('the expenses seam', () => {
       ['corrects a payment', () => updatePayment(session(), 'p/1', { title: 'x' }), 'PUT', '/payments/p%2F1'],
       ['creates a group', () => saveGroup(session(), { title: 'x' }), 'POST', '/groups'],
       ['changes a group', () => saveGroup(session(), { title: 'x' }, 'g1'), 'PUT', '/groups/g1'],
-      ['enters rates', () => saveExchangeRates(session(), { title: 'x' }), 'POST', '/exchange-rates'],
       ['saves the profile', () => saveProfile(session(), { title: 'x' }), 'PUT', '/me/profile'],
     ])('%s with the body unchanged', async (_name, write, method, path) => {
       await write();
       expect(apiFetch).toHaveBeenCalledWith(path, {
         method,
         body: { title: 'x' },
+        token: 'token-1',
+      });
+    });
+
+    it('asks for fresh rates with no body', async () => {
+      await refreshExchangeRates(session());
+      expect(apiFetch).toHaveBeenCalledWith('/exchange-rates/refresh', {
+        method: 'POST',
         token: 'token-1',
       });
     });

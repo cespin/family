@@ -13,7 +13,8 @@ BUILD_VAR_FILE="${BACKEND_DIR}/stacks/main.build.yaml"
 # A crate missing from this list is never built into a deployable package.
 FUNCTIONS=(
   health-get me-get auth-session auth-presignup
-  ledger-read me-profile-put expenses-write payments-post groups-write exchange-rates-post
+  ledger-read me-profile-put expenses-write payments-post groups-write
+  exchange-rates-refresh exchange-rates-update
 )
 
 # shellcheck source=lib/aws-args.sh

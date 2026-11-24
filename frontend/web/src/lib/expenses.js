@@ -71,9 +71,13 @@ export async function fetchLedger(auth) {
     me: data.me,
     members: data.members.map(toMember),
     groups: data.groups.map(toGroup),
-    // Newest first, so the first entry is the one in force today. Null until rates are entered.
+    // Newest first, so the first entry is the one in force today. Null until the first rates.
     rates: rateEntries[0] ?? null,
     rateEntries,
+    // When the public rate services were last asked, and whether this read started an update that
+    // the next read will show.
+    ratesCheckedAt: data.exchangeRatesCheckedAt ?? null,
+    ratesUpdating: data.exchangeRatesUpdating === true,
     standings: data.standings.map(toStanding),
   };
 }
@@ -126,8 +130,12 @@ export async function saveGroup(auth, body, groupId) {
     : call(auth, '/groups', { method: 'POST', body });
 }
 
-export async function saveExchangeRates(auth, body) {
-  return call(auth, '/exchange-rates', { method: 'POST', body });
+/**
+ * Asks the backend to fetch the rates from the public services now. Answers `updated`, and the
+ * rate entry in force afterwards as `exchangeRate`.
+ */
+export async function refreshExchangeRates(auth) {
+  return call(auth, '/exchange-rates/refresh', { method: 'POST' });
 }
 
 /**

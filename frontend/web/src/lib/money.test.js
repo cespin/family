@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
+import { todayIso } from './ledger.js';
 import {
   conversionTolerance,
   convertMinor,
   evenPercents,
   parseAmount,
-  parseRate,
   percentTotal,
   quoteBetween,
   ratesFromEntry,
@@ -127,22 +127,6 @@ describe('quoteBetween', () => {
   });
 });
 
-describe('parseRate', () => {
-  it.each([
-    ['1.40', '1.40'],
-    ['1,40', '1.40'],
-    [' 670 ', '670'],
-    ['1.234,5', '1234.5'],
-    ['1.000.000', '1000000'],
-  ])('reads %j as the plain decimal %j', (text, expected) => {
-    expect(parseRate(text)).toBe(expected);
-  });
-
-  it.each(['', '0', '-1', 'abc', '1e3', '1.', '1000001'])('refuses %j', (text) => {
-    expect(parseRate(text)).toBeNull();
-  });
-});
-
 describe('ratesFromEntry', () => {
   it('converts through CAD, from the two rates the family enters', () => {
     const rates = ratesFromEntry({ id: 'r', usdCad: '1.40', cadClp: '670', date: '2026-11-18' });
@@ -151,5 +135,16 @@ describe('ratesFromEntry', () => {
 
   it('is absent when there is no entry', () => {
     expect(ratesFromEntry(undefined)).toBeNull();
+  });
+
+  it('dates fetched rates by the reader’s own day, not the UTC one', () => {
+    const fetchedAt = '2026-11-18T23:30:00Z';
+    const rates = ratesFromEntry({ id: 'r', usdCad: '1.4329', cadClp: '712.92', date: '2026-11-18', fetchedAt });
+    expect(rates.asOf).toBe(todayIso(new Date(fetchedAt)));
+  });
+
+  it('dates rates typed in by a member by the day they were entered', () => {
+    const rates = ratesFromEntry({ id: 'r', usdCad: '1.40', cadClp: '670', date: '2026-11-01', enteredBy: 'ana' });
+    expect(rates.asOf).toBe('2026-11-01');
   });
 });

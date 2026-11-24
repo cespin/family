@@ -27,7 +27,9 @@ Parameters:
     Type: String
   GroupsWriteCodeS3Key:
     Type: String
-  ExchangeRatesPostCodeS3Key:
+  ExchangeRatesRefreshCodeS3Key:
+    Type: String
+  ExchangeRatesUpdateCodeS3Key:
     Type: String
 Resources:
 
@@ -208,6 +210,15 @@ Resources:
                   - 'dynamodb:BatchGetItem'
                 Resource: !ImportValue
                   'Fn::Sub': '${ExportKey}-${StackName}-FamilyTableArn'
+        # A ledger read that finds the exchange rates stale starts the update, asynchronously.
+        - PolicyName: start-rates-update
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'lambda:InvokeFunction'
+                Resource: !GetAtt ExchangeRatesUpdateFunction.Arn
   LedgerReadLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
@@ -230,6 +241,7 @@ Resources:
         Variables:
           TABLE_NAME: !ImportValue
             'Fn::Sub': '${ExportKey}-${StackName}-FamilyTableName'
+          RATES_UPDATE_FUNCTION: !Ref ExchangeRatesUpdateFunction
           RUST_LOG: info
       Code:
         S3Bucket: !ImportValue
@@ -456,10 +468,10 @@ Resources:
           'Fn::Sub': '${ExportKey}-${StackName}-ArtifactsBucketName'
         S3Key: !Ref GroupsWriteCodeS3Key
 
-  ExchangeRatesPostRole:
+  ExchangeRatesRefreshRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub '${StackName}-${Salt}-exchange-rates-post'
+      RoleName: !Sub '${StackName}-${Salt}-exchange-rates-refresh'
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -483,23 +495,23 @@ Resources:
                   - 'dynamodb:ConditionCheckItem'
                 Resource: !ImportValue
                   'Fn::Sub': '${ExportKey}-${StackName}-FamilyTableArn'
-  ExchangeRatesPostLogGroup:
+  ExchangeRatesRefreshLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: !Sub '/aws/lambda/${StackName}-${Salt}-exchange-rates-post'
+      LogGroupName: !Sub '/aws/lambda/${StackName}-${Salt}-exchange-rates-refresh'
       RetentionInDays: 30
-  ExchangeRatesPostFunction:
+  ExchangeRatesRefreshFunction:
     Type: AWS::Lambda::Function
-    DependsOn: ExchangeRatesPostLogGroup
+    DependsOn: ExchangeRatesRefreshLogGroup
     Properties:
-      FunctionName: !Sub '${StackName}-${Salt}-exchange-rates-post'
-      Description: !Sub 'POST /api/exchange-rates - ${AppName} - stack ${StackName}'
+      FunctionName: !Sub '${StackName}-${Salt}-exchange-rates-refresh'
+      Description: !Sub 'POST /api/exchange-rates/refresh - ${AppName} - stack ${StackName}'
       Runtime: provided.al2023
       Architectures:
         - arm64
       Handler: bootstrap
-      Role: !GetAtt ExchangeRatesPostRole.Arn
-      Timeout: 15
+      Role: !GetAtt ExchangeRatesRefreshRole.Arn
+      Timeout: 20
       MemorySize: 256
       Environment:
         Variables:
@@ -509,7 +521,71 @@ Resources:
       Code:
         S3Bucket: !ImportValue
           'Fn::Sub': '${ExportKey}-${StackName}-ArtifactsBucketName'
-        S3Key: !Ref ExchangeRatesPostCodeS3Key
+        S3Key: !Ref ExchangeRatesRefreshCodeS3Key
+
+  ExchangeRatesUpdateRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${StackName}-${Salt}-exchange-rates-update'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+      Policies:
+        - PolicyName: write-ledger
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'dynamodb:GetItem'
+                  - 'dynamodb:Query'
+                  - 'dynamodb:BatchGetItem'
+                  - 'dynamodb:PutItem'
+                  - 'dynamodb:ConditionCheckItem'
+                Resource: !ImportValue
+                  'Fn::Sub': '${ExportKey}-${StackName}-FamilyTableArn'
+  ExchangeRatesUpdateLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${StackName}-${Salt}-exchange-rates-update'
+      RetentionInDays: 30
+  ExchangeRatesUpdateFunction:
+    Type: AWS::Lambda::Function
+    DependsOn: ExchangeRatesUpdateLogGroup
+    Properties:
+      FunctionName: !Sub '${StackName}-${Salt}-exchange-rates-update'
+      Description: !Sub 'Updates stale exchange rates in the background - ${AppName} - stack ${StackName}'
+      Runtime: provided.al2023
+      Architectures:
+        - arm64
+      Handler: bootstrap
+      Role: !GetAtt ExchangeRatesUpdateRole.Arn
+      Timeout: 20
+      MemorySize: 256
+      Environment:
+        Variables:
+          TABLE_NAME: !ImportValue
+            'Fn::Sub': '${ExportKey}-${StackName}-FamilyTableName'
+          RUST_LOG: info
+      Code:
+        S3Bucket: !ImportValue
+          'Fn::Sub': '${ExportKey}-${StackName}-ArtifactsBucketName'
+        S3Key: !Ref ExchangeRatesUpdateCodeS3Key
+  # ledger-read invokes it with invocation type Event. A failed update is not retried, because the
+  # next ledger read tries again once the 15-minute backoff has passed.
+  ExchangeRatesUpdateInvokeConfig:
+    Type: AWS::Lambda::EventInvokeConfig
+    Properties:
+      FunctionName: !Ref ExchangeRatesUpdateFunction
+      Qualifier: $LATEST
+      MaximumRetryAttempts: 0
+      MaximumEventAgeInSeconds: 300
 
 #  --END -- LEDGER
 
@@ -833,23 +909,6 @@ Resources:
                   type: object
                   additionalProperties:
                     type: integer
-            ExchangeRatesRequest:
-              type: object
-              additionalProperties: false
-              required:
-                - requestId
-                - usdCad
-                - cadClp
-                - date
-              properties:
-                requestId:
-                  type: string
-                usdCad:
-                  type: string
-                cadClp:
-                  type: string
-                date:
-                  type: string
         paths:
           /api/health:
             get:
@@ -1095,24 +1154,17 @@ Resources:
                 type: aws_proxy
                 httpMethod: POST
                 uri: !Sub 'arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GroupsWriteFunction.Arn}/invocations'
-          /api/exchange-rates:
+          /api/exchange-rates/refresh:
             post:
               security:
                 - CognitoUserPool: []
-              x-amazon-apigateway-request-validator: body-only
-              requestBody:
-                required: true
-                content:
-                  application/json:
-                    schema:
-                      $ref: '#/components/schemas/ExchangeRatesRequest'
               responses:
-                '201':
-                  description: The saved rates
+                '200':
+                  description: The rates in force after asking the public rate services
               x-amazon-apigateway-integration:
                 type: aws_proxy
                 httpMethod: POST
-                uri: !Sub 'arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ExchangeRatesPostFunction.Arn}/invocations'
+                uri: !Sub 'arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ExchangeRatesRefreshFunction.Arn}/invocations'
 
   HealthGetInvokePermission:
     Type: AWS::Lambda::Permission
@@ -1212,13 +1264,13 @@ Resources:
       FunctionName: !Ref GroupsWriteFunction
       Principal: apigateway.amazonaws.com
       SourceArn: !Sub 'arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${RestApi}/*/PUT/api/groups/*'
-  ExchangeRatesPostInvokePermission:
+  ExchangeRatesRefreshInvokePermission:
     Type: AWS::Lambda::Permission
     Properties:
       Action: 'lambda:InvokeFunction'
-      FunctionName: !Ref ExchangeRatesPostFunction
+      FunctionName: !Ref ExchangeRatesRefreshFunction
       Principal: apigateway.amazonaws.com
-      SourceArn: !Sub 'arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${RestApi}/*/POST/api/exchange-rates'
+      SourceArn: !Sub 'arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${RestApi}/*/POST/api/exchange-rates/refresh'
 
 #  --END -- REST API
 

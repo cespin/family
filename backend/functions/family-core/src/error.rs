@@ -25,6 +25,9 @@ pub enum ApiError {
     /// A member cannot leave a group while they still owe or are owed money in it.
     #[error("{0}")]
     MemberHasOpenBalance(String),
+    /// Too few of the public exchange-rate services answered, or they disagreed.
+    #[error("{0}")]
+    RatesUnavailable(String),
     /// The reason is logged and never returned.
     #[error("{0}")]
     Internal(String),
@@ -41,6 +44,7 @@ impl ApiError {
             Self::NotFound(_) => "not_found",
             Self::Conflict(_) => "conflict",
             Self::MemberHasOpenBalance(_) => "member_has_open_balance",
+            Self::RatesUnavailable(_) => "rates_unavailable",
             Self::Internal(_) => "internal_error",
         }
     }
@@ -53,6 +57,7 @@ impl ApiError {
             Self::NotFound(_) => 404,
             Self::Conflict(_) | Self::MemberHasOpenBalance(_) => 409,
             Self::Internal(_) => 500,
+            Self::RatesUnavailable(_) => 503,
         }
     }
 
@@ -89,6 +94,10 @@ impl ApiError {
     pub fn internal(msg: impl Into<String>) -> Self {
         Self::Internal(msg.into())
     }
+
+    pub fn rates_unavailable(msg: impl Into<String>) -> Self {
+        Self::RatesUnavailable(msg.into())
+    }
 }
 
 impl From<serde_json::Error> for ApiError {
@@ -112,6 +121,7 @@ mod tests {
     #[case(ApiError::Conflict("c".into()), 409, "conflict")]
     #[case(ApiError::MemberHasOpenBalance("m".into()), 409, "member_has_open_balance")]
     #[case(ApiError::Internal("i".into()), 500, "internal_error")]
+    #[case(ApiError::RatesUnavailable("r".into()), 503, "rates_unavailable")]
     fn every_variant_maps_to_its_status_and_code(
         #[case] err: ApiError,
         #[case] status: u16,

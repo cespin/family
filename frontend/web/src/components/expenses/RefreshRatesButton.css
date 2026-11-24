@@ -1,0 +1,5 @@
+/* Takes a whole row when the button sits in a wrapping flex row, as in the balance card. */
+.fa-refresh-rates__note {
+  flex-basis: 100%;
+  margin: 0;
+}

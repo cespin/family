@@ -61,18 +61,36 @@
     }
   },
   {
-    "name": "valid rates are saved",
+    "name": "the rates are refreshed",
     "caller": "lucia",
     "method": "POST",
-    "path": "/api/exchange-rates",
-    "body": {
-      "requestId": "90000000-0000-4000-8000-000000000004",
-      "usdCad": "1.41",
-      "cadClp": "672",
-      "date": "2026-11-19"
-    },
+    "path": "/api/exchange-rates/refresh",
+    "answers": [
+      {
+        "usdCad": "1.41",
+        "usdClp": "947.52"
+      },
+      {
+        "usdCad": "1.41",
+        "usdClp": "947.52"
+      },
+      {
+        "usdCad": "1.41",
+        "usdClp": "947.52"
+      }
+    ],
     "expect": {
-      "status": 201
+      "status": 200,
+      "body": {
+        "updated": true,
+        "exchangeRate": {
+          "id": "a1000000-0000-4000-8000-000000000001",
+          "usdCad": "1.4100",
+          "cadClp": "672.00",
+          "date": "2026-11-18",
+          "fetchedAt": "2026-11-18T12:00:00Z"
+        }
+      }
     }
   },
   {
@@ -81,7 +99,7 @@
     "method": "POST",
     "path": "/api/expenses",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000005",
+      "requestId": "90000000-0000-4000-8000-000000000004",
       "title": "   ",
       "kind": "other",
       "groupId": "b0000000-0000-4000-8000-000000000003",
@@ -106,7 +124,7 @@
     "method": "POST",
     "path": "/api/expenses",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000006",
+      "requestId": "90000000-0000-4000-8000-000000000005",
       "title": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
       "kind": "other",
       "groupId": "b0000000-0000-4000-8000-000000000003",
@@ -131,7 +149,7 @@
     "method": "POST",
     "path": "/api/expenses",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000007",
+      "requestId": "90000000-0000-4000-8000-000000000006",
       "title": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
       "kind": "other",
       "groupId": "b0000000-0000-4000-8000-000000000003",
@@ -155,7 +173,7 @@
     "method": "POST",
     "path": "/api/expenses",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000008",
+      "requestId": "90000000-0000-4000-8000-000000000007",
       "title": "Caso de prueba",
       "kind": "other",
       "groupId": "b0000000-0000-4000-8000-000000000003",
@@ -181,7 +199,7 @@
     "method": "POST",
     "path": "/api/expenses",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000009",
+      "requestId": "90000000-0000-4000-8000-000000000008",
       "title": "Caso de prueba",
       "kind": "other",
       "groupId": "b0000000-0000-4000-8000-000000000003",
@@ -206,7 +224,7 @@
     "method": "POST",
     "path": "/api/expenses",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000010",
+      "requestId": "90000000-0000-4000-8000-000000000009",
       "title": "Caso de prueba",
       "kind": "other",
       "groupId": "b0000000-0000-4000-8000-000000000003",
@@ -231,7 +249,7 @@
     "method": "POST",
     "path": "/api/expenses",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000011",
+      "requestId": "90000000-0000-4000-8000-000000000010",
       "title": "Caso de prueba",
       "kind": "other",
       "groupId": "b0000000-0000-4000-8000-000000000003",
@@ -256,7 +274,7 @@
     "method": "POST",
     "path": "/api/expenses",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000012",
+      "requestId": "90000000-0000-4000-8000-000000000011",
       "title": "Caso de prueba",
       "kind": "other",
       "groupId": "b0000000-0000-4000-8000-000000000003",
@@ -281,7 +299,7 @@
     "method": "POST",
     "path": "/api/expenses",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000013",
+      "requestId": "90000000-0000-4000-8000-000000000012",
       "title": "Caso de prueba",
       "kind": "other",
       "groupId": "b0000000-0000-4000-8000-000000000003",
@@ -305,7 +323,7 @@
     "method": "POST",
     "path": "/api/expenses",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000014",
+      "requestId": "90000000-0000-4000-8000-000000000013",
       "title": "Caso de prueba",
       "kind": "other",
       "groupId": "b0000000-0000-4000-8000-000000000003",
@@ -330,7 +348,7 @@
     "method": "POST",
     "path": "/api/expenses",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000015",
+      "requestId": "90000000-0000-4000-8000-000000000014",
       "title": "Caso de prueba",
       "kind": "other",
       "groupId": "b0000000-0000-4000-8000-000000000003",
@@ -354,7 +372,7 @@
     "method": "POST",
     "path": "/api/expenses",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000016",
+      "requestId": "90000000-0000-4000-8000-000000000015",
       "title": "Caso de prueba",
       "kind": "other",
       "groupId": "b0000000-0000-4000-8000-000000000003",
@@ -379,7 +397,7 @@
     "method": "POST",
     "path": "/api/expenses",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000017",
+      "requestId": "90000000-0000-4000-8000-000000000016",
       "title": "Caso de prueba",
       "kind": "other",
       "groupId": "b0000000-0000-4000-8000-000000000003",
@@ -409,7 +427,7 @@
     "method": "POST",
     "path": "/api/expenses",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000018",
+      "requestId": "90000000-0000-4000-8000-000000000017",
       "title": "Caso de prueba",
       "kind": "other",
       "groupId": "b0000000-0000-4000-8000-000000000003",
@@ -439,7 +457,7 @@
     "method": "POST",
     "path": "/api/expenses",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000019",
+      "requestId": "90000000-0000-4000-8000-000000000018",
       "title": "Caso de prueba",
       "kind": "other",
       "groupId": "b0000000-0000-4000-8000-000000000003",
@@ -469,7 +487,7 @@
     "method": "POST",
     "path": "/api/expenses",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000020",
+      "requestId": "90000000-0000-4000-8000-000000000019",
       "title": "Caso de prueba",
       "kind": "travel",
       "groupId": "b0000000-0000-4000-8000-000000000003",
@@ -494,7 +512,7 @@
     "method": "POST",
     "path": "/api/expenses",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000021",
+      "requestId": "90000000-0000-4000-8000-000000000020",
       "title": "Caso de prueba",
       "kind": "other",
       "groupId": "b0000000-0000-4000-8000-000000000003",
@@ -519,7 +537,7 @@
     "method": "POST",
     "path": "/api/expenses",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000022",
+      "requestId": "90000000-0000-4000-8000-000000000021",
       "title": "Caso de prueba",
       "kind": "other",
       "groupId": "b0000000-0000-4000-8000-000000009999",
@@ -544,7 +562,7 @@
     "method": "POST",
     "path": "/api/expenses",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000023",
+      "requestId": "90000000-0000-4000-8000-000000000022",
       "title": "Caso de prueba",
       "kind": "other",
       "groupId": "b0000000-0000-4000-8000-000000000003",
@@ -568,7 +586,7 @@
     "method": "POST",
     "path": "/api/expenses",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000024",
+      "requestId": "90000000-0000-4000-8000-000000000023",
       "title": "Caso de prueba",
       "kind": "other",
       "groupId": "b0000000-0000-4000-8000-000000000003",
@@ -593,7 +611,7 @@
     "method": "POST",
     "path": "/api/expenses",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000025",
+      "requestId": "90000000-0000-4000-8000-000000000024",
       "title": "Caso de prueba",
       "kind": "other",
       "groupId": "b0000000-0000-4000-8000-000000000003",
@@ -618,7 +636,7 @@
     "method": "POST",
     "path": "/api/expenses",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000026",
+      "requestId": "90000000-0000-4000-8000-000000000025",
       "title": "Caso de prueba",
       "kind": "other",
       "groupId": "b0000000-0000-4000-8000-000000000003",
@@ -640,7 +658,7 @@
     "method": "POST",
     "path": "/api/expenses",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000027",
+      "requestId": "90000000-0000-4000-8000-000000000026",
       "title": "Caso de prueba",
       "kind": "other",
       "groupId": "b0000000-0000-4000-8000-000000000003",
@@ -665,7 +683,7 @@
     "method": "POST",
     "path": "/api/expenses",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000028",
+      "requestId": "90000000-0000-4000-8000-000000000027",
       "title": "Caso de prueba",
       "kind": "other",
       "groupId": "b0000000-0000-4000-8000-000000000003",
@@ -690,7 +708,7 @@
     "method": "POST",
     "path": "/api/expenses",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000029",
+      "requestId": "90000000-0000-4000-8000-000000000028",
       "title": "Caso de prueba",
       "kind": "other",
       "groupId": "b0000000-0000-4000-8000-000000000003",
@@ -719,7 +737,7 @@
     "method": "POST",
     "path": "/api/expenses",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000030",
+      "requestId": "90000000-0000-4000-8000-000000000029",
       "title": "Caso de prueba",
       "kind": "other",
       "groupId": "b0000000-0000-4000-8000-000000000003",
@@ -748,7 +766,7 @@
     "method": "POST",
     "path": "/api/expenses",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000031",
+      "requestId": "90000000-0000-4000-8000-000000000030",
       "title": "Caso de prueba",
       "kind": "other",
       "groupId": "b0000000-0000-4000-8000-000000000003",
@@ -773,7 +791,7 @@
     "method": "POST",
     "path": "/api/expenses",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000032",
+      "requestId": "90000000-0000-4000-8000-000000000031",
       "title": "Caso de prueba",
       "kind": "other",
       "groupId": "b0000000-0000-4000-8000-000000000003",
@@ -802,7 +820,7 @@
     "method": "POST",
     "path": "/api/expenses",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000033",
+      "requestId": "90000000-0000-4000-8000-000000000032",
       "title": "Caso de prueba",
       "kind": "other",
       "groupId": "b0000000-0000-4000-8000-000000000003",
@@ -828,7 +846,7 @@
     "method": "POST",
     "path": "/api/expenses",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000034",
+      "requestId": "90000000-0000-4000-8000-000000000033",
       "title": "Caso de prueba",
       "kind": "other",
       "groupId": "b0000000-0000-4000-8000-000000000003",
@@ -855,7 +873,7 @@
     "method": "POST",
     "path": "/api/expenses",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000035",
+      "requestId": "90000000-0000-4000-8000-000000000034",
       "title": "Caso de prueba",
       "kind": "other",
       "groupId": "b0000000-0000-4000-8000-000000000003",
@@ -883,7 +901,7 @@
     "method": "POST",
     "path": "/api/expenses",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000036",
+      "requestId": "90000000-0000-4000-8000-000000000035",
       "title": "Caso de prueba",
       "kind": "other",
       "groupId": "b0000000-0000-4000-8000-000000000003",
@@ -916,7 +934,7 @@
     "method": "PUT",
     "path": "/api/expenses/c0000000-0000-4000-8000-000000000010",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000037",
+      "requestId": "90000000-0000-4000-8000-000000000036",
       "title": "Almuerzo familiar del domingo",
       "kind": "meal",
       "groupId": "b0000000-0000-4000-8000-000000000002",
@@ -944,7 +962,7 @@
     "method": "PUT",
     "path": "/api/expenses/c0000000-0000-4000-8000-000000000013",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000038",
+      "requestId": "90000000-0000-4000-8000-000000000037",
       "title": "Kinesiología de Mamá",
       "kind": "parents",
       "groupId": "b0000000-0000-4000-8000-000000000003",
@@ -988,7 +1006,7 @@
     "method": "PUT",
     "path": "/api/expenses/c0000000-0000-4000-8000-000000000013",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000039",
+      "requestId": "90000000-0000-4000-8000-000000000038",
       "title": "Otra cosa",
       "kind": "parents",
       "groupId": "b0000000-0000-4000-8000-000000000003",
@@ -1019,7 +1037,7 @@
     "method": "PUT",
     "path": "/api/expenses/c0000000-0000-4000-8000-000000000013",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000040",
+      "requestId": "90000000-0000-4000-8000-000000000039",
       "title": "Kinesiología de Mamá",
       "kind": "other",
       "groupId": "b0000000-0000-4000-8000-000000000003",
@@ -1050,7 +1068,7 @@
     "method": "PUT",
     "path": "/api/expenses/c0000000-0000-4000-8000-000000000013",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000041",
+      "requestId": "90000000-0000-4000-8000-000000000040",
       "title": "Kinesiología de Mamá",
       "kind": "parents",
       "groupId": "b0000000-0000-4000-8000-000000000003",
@@ -1081,7 +1099,7 @@
     "method": "PUT",
     "path": "/api/expenses/c0000000-0000-4000-8000-000000000013",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000042",
+      "requestId": "90000000-0000-4000-8000-000000000041",
       "title": "Kinesiología de Mamá",
       "kind": "parents",
       "groupId": "b0000000-0000-4000-8000-000000000001",
@@ -1112,7 +1130,7 @@
     "method": "PUT",
     "path": "/api/expenses/c0000000-0000-4000-8000-000000000013",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000043",
+      "requestId": "90000000-0000-4000-8000-000000000042",
       "title": "Kinesiología de Mamá",
       "kind": "parents",
       "groupId": "b0000000-0000-4000-8000-000000000003",
@@ -1138,7 +1156,7 @@
     "method": "PUT",
     "path": "/api/expenses/c0000000-0000-4000-8000-000000000013",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000044",
+      "requestId": "90000000-0000-4000-8000-000000000043",
       "title": "Kinesiología de Mamá",
       "kind": "parents",
       "groupId": "b0000000-0000-4000-8000-000000000003",
@@ -1167,7 +1185,7 @@
     "method": "PUT",
     "path": "/api/expenses/c0000000-0000-4000-8000-000000000013",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000045",
+      "requestId": "90000000-0000-4000-8000-000000000044",
       "title": "Kinesiología de Mamá",
       "kind": "parents",
       "groupId": "b0000000-0000-4000-8000-000000000003",
@@ -1198,7 +1216,7 @@
     "method": "PUT",
     "path": "/api/expenses/c0000000-0000-4000-8000-000000000013",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000046",
+      "requestId": "90000000-0000-4000-8000-000000000045",
       "title": "Kinesiología de Mamá",
       "kind": "parents",
       "groupId": "b0000000-0000-4000-8000-000000000003",
@@ -1234,7 +1252,7 @@
     "method": "PUT",
     "path": "/api/expenses/c0000000-0000-4000-8000-000000000013",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000047",
+      "requestId": "90000000-0000-4000-8000-000000000046",
       "title": "Kinesiología de Mamá",
       "kind": "parents",
       "groupId": "b0000000-0000-4000-8000-000000000003",
@@ -1266,7 +1284,7 @@
     "method": "PUT",
     "path": "/api/expenses/c0000000-0000-4000-8000-000000000012",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000048",
+      "requestId": "90000000-0000-4000-8000-000000000047",
       "title": "Tablet para las videollamadas",
       "kind": "parents",
       "groupId": "b0000000-0000-4000-8000-000000000003",
@@ -1297,7 +1315,7 @@
     "method": "PUT",
     "path": "/api/expenses/c0000000-0000-4000-8000-000000000012",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000049",
+      "requestId": "90000000-0000-4000-8000-000000000048",
       "title": "Tablet para las videollamadas",
       "kind": "parents",
       "groupId": "b0000000-0000-4000-8000-000000000003",
@@ -1329,7 +1347,7 @@
     "method": "PUT",
     "path": "/api/expenses/c0000000-0000-4000-8000-000000000012",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000050",
+      "requestId": "90000000-0000-4000-8000-000000000049",
       "title": "Tablet para las videollamadas",
       "kind": "parents",
       "groupId": "b0000000-0000-4000-8000-000000000003",
@@ -1365,7 +1383,7 @@
     "method": "PUT",
     "path": "/api/expenses/c0000000-0000-4000-8000-000000000012",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000051",
+      "requestId": "90000000-0000-4000-8000-000000000050",
       "title": "Tablet",
       "kind": "parents",
       "groupId": "b0000000-0000-4000-8000-000000000003",
@@ -1398,7 +1416,7 @@
     "method": "PUT",
     "path": "/api/expenses/c0000000-0000-4000-8000-000000000012",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000052",
+      "requestId": "90000000-0000-4000-8000-000000000051",
       "title": "Tablet para las videollamadas",
       "kind": "parents",
       "groupId": "b0000000-0000-4000-8000-000000000003",
@@ -1430,7 +1448,7 @@
     "method": "PUT",
     "path": "/api/expenses/c0000000-0000-4000-8000-000000000012",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000053",
+      "requestId": "90000000-0000-4000-8000-000000000052",
       "title": "Tablet para las videollamadas",
       "kind": "parents",
       "groupId": "b0000000-0000-4000-8000-000000000003",
@@ -1461,7 +1479,7 @@
     "method": "PUT",
     "path": "/api/expenses/c0000000-0000-4000-8000-000000000005",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000054",
+      "requestId": "90000000-0000-4000-8000-000000000053",
       "title": "Cabaña en Pucón",
       "kind": "other",
       "groupId": "b0000000-0000-4000-8000-000000000005",
@@ -1487,7 +1505,7 @@
     "method": "PUT",
     "path": "/api/expenses/c0000000-0000-4000-8000-000000000006",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000055",
+      "requestId": "90000000-0000-4000-8000-000000000054",
       "title": "Gasolina del viaje",
       "kind": "other",
       "groupId": "b0000000-0000-4000-8000-000000000005",
@@ -1513,7 +1531,7 @@
     "method": "PUT",
     "path": "/api/expenses/c0000000-0000-4000-8000-000000000006",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000056",
+      "requestId": "90000000-0000-4000-8000-000000000055",
       "title": "Bencina del viaje",
       "kind": "other",
       "groupId": "b0000000-0000-4000-8000-000000000005",
@@ -1538,7 +1556,7 @@
     "method": "PUT",
     "path": "/api/expenses/c0000000-0000-4000-8000-000000000014",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000057",
+      "requestId": "90000000-0000-4000-8000-000000000056",
       "title": "Compra con tarjeta canadiense",
       "kind": "other",
       "groupId": "b0000000-0000-4000-8000-000000000003",
@@ -1569,7 +1587,7 @@
     "method": "PUT",
     "path": "/api/expenses/c0000000-0000-4000-8000-000000000012",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000058",
+      "requestId": "90000000-0000-4000-8000-000000000057",
       "title": "Tablet para las videollamadas",
       "kind": "parents",
       "groupId": "b0000000-0000-4000-8000-000000000003",
@@ -1596,7 +1614,7 @@
     "method": "POST",
     "path": "/api/payments",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000059",
+      "requestId": "90000000-0000-4000-8000-000000000058",
       "fromId": "a0000000-0000-4000-8000-000000000001",
       "toId": "a0000000-0000-4000-8000-000000000001",
       "paid": {
@@ -1617,7 +1635,7 @@
     "method": "POST",
     "path": "/api/payments",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000060",
+      "requestId": "90000000-0000-4000-8000-000000000059",
       "fromId": "a0000000-0000-4000-8000-000000000002",
       "toId": "a0000000-0000-4000-8000-000000000003",
       "paid": {
@@ -1638,7 +1656,7 @@
     "method": "POST",
     "path": "/api/payments",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000061",
+      "requestId": "90000000-0000-4000-8000-000000000060",
       "fromId": "a0000000-0000-4000-8000-000000000002",
       "toId": "a0000000-0000-4000-8000-000000000001",
       "paid": {
@@ -1658,7 +1676,7 @@
     "method": "POST",
     "path": "/api/payments",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000062",
+      "requestId": "90000000-0000-4000-8000-000000000061",
       "fromId": "a0000000-0000-4000-8000-000000000001",
       "toId": "a0000000-0000-4000-8000-000000000002",
       "paid": {
@@ -1679,7 +1697,7 @@
     "method": "POST",
     "path": "/api/payments",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000063",
+      "requestId": "90000000-0000-4000-8000-000000000062",
       "fromId": "a0000000-0000-4000-8000-000000000001",
       "toId": "a0000000-0000-4000-8000-000000000002",
       "paid": {
@@ -1699,7 +1717,7 @@
     "method": "POST",
     "path": "/api/payments",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000064",
+      "requestId": "90000000-0000-4000-8000-000000000063",
       "fromId": "a0000000-0000-4000-8000-000000000001",
       "toId": "a0000000-0000-4000-8000-000000000002",
       "paid": {
@@ -1720,7 +1738,7 @@
     "method": "POST",
     "path": "/api/payments",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000065",
+      "requestId": "90000000-0000-4000-8000-000000000064",
       "fromId": "a0000000-0000-4000-8000-000000000001",
       "toId": "a0000000-0000-4000-8000-000000000002",
       "paid": {
@@ -1741,7 +1759,7 @@
     "method": "POST",
     "path": "/api/payments",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000066",
+      "requestId": "90000000-0000-4000-8000-000000000065",
       "fromId": "a0000000-0000-4000-8000-000000000004",
       "toId": "a0000000-0000-4000-8000-000000000002",
       "paid": {
@@ -1763,7 +1781,7 @@
     "method": "POST",
     "path": "/api/payments",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000067",
+      "requestId": "90000000-0000-4000-8000-000000000066",
       "fromId": "a0000000-0000-4000-8000-000000000001",
       "toId": "a0000000-0000-4000-8000-000000000006",
       "paid": {
@@ -1785,7 +1803,7 @@
     "method": "POST",
     "path": "/api/payments",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000068",
+      "requestId": "90000000-0000-4000-8000-000000000067",
       "fromId": "a0000000-0000-4000-8000-000000000001",
       "toId": "a0000000-0000-4000-8000-000000000002",
       "paid": {
@@ -1811,7 +1829,7 @@
     "method": "POST",
     "path": "/api/payments",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000069",
+      "requestId": "90000000-0000-4000-8000-000000000068",
       "fromId": "a0000000-0000-4000-8000-000000000001",
       "toId": "a0000000-0000-4000-8000-000000000002",
       "paid": {
@@ -1833,7 +1851,7 @@
     "method": "PUT",
     "path": "/api/payments/d0000000-0000-4000-8000-000000000002",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000070",
+      "requestId": "90000000-0000-4000-8000-000000000069",
       "transactionDate": "2026-09-30",
       "version": 1
     },
@@ -1852,7 +1870,7 @@
     "method": "PUT",
     "path": "/api/payments/d0000000-0000-4000-8000-000000000002",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000071",
+      "requestId": "90000000-0000-4000-8000-000000000070",
       "transactionDate": "2026-09-30",
       "version": 1
     },
@@ -1866,7 +1884,7 @@
     "method": "PUT",
     "path": "/api/payments/d0000000-0000-4000-8000-000000000002",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000072",
+      "requestId": "90000000-0000-4000-8000-000000000071",
       "transactionDate": "2026-09-30",
       "version": 1
     },
@@ -1881,7 +1899,7 @@
     "method": "PUT",
     "path": "/api/payments/d0000000-0000-4000-8000-000000009999",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000073",
+      "requestId": "90000000-0000-4000-8000-000000000072",
       "transactionDate": "2026-09-30",
       "version": 1
     },
@@ -1896,7 +1914,7 @@
     "method": "PUT",
     "path": "/api/payments/d0000000-0000-4000-8000-000000000002",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000074",
+      "requestId": "90000000-0000-4000-8000-000000000073",
       "transactionDate": "2026-09-30",
       "version": 99
     },
@@ -1911,7 +1929,7 @@
     "method": "PUT",
     "path": "/api/payments/d0000000-0000-4000-8000-000000000002",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000075",
+      "requestId": "90000000-0000-4000-8000-000000000074",
       "transactionDate": "2026-09-31",
       "version": 1
     },
@@ -1926,7 +1944,7 @@
     "method": "PUT",
     "path": "/api/payments/d0000000-0000-4000-8000-000000000002",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000076",
+      "requestId": "90000000-0000-4000-8000-000000000075",
       "transactionDate": "2026-09-30",
       "version": 1,
       "paid": {
@@ -1945,7 +1963,7 @@
     "method": "PUT",
     "path": "/api/payments/d0000000-0000-4000-8000-000000000002",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000077",
+      "requestId": "90000000-0000-4000-8000-000000000076",
       "transactionDate": "2026-09-30",
       "version": 1,
       "date": "2026-09-30"
@@ -2091,7 +2109,7 @@
     "method": "POST",
     "path": "/api/groups",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000078",
+      "requestId": "90000000-0000-4000-8000-000000000077",
       "name": "  ",
       "memberIds": [
         "a0000000-0000-4000-8000-000000000001",
@@ -2109,7 +2127,7 @@
     "method": "POST",
     "path": "/api/groups",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000079",
+      "requestId": "90000000-0000-4000-8000-000000000078",
       "name": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
       "memberIds": [
         "a0000000-0000-4000-8000-000000000001",
@@ -2127,7 +2145,7 @@
     "method": "POST",
     "path": "/api/groups",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000080",
+      "requestId": "90000000-0000-4000-8000-000000000079",
       "name": "Grupo de prueba",
       "memberIds": [
         "a0000000-0000-4000-8000-000000000001"
@@ -2144,7 +2162,7 @@
     "method": "POST",
     "path": "/api/groups",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000081",
+      "requestId": "90000000-0000-4000-8000-000000000080",
       "name": "Grupo de prueba",
       "memberIds": [
         "a0000000-0000-4000-8000-000000000002",
@@ -2162,7 +2180,7 @@
     "method": "POST",
     "path": "/api/groups",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000082",
+      "requestId": "90000000-0000-4000-8000-000000000081",
       "name": "Grupo de prueba",
       "memberIds": [
         "a0000000-0000-4000-8000-000000000001",
@@ -2180,7 +2198,7 @@
     "method": "POST",
     "path": "/api/groups",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000083",
+      "requestId": "90000000-0000-4000-8000-000000000082",
       "name": "Grupo de prueba",
       "memberIds": [
         "a0000000-0000-4000-8000-000000000001",
@@ -2198,7 +2216,7 @@
     "method": "PUT",
     "path": "/api/groups/b0000000-0000-4000-8000-000000000003",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000084",
+      "requestId": "90000000-0000-4000-8000-000000000083",
       "name": "Otro nombre",
       "memberIds": [
         "a0000000-0000-4000-8000-000000000001",
@@ -2218,7 +2236,7 @@
     "method": "PUT",
     "path": "/api/groups/b0000000-0000-4000-8000-000000000004",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000085",
+      "requestId": "90000000-0000-4000-8000-000000000084",
       "name": "Otro nombre",
       "memberIds": [
         "a0000000-0000-4000-8000-000000000007",
@@ -2237,7 +2255,7 @@
     "method": "PUT",
     "path": "/api/groups/b0000000-0000-4000-8000-000000000003",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000086",
+      "requestId": "90000000-0000-4000-8000-000000000085",
       "name": "Cuidado de Mamá y Papá",
       "memberIds": [
         "a0000000-0000-4000-8000-000000000002",
@@ -2256,7 +2274,7 @@
     "method": "PUT",
     "path": "/api/groups/b0000000-0000-4000-8000-000000000003",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000087",
+      "requestId": "90000000-0000-4000-8000-000000000086",
       "name": "Cuidado de Mamá y Papá",
       "memberIds": [
         "a0000000-0000-4000-8000-000000000001",
@@ -2275,7 +2293,7 @@
     "method": "PUT",
     "path": "/api/groups/b0000000-0000-4000-8000-000000000003",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000088",
+      "requestId": "90000000-0000-4000-8000-000000000087",
       "name": "Otro nombre",
       "memberIds": [
         "a0000000-0000-4000-8000-000000000001",
@@ -2295,7 +2313,7 @@
     "method": "PUT",
     "path": "/api/groups/b0000000-0000-4000-8000-000000000003",
     "body": {
-      "requestId": "90000000-0000-4000-8000-000000000089",
+      "requestId": "90000000-0000-4000-8000-000000000088",
       "name": "Cuidado de los papás",
       "memberIds": [
         "a0000000-0000-4000-8000-000000000001",
@@ -2309,100 +2327,148 @@
     }
   },
   {
-    "name": "a missing rate",
+    "name": "three services give the middle rate",
     "caller": "carlos",
     "method": "POST",
-    "path": "/api/exchange-rates",
-    "body": {
-      "requestId": "90000000-0000-4000-8000-000000000090",
-      "usdCad": "1.41",
-      "date": "2026-11-19"
-    },
-    "expect": {
-      "status": 400,
-      "code": "validation_error"
-    }
-  },
-  {
-    "name": "a rate of zero",
-    "caller": "carlos",
-    "method": "POST",
-    "path": "/api/exchange-rates",
-    "body": {
-      "requestId": "90000000-0000-4000-8000-000000000091",
-      "usdCad": "0",
-      "cadClp": "672",
-      "date": "2026-11-19"
-    },
-    "expect": {
-      "status": 400,
-      "code": "validation_error"
-    }
-  },
-  {
-    "name": "a negative rate",
-    "caller": "carlos",
-    "method": "POST",
-    "path": "/api/exchange-rates",
-    "body": {
-      "requestId": "90000000-0000-4000-8000-000000000092",
-      "usdCad": "-1.40",
-      "cadClp": "672",
-      "date": "2026-11-19"
-    },
-    "expect": {
-      "status": 400,
-      "code": "validation_error"
-    }
-  },
-  {
-    "name": "a rate that is not a number",
-    "caller": "carlos",
-    "method": "POST",
-    "path": "/api/exchange-rates",
-    "body": {
-      "requestId": "90000000-0000-4000-8000-000000000093",
-      "usdCad": "1.41",
-      "cadClp": "mucho",
-      "date": "2026-11-19"
-    },
-    "expect": {
-      "status": 400,
-      "code": "validation_error"
-    }
-  },
-  {
-    "name": "a rate date that does not exist",
-    "caller": "carlos",
-    "method": "POST",
-    "path": "/api/exchange-rates",
-    "body": {
-      "requestId": "90000000-0000-4000-8000-000000000094",
-      "usdCad": "1.41",
-      "cadClp": "672",
-      "date": "2026-13-01"
-    },
-    "expect": {
-      "status": 400,
-      "code": "validation_error"
-    }
-  },
-  {
-    "name": "a rate dated before the latest entry",
-    "caller": "carlos",
-    "method": "POST",
-    "path": "/api/exchange-rates",
-    "body": {
-      "requestId": "90000000-0000-4000-8000-000000000095",
-      "usdCad": "1.41",
-      "cadClp": "672",
-      "date": "2026-10-15"
-    },
-    "expect": {
-      "status": 201,
-      "body": {
-        "date": "2026-11-01"
+    "path": "/api/exchange-rates/refresh",
+    "answers": [
+      {
+        "usdCad": "1.41",
+        "usdClp": "944.70"
+      },
+      {
+        "usdCad": "1.43",
+        "usdClp": "979.55"
+      },
+      {
+        "usdCad": "1.42",
+        "usdClp": "965.60"
       }
+    ],
+    "expect": {
+      "status": 200,
+      "body": {
+        "updated": true,
+        "exchangeRate": {
+          "id": "a1000000-0000-4000-8000-000000000001",
+          "usdCad": "1.4200",
+          "cadClp": "680.00",
+          "date": "2026-11-18",
+          "fetchedAt": "2026-11-18T12:00:00Z"
+        }
+      }
+    }
+  },
+  {
+    "name": "two services that agree are enough",
+    "caller": "carlos",
+    "method": "POST",
+    "path": "/api/exchange-rates/refresh",
+    "answers": [
+      {
+        "usdCad": "1.40",
+        "usdClp": "938"
+      },
+      null,
+      {
+        "usdCad": "1.41",
+        "usdClp": "944.70"
+      }
+    ],
+    "expect": {
+      "status": 200,
+      "body": {
+        "updated": true,
+        "exchangeRate": {
+          "id": "a1000000-0000-4000-8000-000000000001",
+          "usdCad": "1.4050",
+          "cadClp": "670.00",
+          "date": "2026-11-18",
+          "fetchedAt": "2026-11-18T12:00:00Z"
+        }
+      }
+    }
+  },
+  {
+    "name": "two services that disagree keep the rates",
+    "caller": "carlos",
+    "method": "POST",
+    "path": "/api/exchange-rates/refresh",
+    "answers": [
+      {
+        "usdCad": "1.40",
+        "usdClp": "938"
+      },
+      {
+        "usdCad": "1.50",
+        "usdClp": "1005"
+      },
+      null
+    ],
+    "expect": {
+      "status": 503,
+      "code": "rates_unavailable"
+    }
+  },
+  {
+    "name": "one service is not enough",
+    "caller": "carlos",
+    "method": "POST",
+    "path": "/api/exchange-rates/refresh",
+    "answers": [
+      {
+        "usdCad": "1.40",
+        "usdClp": "938"
+      },
+      null,
+      null
+    ],
+    "expect": {
+      "status": 503,
+      "code": "rates_unavailable"
+    }
+  },
+  {
+    "name": "rates the services still agree on add no entry",
+    "caller": "carlos",
+    "method": "POST",
+    "path": "/api/exchange-rates/refresh",
+    "answers": [
+      {
+        "usdCad": "1.40",
+        "usdClp": "938"
+      },
+      {
+        "usdCad": "1.40",
+        "usdClp": "938"
+      },
+      {
+        "usdCad": "1.40",
+        "usdClp": "938"
+      }
+    ],
+    "expect": {
+      "status": 200,
+      "body": {
+        "updated": false,
+        "exchangeRate": {
+          "id": "e0000000-0000-4000-8000-000000000003",
+          "usdCad": "1.4000",
+          "cadClp": "670.00",
+          "date": "2026-11-01",
+          "fetchedAt": "2026-11-01T15:00:00Z"
+        }
+      }
+    }
+  },
+  {
+    "name": "refreshing before finishing sign-up",
+    "caller": "nina",
+    "method": "POST",
+    "path": "/api/exchange-rates/refresh",
+    "expect": {
+      "status": 403,
+      "code": "forbidden"
     }
   },
   {

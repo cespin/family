@@ -1,5 +1,5 @@
 import { useId, useState } from 'react';
-import { ArrowLeftRight, HandCoins, ReceiptText, Wallet } from 'lucide-react';
+import { HandCoins, ReceiptText, Wallet } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Amount, Button, Card, PersonRow, Segmented } from '../ui';
 import { formatMinor } from '../../i18n/format.js';
@@ -13,6 +13,7 @@ import {
 } from '../../lib/ledger.js';
 import { CURRENCIES } from '../../lib/money.js';
 import { currencyLabel, ratesLine } from './labels.js';
+import { RefreshRatesButton } from './RefreshRatesButton.jsx';
 import './BalanceCard.css';
 
 function headlineFor(t, total) {
@@ -45,7 +46,7 @@ function rowTitle(t, row) {
     : t('expenses:balance.theyOwe', { name });
 }
 
-export function BalanceCard({ ledger, groupId, onSettle, onAdvance, onPayments, onRates }) {
+export function BalanceCard({ ledger, groupId, onSettle, onAdvance, onPayments, onRatesRefreshed }) {
   const { t } = useTranslation();
   const labelId = useId();
   const [currency, setCurrency] = useState(myself(ledger).currency);
@@ -103,9 +104,7 @@ export function BalanceCard({ ledger, groupId, onSettle, onAdvance, onPayments, 
 
         <div className="fa-balance__rates">
           <p className="fa-text-caption fa-text-muted">{rates ?? t('expenses:rates.none')}</p>
-          <Button variant="quiet" size="small" icon={ArrowLeftRight} onClick={onRates}>
-            {rates ? t('expenses:rates.open') : t('expenses:rates.add')}
-          </Button>
+          <RefreshRatesButton onRefreshed={onRatesRefreshed} />
         </div>
 
         {rows.length > 0 && (

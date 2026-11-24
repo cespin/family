@@ -51,8 +51,8 @@ The frontend's internal data shape is not binding. It can adapt to the API, as l
 
 ### Exchange rates
 
-- See the current rates, when they were entered and by whom.
-- Enter new rates.
+- See the current rates and when they were fetched.
+- Ask for fresh rates now, without typing any.
 
 ### Home
 
@@ -147,11 +147,11 @@ Every expense in the caller's groups, available page by page:
 - The total and its currency. This is the debt currency, and the shares add up to this amount.
 - Optionally, the purchase's other amount and currency, and which of the two is the charged amount.
 - Two calendar dates, with no time and no time zone. 14 November stays 14 November for a reader in any country:
-  - **The entry date**, the day it was entered. It never changes, decides the order debts are paid in, and picks the exchange rates.
+  - **The entry date**, the day it was entered. It never changes, and decides the order debts are paid in.
   - **The transaction date**, the day the money was spent. The member chooses it and can correct it. Lists are ordered by it, and screens show it.
 - The split mode: `equal` or `percent`.
 - Each participant's share, and their percentage when the mode is `percent`.
-- The exchange rates that applied on the expense's entry date.
+- The exchange rates in force when the expense was recorded.
 - Optionally, a note.
 - The payments applied to it, including payments between other participants.
 
@@ -173,13 +173,13 @@ For each expense a payment was applied to, the amount in the payment's currency 
 
 ### Exchange rates
 
-Family members enter the rates by hand. No outside rate service is used. The frontend needs:
+Nobody types the rates in. The backend fetches them from three public rate services, Frankfurter, ExchangeRate-API and fawazahmed0, which each quote 1 USD in CAD and in CLP. The frontend needs:
 
 - The current value of 1 USD in CAD and of 1 CAD in CLP. The rate between USD and CLP is derived from those two.
-- The date they were entered, and who entered them.
-- The rates in force on any past date, which are the latest ones entered on or before that date.
+- When they were fetched. Entries from before the rates were fetched name the member who typed them in instead.
+- The rates an expense recorded, for its detail screen.
 
-The latest rates stay in use however old they are, and the screens show their date. Until the first rates are entered there are none. Amounts that need converting show as absent (section 5), while expenses and payments that stay in one currency still work.
+The latest rates stay in use however old they are, and the screens show their date. Until the first rates are fetched there are none. Amounts that need converting show as absent (section 5), while expenses and payments that stay in one currency still work.
 
 ### Standings
 
@@ -372,14 +372,14 @@ Someone added to a group sees all of its past expenses, and owes nothing for exp
 
 A member can be removed only when their balance with every other member of that group is zero. Once removed, they no longer see the group, and their past expenses stay in its history for everyone else. Removing a member also clears the group's usual split, because its percentages no longer add up to 100. The group splits equally until a new usual split is saved.
 
-### Entering exchange rates
+### Fetching exchange rates
 
 | Rule | Detail |
 |---|---|
-| Who | Any member |
-| Values | Both rates are required, and each must be a positive number |
-| Date | A valid calendar date supplied by the browser. An entry dated before the latest entry takes the latest entry's date |
-| History | A new entry never replaces an earlier one, so past dates keep their rates |
+| Combining | Each service's CAD to CLP rate is its CLP quote divided by its CAD quote. Each pair is then combined on its own: the middle value of three answers, or the average of two answers within 1% of each other. With fewer answers, or two further apart, the rates in force stay and the attempt fails with `rates_unavailable` |
+| Values | Each answer must be a positive decimal no larger than 1.000.000, or it counts as not answered. 1 USD in CAD keeps 4 decimals and 1 CAD in CLP keeps 2, rounding halves up |
+| When | Reading the ledger starts a background update when the last check is more than six hours old and no attempt was made in the last 15 minutes. Any member can also ask for one and wait for it, at most once a minute |
+| History | A new entry is saved only when the rates changed. It never replaces an earlier one, so past expenses keep their rates. Its date is the UTC day it was fetched, and never earlier than the latest entry's |
 | Effect | New rates change converted views and future payments. Payments already recorded keep their stored conversion |
 
 ## 8. Access, privacy and retention
@@ -443,7 +443,7 @@ Done when the frontend connected to the API, and listed here so the reasons stay
 - Add an optional note field to the expense form, and apply the title, note and amount limits in section 7.
 - Leave the "Oculto para" badge unused until hiding is built.
 - Replace the "Cambio de hoy" label with the date the rates were entered.
-- Design and build the screen for entering exchange rates. It asks for confirmation when a new rate differs from the last one by more than 20%.
+- Replace the screen for entering exchange rates with a button that asks the backend for fresh ones.
 - Offer CAD, USD and CLP even when no rates exist. The currency choices are currently read from the rates.
 - Keep `lib/expenses.sample.js` working for local development.
 - Generate one `requestId` per save and reuse it when retrying, send back the `version` of an expense or group when changing it, and stop sending shares, which the server computes.
@@ -467,7 +467,7 @@ Continuing the last scenario in section 6, where Lucía owes Carlos CLP 3.450 he
 ### How debts and payments are worked out
 
 - **Events are replayed in the order they were recorded.** An expense entered later cannot capture a payment recorded before it, even with an older transaction date. Debts are paid oldest entry date first, so an expense entered today for money spent in August is paid after the expenses entered before it. An edited expense keeps its original position, and correcting a transaction date moves no money.
-- **Rates are read from the event.** Group nets and closed debts are worked out when an expense or payment is recorded, with the rates in force at that moment. Entering new rates never closes or reopens a debt.
+- **Rates are read from the event.** Group nets and closed debts are worked out when an expense or payment is recorded, with the rates in force at that moment. New rates never close or reopen a debt.
 - **A debt closes on a net of zero** when the group's net rounds to zero in the currency of the event being recorded.
 - **Amounts stay whole.** Each allocation rounds what it covers to the debt's minor unit, using exact decimal arithmetic. Halves round away from zero, so both sides of a debt see the same figure.
 

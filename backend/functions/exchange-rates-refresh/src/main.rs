@@ -1,9 +1,12 @@
-//! POST /api/exchange-rates. The logic lives in `family-ledger`.
+//! POST /api/exchange-rates/refresh. The logic lives in `family-ledger`, and the rate services in
+//! `family-rates`.
 
 use aws_config::BehaviorVersion;
 use family_core::config::required_env;
 use family_ledger::api;
+use family_ledger::service::env::SystemEnv;
 use family_ledger::store::dynamo::DynamoTable;
+use family_rates::PublicRates;
 use lambda_http::{run, service_fn, Error, Request};
 
 #[tokio::main]
@@ -12,9 +15,9 @@ async fn main() -> Result<(), Error> {
     let table_name = required_env("TABLE_NAME")?;
     let shared = aws_config::load_defaults(BehaviorVersion::latest()).await;
     let table = DynamoTable::new(aws_sdk_dynamodb::Client::new(&shared), table_name);
-    let table = &table;
+    let (table, fetcher, env) = (&table, &PublicRates::default(), &SystemEnv);
     run(service_fn(move |event: Request| async move {
-        Ok::<_, Error>(api::exchange_rates_post(table, &event).await)
+        Ok::<_, Error>(api::exchange_rates_refresh(table, fetcher, env, &event).await)
     }))
     .await
 }

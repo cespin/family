@@ -258,6 +258,8 @@ function ledgerJson() {
     })),
     groups: myGroups().map(groupJson),
     exchangeRates: [...state.rateEntries].reverse(),
+    exchangeRatesCheckedAt: state.ratesCheckedAt ?? null,
+    exchangeRatesUpdating: false,
     standings: standingsJson(),
   };
 }
@@ -563,17 +565,23 @@ function editGroup(id, body) {
   return groupJson(group);
 }
 
-function addRates(body) {
-  const latest = latestRates();
+/**
+ * Stands in for asking the public rate services: each refresh moves the rates a little, so the
+ * screens visibly change. The real ones come from `POST /api/exchange-rates/refresh`.
+ */
+function refreshRates() {
+  const step = state.rateEntries.length;
+  const fetchedAt = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
   const entry = {
-    id: body.requestId,
-    usdCad: body.usdCad,
-    cadClp: body.cadClp,
-    date: latest && body.date < latest.date ? latest.date : body.date,
-    enteredBy: ME,
+    id: `rates-${step + 1}`,
+    usdCad: (1.4 + step / 1000).toFixed(4),
+    cadClp: (670 + step / 2).toFixed(2),
+    date: fetchedAt.slice(0, 10),
+    fetchedAt,
   };
   state.rateEntries.push(entry);
-  return clone(entry);
+  state.ratesCheckedAt = fetchedAt;
+  return { revision: step + 1, updated: true, exchangeRate: clone(entry), exchangeRatesCheckedAt: fetchedAt };
 }
 
 function saveProfile(body) {
@@ -600,7 +608,6 @@ const WRITES = [
   ['PUT', /^\/payments\/([^/]+)$/, (body, id) => editPayment(id, body)],
   ['POST', /^\/groups$/, (body) => addGroup(body)],
   ['PUT', /^\/groups\/([^/]+)$/, (body, id) => editGroup(id, body)],
-  ['POST', /^\/exchange-rates$/, (body) => addRates(body)],
 ];
 
 export async function sampleApi(path, { method = 'GET', body } = {}) {
@@ -615,6 +622,8 @@ export async function sampleApi(path, { method = 'GET', body } = {}) {
     return clone(detailJson(findExpense(decodeURIComponent(detail[1]))));
   }
   if (method === 'PUT' && route === '/me/profile') return saveProfile(body);
+  // A refresh has no body and no requestId, so it is not one of the retried writes below.
+  if (method === 'POST' && route === '/exchange-rates/refresh') return refreshRates();
 
   for (const [verb, pattern, write] of WRITES) {
     const match = route.match(pattern);

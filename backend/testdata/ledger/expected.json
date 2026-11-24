@@ -16857,7 +16857,7 @@
           },
           {
             "expense": "antigua",
-            "ratesEntry": "october",
+            "ratesEntry": "november",
             "standing": {
               "involved": true,
               "openMinor": -4000,
@@ -20052,7 +20052,7 @@
           "october": "e0000000-0000-4000-8000-000000000001",
           "november-first": "e0000000-0000-4000-8000-000000000002",
           "november": "e0000000-0000-4000-8000-000000000003",
-          "later": "e0000000-0000-4000-8000-000000000004"
+          "later": "a1000000-0000-4000-8000-000000000001"
         }
       },
       "carlos": {
@@ -20632,13 +20632,21 @@
         {
           "caller": "lucia",
           "method": "POST",
-          "path": "/api/exchange-rates",
-          "body": {
-            "requestId": "e0000000-0000-4000-8000-000000000004",
-            "usdCad": "1.40",
-            "cadClp": "655",
-            "date": "2026-11-19"
-          }
+          "path": "/api/exchange-rates/refresh",
+          "answers": [
+            {
+              "usdCad": "1.40",
+              "usdClp": "917"
+            },
+            {
+              "usdCad": "1.40",
+              "usdClp": "917"
+            },
+            {
+              "usdCad": "1.40",
+              "usdClp": "917"
+            }
+          ]
         }
       ]
     },

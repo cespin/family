@@ -76,10 +76,10 @@ const ROUTES: [(&str, &str, &str, &str, Option<&str>); 12] = [
     ),
     (
         "post",
-        "/api/exchange-rates",
-        "ExchangeRatesPost",
-        "exchange-rates-post",
-        Some("ExchangeRatesRequest"),
+        "/api/exchange-rates/refresh",
+        "ExchangeRatesRefresh",
+        "exchange-rates-refresh",
+        None,
     ),
 ];
 
@@ -310,4 +310,30 @@ fn the_gateway_accepts_every_body_the_handlers_accept() {
             );
         }
     }
+}
+
+/// The background rate update has no route, so the checks above do not reach it.
+#[test]
+fn the_rate_update_is_built_passed_and_only_started_by_ledger_reads() {
+    assert!(BUILD_SCRIPT.contains("exchange-rates-update"));
+    assert!(CONFIG.contains(
+        "ExchangeRatesUpdateCodeS3Key: lambda/exchange-rates-update/{{ var.code_exchange_rates_update }}/bootstrap.zip"
+    ));
+    assert!(TEMPLATE.contains("/aws/lambda/${StackName}-${Salt}-exchange-rates-update"));
+    assert!(TEMPLATE.contains("RATES_UPDATE_FUNCTION: !Ref ExchangeRatesUpdateFunction"));
+
+    let role = TEMPLATE
+        .split("\n  LedgerReadRole:")
+        .nth(1)
+        .and_then(|rest| rest.split("\n  LedgerReadLogGroup:").next())
+        .expect("the ledger read role");
+    assert!(role.contains("'lambda:InvokeFunction'"));
+    assert!(role.contains("Resource: !GetAtt ExchangeRatesUpdateFunction.Arn"));
+
+    // Starting it is fire and forget, so a failed update must not be retried behind the reads.
+    let config = TEMPLATE
+        .split("\n  ExchangeRatesUpdateInvokeConfig:")
+        .nth(1)
+        .expect("the update's invoke config");
+    assert!(config.contains("MaximumRetryAttempts: 0"));
 }

@@ -89,6 +89,7 @@ function render({ state }) {
   for (const { id, alias, ...attributes } of state.rates) {
     items.push(ledgerItem(`RATE#${id}`, attributes));
   }
+  if (state.ratesStatus) items.push({ PK: 'RATES', SK: 'STATUS', ...state.ratesStatus });
   for (const { content, rev } of Object.values(state.derived)) {
     items.push({ ...JSON.parse(content), rev });
   }
@@ -156,8 +157,11 @@ function describeExpense(pairs, ledger, expense, memberId, names) {
   };
 }
 
-function ratesOn(ledger, date) {
-  const entries = ledger.state.rates.filter((rate) => rate.date <= date);
+/** The entry an expense's rates came from, or for one recorded before that was kept, the entry in force on its date. */
+function ratesOf(ledger, expense) {
+  const id = expense.recordedRates?.ratesId;
+  if (id) return ledger.state.rates.find((rate) => rate.id === id);
+  const entries = ledger.state.rates.filter((rate) => rate.date <= expense.date);
   return entries[entries.length - 1];
 }
 
@@ -204,7 +208,7 @@ function describeCaller(ledger, member, pairs, names) {
     },
     expenses: expenses.map((expense) => ({
       expense: expense.alias,
-      ratesEntry: ratesOn(ledger, expense.date)?.alias ?? null,
+      ratesEntry: ratesOf(ledger, expense)?.alias ?? null,
       ...describeExpense(pairs, ledger, expense, member.id, names),
     })),
   };
@@ -451,6 +455,7 @@ function schemaProblems(items) {
     Expense: (item) => item.SK.startsWith('EXPENSE#'),
     Payment: (item) => item.SK.startsWith('PAYMENT#'),
     'Exchange rate': (item) => item.SK.startsWith('RATE#'),
+    'Rates status': (item) => item.PK === 'RATES',
     'Pair state': (item) => item.SK.startsWith('PAIR#'),
     'Pair allocations': (item) => item.SK.startsWith('ALLOC#'),
     'Group expense entry': (item) => item.PK.endsWith('#EXPENSES'),

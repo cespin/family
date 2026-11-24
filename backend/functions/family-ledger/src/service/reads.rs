@@ -20,6 +20,8 @@ use crate::rules::standing::{
 };
 use crate::rules::validate::is_uuid;
 use crate::service::access::{account_of, member_of, read_member};
+use crate::service::env::Env;
+use crate::service::rates::{needs_update, read_status, RatesUpdate};
 use crate::service::view::{active_members, LedgerView};
 use crate::store::keys;
 use crate::store::table::{from_item, is_retired, Item, Key, PageQuery, Table};
@@ -39,13 +41,19 @@ pub fn group_json(group: &Group) -> Value {
 }
 
 pub fn rate_json(rate: &RateEntry) -> Value {
-    json!({
+    let mut body = json!({
         "id": rate.id,
         "usdCad": rate.usd_cad,
         "cadClp": rate.cad_clp,
         "date": rate.date,
-        "enteredBy": rate.entered_by,
-    })
+    });
+    if let Some(member_id) = &rate.entered_by {
+        body["enteredBy"] = json!(member_id);
+    }
+    if let Some(fetched_at) = &rate.fetched_at {
+        body["fetchedAt"] = json!(fetched_at);
+    }
+    body
 }
 
 pub fn payment_json(entry: &PaymentEntry) -> Value {
@@ -126,8 +134,14 @@ fn standing_row(member_id: &str, entries: &[StandingEntry]) -> Value {
     json!({ "memberId": member_id, "overall": amounts_json(&overall), "groups": groups })
 }
 
-/// `GET /api/ledger`.
-pub async fn ledger<T: Table>(table: &T, caller: &Caller) -> Result<Value> {
+/// `GET /api/ledger`. When the rates were last checked more than six hours ago, it also starts a
+/// background update, which the next read shows.
+pub async fn ledger<T: Table, E: Env, U: RatesUpdate>(
+    table: &T,
+    env: &E,
+    update: &U,
+    caller: &Caller,
+) -> Result<Value> {
     let signed = member_of(table, caller).await?;
     let me = &signed.member_id;
     let (rev, view) = consistent_read!(table, session, LedgerView::load(&mut session).await?);
@@ -159,14 +173,30 @@ pub async fn ledger<T: Table>(table: &T, caller: &Caller) -> Result<Value> {
         .map(|(member_id, entries)| standing_row(member_id, entries))
         .collect();
 
+    let (status, _) = read_status(table).await?;
+    let updating = needs_update(&status, &env.now()) && start_update(update).await;
+
     Ok(json!({
         "revision": rev,
         "me": me,
         "members": members,
         "groups": groups,
         "exchangeRates": rates,
+        "exchangeRatesCheckedAt": status.checked_at,
+        "exchangeRatesUpdating": updating,
         "standings": standings,
     }))
+}
+
+/// A failed start never fails the read: the rates in force are still right to show.
+async fn start_update<U: RatesUpdate>(update: &U) -> bool {
+    match update.start().await {
+        Ok(()) => true,
+        Err(error) => {
+            tracing::warn!("could not start the exchange rate update: {error}");
+            false
+        }
+    }
 }
 
 /// Where a page stopped, tied to the filters it was read with.
@@ -572,7 +602,9 @@ fn detail_json(
         "transactionDate": expense.transaction_date(),
         "splitMode": expense.split_mode,
         "note": expense.note,
-        "ratesId": view.rates_on(&expense.date).map(|rate| &rate.id),
+        "ratesId": view
+            .rates_of(expense.recorded_rates.as_ref(), &expense.date)
+            .map(|rate| &rate.id),
         "version": expense.version,
         "participants": participants,
         "standing": standing_json(&standing),

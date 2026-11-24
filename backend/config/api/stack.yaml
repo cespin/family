@@ -18,4 +18,5 @@ parameters:
   ExpensesWriteCodeS3Key: lambda/expenses-write/{{ var.code_expenses_write }}/bootstrap.zip
   PaymentsPostCodeS3Key: lambda/payments-post/{{ var.code_payments_post }}/bootstrap.zip
   GroupsWriteCodeS3Key: lambda/groups-write/{{ var.code_groups_write }}/bootstrap.zip
-  ExchangeRatesPostCodeS3Key: lambda/exchange-rates-post/{{ var.code_exchange_rates_post }}/bootstrap.zip
+  ExchangeRatesRefreshCodeS3Key: lambda/exchange-rates-refresh/{{ var.code_exchange_rates_refresh }}/bootstrap.zip
+  ExchangeRatesUpdateCodeS3Key: lambda/exchange-rates-update/{{ var.code_exchange_rates_update }}/bootstrap.zip

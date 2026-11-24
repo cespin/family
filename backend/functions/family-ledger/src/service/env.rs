@@ -29,6 +29,40 @@ fn civil_from_days(days: i64) -> (i64, i64, i64) {
     (year, month, day)
 }
 
+/// The count of days since 1970-01-01 of a calendar date.
+fn days_from_civil(year: i64, month: i64, day: i64) -> i64 {
+    let year = year - i64::from(month <= 2);
+    let era = year.div_euclid(400);
+    let year_of_era = year.rem_euclid(400);
+    let shifted_month = (month + 9) % 12;
+    let day_of_year = (153 * shifted_month + 2) / 5 + day - 1;
+    let day_of_era = year_of_era * 365 + year_of_era / 4 - year_of_era / 100 + day_of_year;
+    era * 146_097 + day_of_era - 719_468
+}
+
+/// The seconds since 1970-01-01 of a timestamp written as `now` writes it, or `None`.
+pub fn seconds_of(timestamp: &str) -> Option<i64> {
+    let bytes = timestamp.as_bytes();
+    let shaped = bytes.len() == 20
+        && bytes[19] == b'Z'
+        && bytes[10] == b'T'
+        && crate::rules::validate::is_date(&timestamp[..10])
+        && [13, 16].iter().all(|&index| bytes[index] == b':')
+        && [11, 12, 14, 15, 17, 18]
+            .iter()
+            .all(|&index| bytes[index].is_ascii_digit());
+    if !shaped {
+        return None;
+    }
+    let part = |range: std::ops::Range<usize>| timestamp[range].parse::<i64>().ok();
+    let (hour, minute, second) = (part(11..13)?, part(14..16)?, part(17..19)?);
+    if hour > 23 || minute > 59 || second > 59 {
+        return None;
+    }
+    let days = days_from_civil(part(0..4)?, part(5..7)?, part(8..10)?);
+    Some(days * 86_400 + hour * 3600 + minute * 60 + second)
+}
+
 fn timestamp(seconds: i64) -> String {
     let (year, month, day) = civil_from_days(seconds.div_euclid(86_400));
     let in_day = seconds.rem_euclid(86_400);
@@ -62,5 +96,25 @@ mod tests {
         assert_eq!(timestamp(0), "1970-01-01T00:00:00Z");
         assert_eq!(timestamp(1_795_003_200), "2026-11-18T12:00:00Z");
         assert_eq!(timestamp(1_709_164_800), "2024-02-29T00:00:00Z");
+    }
+
+    #[test]
+    fn reads_back_the_timestamps_it_writes() {
+        for seconds in [0, 1_709_164_800, 1_795_003_200, 1_795_003_200 + 86_399] {
+            assert_eq!(seconds_of(&timestamp(seconds)), Some(seconds));
+        }
+    }
+
+    #[test]
+    fn refuses_anything_else() {
+        for text in [
+            "",
+            "2026-11-18",
+            "2026-11-18T12:00:00",
+            "2026-11-18T24:00:00Z",
+            "2026-02-30T12:00:00Z",
+        ] {
+            assert_eq!(seconds_of(text), None, "{text}");
+        }
     }
 }

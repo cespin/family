@@ -9,7 +9,6 @@ import { useLedger } from '../hooks/useLedger.js';
 import { errorMessage } from '../i18n/errors.js';
 import { scrollToTop } from '../lib/scroll.js';
 import { AddExpenseScreen } from './AddExpenseScreen.jsx';
-import { ExchangeRatesScreen } from './ExchangeRatesScreen.jsx';
 import { ExpenseDetailScreen } from './ExpenseDetailScreen.jsx';
 import { GroupFormScreen } from './GroupFormScreen.jsx';
 import { AdvanceScreen } from './AdvanceScreen.jsx';
@@ -29,7 +28,6 @@ const VIEWS = {
   advance: AdvanceScreen,
   payments: PaymentsScreen,
   group: GroupFormScreen,
-  rates: ExchangeRatesScreen,
   settings: SettingsScreen,
 };
 
@@ -79,7 +77,6 @@ export function DashboardScreen() {
         : setView({ name: 'groups', tab: 'groups' }),
     newGroup: () => setView({ name: 'group' }),
     editGroup: (groupId) => setView({ name: 'group', groupId }),
-    rates: () => setView({ name: 'rates' }),
     settings: () => setView({ name: 'settings' }),
   };
 

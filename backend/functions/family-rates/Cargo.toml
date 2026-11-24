@@ -1,0 +1,16 @@
+[package]
+name = "family-rates"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+description = "Asks the public exchange rate services for USD to CAD and USD to CLP"
+
+[dependencies]
+family-core.workspace = true
+family-ledger.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+ureq.workspace = true

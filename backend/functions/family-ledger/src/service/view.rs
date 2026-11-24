@@ -72,6 +72,15 @@ impl LedgerView {
         self.rates.iter().rfind(|rate| rate.date.as_str() <= date)
     }
 
+    /// The entry an event's rates came from. Events recorded before rates kept their entry's id
+    /// fall back to the entry in force on their date.
+    pub fn rates_of(&self, recorded: Option<&RecordedRates>, date: &str) -> Option<&RateEntry> {
+        match recorded.and_then(|rates| rates.rates_id.as_deref()) {
+            Some(id) => self.rates.iter().find(|rate| rate.id == id),
+            None => self.rates_on(date),
+        }
+    }
+
     pub fn pair_state(&self, x: &str, y: &str) -> PairState {
         let (low, high) = pair_key(x, y);
         self.pairs
@@ -127,4 +136,52 @@ pub async fn payments_behind_credits<'a, T: Table>(
         payments.insert(payment.id.clone(), payment);
     }
     Ok(payments)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::model::Stamp;
+
+    fn entry(id: &str, date: &str, seq: u64) -> RateEntry {
+        RateEntry {
+            id: id.to_string(),
+            usd_cad: "1.4000".to_string(),
+            cad_clp: "670.00".to_string(),
+            date: date.to_string(),
+            entered_by: None,
+            fetched_at: None,
+            seq,
+            stamp: Stamp::default(),
+        }
+    }
+
+    fn view() -> LedgerView {
+        LedgerView {
+            rates: vec![
+                entry("morning", "2026-11-18", 1),
+                entry("evening", "2026-11-18", 2),
+            ],
+            ..LedgerView::default()
+        }
+    }
+
+    #[test]
+    fn an_event_names_the_entry_it_recorded_even_on_a_day_with_several() {
+        let recorded = view().rates[0].recorded();
+        let found = view()
+            .rates_of(Some(&recorded), "2026-11-18")
+            .map(|rate| rate.id.clone());
+        assert_eq!(found.as_deref(), Some("morning"));
+    }
+
+    #[test]
+    fn an_event_recorded_before_entries_were_named_uses_its_date() {
+        let mut recorded = view().rates[0].recorded();
+        recorded.rates_id = None;
+        let found = view()
+            .rates_of(Some(&recorded), "2026-11-18")
+            .map(|rate| rate.id.clone());
+        assert_eq!(found.as_deref(), Some("evening"));
+    }
 }
